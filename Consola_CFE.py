@@ -1527,11 +1527,11 @@ class ConsolaCFE(QMainWindow):
         tf_fill     = PatternFill("solid", fgColor="EDE7F6")
 
         ws.merge_cells("A1:Z1")
-        ws["A1"].value = "MEC INDUSTRIAL ANALYTICS PRO — REPORTE TÉCNICO (TensorFlow AI Engine)"
+        ws["A1"].value = "MEC INDUSTRIAL ANALYTICS PRO — REPORTE TÉCNICO (Núcleo MEC)"
         ws["A1"].font = title_font; ws["A1"].alignment = center_align; ws["A1"].fill = header_fill
         ws.merge_cells("A2:Z2")
         fecha_h = datetime.now().strftime('%d/%m/%Y %I:%M:%S %p')
-        ws["A2"].value = f"EQUIPO: MEC-01 | GENERADO: {fecha_h} | REGISTROS: {len(idx_list)} | TF-Estado: {self.tf_result['estado']} | Anomalías: {self.tf_result['n_anomalias']}"
+        ws["A2"].value = f"EQUIPO: MEC-01 | GENERADO: {fecha_h} | REGISTROS: {len(idx_list)} | MEC-Estado: {self.tf_result['estado']} | Anomalías: {self.tf_result['n_anomalias']}"
         ws["A2"].font = meta_font; ws["A2"].alignment = center_align; ws["A2"].fill = header_fill
 
         HEADERS = ["Timestamp","Tensión(V)","Corr(A)","P.Act(W)","P.Rea(VAr)","P.Apa(VA)","F.P.","THD(%)","Vib(mm/s)","Freq(Hz)","Temp(°C)","f_RMS","Salud(%)","H1(%)","H3(%)","H5(%)","H7(%)","H9(%)"]
@@ -1568,12 +1568,14 @@ class ConsolaCFE(QMainWindow):
         # Sección IA / TF
         col_ia_start = 20; col_ia_end = 23
         ws.merge_cells(start_row=4, start_column=col_ia_start, end_row=4, end_column=col_ia_end)
-        header_ia = ws.cell(row=4, column=col_ia_start, value="ANÁLISIS DEL SISTEMA EXPERTO — TENSORFLOW AI")
+        header_ia = ws.cell(row=4, column=col_ia_start, value="ANÁLISIS DE MEC")
         header_ia.font = ia_title_f; header_ia.alignment = center_align; header_ia.fill = tf_fill
         ia_end_row = max(row_num, 56)
         ws.merge_cells(start_row=5, start_column=col_ia_start, end_row=ia_end_row, end_column=col_ia_end)
         reporte_box = ws.cell(row=5, column=col_ia_start)
         reporte_box.value = getattr(self, '_texto_excel', self.txt_reporte.toPlainText())
+        reporte_box.font = ia_text_f
+        reporte_box.alignment = left_top_align
         for r in range(4, ia_end_row+1):
             for c in range(col_ia_start, col_ia_end+1):
                 cell = ws.cell(row=r, column=c); cell.border = thin_border; cell.fill = tf_fill
@@ -1583,7 +1585,7 @@ class ConsolaCFE(QMainWindow):
 
         try:
             wb.save(path)
-            self.lbl_excel_status.setText("✅ Reporte TF Finalizado")
+            self.lbl_excel_status.setText("✅ Reporte MEC finalizado")
             QTimer.singleShot(3000, lambda: self.lbl_excel_status.setText(""))
         except Exception as ex:
             self.lbl_excel_status.setText(f"❌ Error: {str(ex)}")
