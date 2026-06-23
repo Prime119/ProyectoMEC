@@ -1,0 +1,24 @@
+# =======================================================
+# 🎛️ PANEL DE CONTROL EN VIVO - MEC INDUSTRIAL PRO
+# Modifica los numeros despues del signo de igual (=), 
+# presiona Ctrl+S (Guardar) y mira la consola reaccionar.
+# =======================================================
+
+# --- PARAMETROS ELECTRICOS BASICOS ---
+Tension_V = 127.2
+Corriente_A = 18.5
+Frecuencia_Hz = 60.0
+Factor_Potencia = 0.88
+
+# --- PARAMETROS MECANICOS Y CALIDAD ---
+Temperatura_C = 45.0
+Vibracion_mms = 1.8
+THD_pct = 4.5
+
+# --- POTENCIAS (Mueven el Triangulo) ---
+Potencia_Activa_W = 1000.0
+Potencia_Reactiva_VAr = 4000.0
+Potencia_Aparente_VA = 2353.0
+
+# --- SALUD GLOBAL DEL ACTIVO ---
+Salud_pct = 40.0
