@@ -56,6 +56,19 @@ C_HUD_DK  = '#0E7490'   # cian oscuro (bordes tenues)
 C_GLOW    = '#67E8F9'   # cian brillante (acentos/realce)
 C_HUD_BG  = '#091824'   # fondo de paneles HUD
 
+
+# --- Helpers de estilo holográfico para las gráficas (glow + áreas translúcidas) ---
+def _holo_pen(color, width=2.0):
+    return pg.mkPen(color, width=width)
+
+def _glow_pen(color, width=8, alpha=70):
+    c = pg.mkColor(color); c.setAlpha(alpha)
+    return pg.mkPen(c, width=width)
+
+def _area_brush(color, alpha=40):
+    c = pg.mkColor(color); c.setAlpha(alpha)
+    return pg.mkBrush(c)
+
 C_VOLT    = C_MAIN
 C_CURR    = C_ACCENT
 C_P_ACT   = C_MAIN
@@ -622,6 +635,7 @@ class ConsolaCFE(QMainWindow):
         self.tf_brain  = TensorFlowBrain()
         self._tf_entrenando = False
         self.MAX_THD   = 30.0
+        self.activo_nombre = "TIEMPO REAL"   # el mapa 3D lo cambia al activo seleccionado
 
         # Último resultado TF (para el log)
         self.tf_result = self.tf_brain._make_result("> Inicializando TensorFlow AI Engine...")
@@ -705,7 +719,7 @@ class ConsolaCFE(QMainWindow):
         return bar
 
     def _build_sidebar(self):
-        side = QWidget(); side.setFixedWidth(320)
+        side = QWidget(); side.setFixedWidth(213)
         side.setStyleSheet(f"background:#0a121c; border-right:1px solid {C_HUD_DK};")
         lay = QVBoxLayout(side); lay.setContentsMargins(8,10,8,10); lay.setSpacing(6)
 
@@ -777,7 +791,8 @@ class ConsolaCFE(QMainWindow):
             color, texto, bg, borde = C_ACCENT, "● ESPERANDO DATOS", "#3a2e00", "#7A4A00"
             detalle = "Reintentando enlace de datos…"
         else:  # connected
-            color, texto, bg, borde = C_GOOD, "● CONECTADO · TIEMPO REAL", "#00331A", "#006633"
+            activo = getattr(self, 'activo_nombre', 'TIEMPO REAL')
+            color, texto, bg, borde = C_GOOD, f"● CONECTADO · {activo.upper()}", "#00331A", "#006633"
             detalle = "Telemetría en vivo del activo"
         if hasattr(self, 'lbl_conn_estado'):
             self.lbl_conn_estado.setText(texto)
@@ -787,6 +802,12 @@ class ConsolaCFE(QMainWindow):
             )
         if hasattr(self, 'lbl_conn_detalle'):
             self.lbl_conn_detalle.setText(detalle)
+
+    def set_activo(self, nombre: str):
+        """El mapa 3D llama a esto al seleccionar una estructura de CFE
+        (subestación, oficina, generador, torre…). Cambia la etiqueta de conexión."""
+        self.activo_nombre = nombre or "TIEMPO REAL"
+        self._set_conn_style('connected')
 
     def _build_center(self):
         center = QWidget(); lay = QVBoxLayout(center); lay.setContentsMargins(4,4,4,4); lay.setSpacing(6)
@@ -828,7 +849,8 @@ class ConsolaCFE(QMainWindow):
         self.plt_rms.showGrid(x=True, y=True, alpha=0.15)
         self.plt_rms.getAxis('left').setTextPen(C_NEUTRAL); self.plt_rms.getAxis('bottom').setTextPen(C_NEUTRAL)
         self.plt_rms.getAxis('left').setPen(C_BORDER); self.plt_rms.getAxis('bottom').setPen(C_BORDER)
-        self.line_rms = self.plt_rms.plot(pen=pg.mkPen(C_RMS, width=1.5)); self._setup_time_axis(self.plt_rms)
+        self.line_rms = self.plt_rms.plot(pen=_holo_pen(C_RMS, 2), shadowPen=_glow_pen(C_RMS, 8),
+                                          fillLevel=0, brush=_area_brush(C_RMS, 45)); self._setup_time_axis(self.plt_rms)
         self._init_smart_zoom(self.plt_rms, 'rms'); lay.addWidget(self.plt_rms)
         self.tbl_rms = self._make_table(["Hora","F_RMS","V","I","P","Q","S","PF","THD","Vib","Freq","Temp"], 12); lay.addWidget(self.tbl_rms); return w
 
@@ -841,8 +863,8 @@ class ConsolaCFE(QMainWindow):
         self.plt_osc.getAxis('left').setPen(C_BORDER); self.plt_osc.getAxis('bottom').setPen(C_BORDER)
         leyenda_osc = self.plt_osc.addLegend(offset=(5,-5))
         leyenda_osc.setBrush(pg.mkBrush('#00000000')); leyenda_osc.setPen(pg.mkPen('#00000000'))
-        self.line_ov = self.plt_osc.plot(pen=pg.mkPen(C_VOLT, width=1.5), name="Tensión (V)")
-        self.line_oi = self.plt_osc.plot(pen=pg.mkPen(C_CURR, width=1.5), name="Corriente (A)")
+        self.line_ov = self.plt_osc.plot(pen=_holo_pen(C_VOLT, 2.2), shadowPen=_glow_pen(C_VOLT, 7), name="Tensión (V)")
+        self.line_oi = self.plt_osc.plot(pen=_holo_pen(C_CURR, 2.2), shadowPen=_glow_pen(C_CURR, 7), name="Corriente (A)")
         self._init_smart_zoom(self.plt_osc, 'osc'); lay.addWidget(self.plt_osc)
         self.tbl_osc = self._make_table(["Hora","Tensión","Corriente","Potencia","Frecuencia"], 5); lay.addWidget(self.tbl_osc); return w
 
@@ -854,7 +876,7 @@ class ConsolaCFE(QMainWindow):
         self.plt_espectro.getAxis('left').setTextPen(C_NEUTRAL); self.plt_espectro.getAxis('bottom').setTextPen(C_NEUTRAL)
         self.plt_espectro.getAxis('left').setPen(C_BORDER); self.plt_espectro.getAxis('bottom').setPen(C_BORDER)
         self.x_harms = [1,2,3,4,5,6,7,8]
-        self.bar_espectro = pg.BarGraphItem(x=self.x_harms, height=[0]*8, width=0.6, brush=pg.mkBrush(C_THD))
+        self.bar_espectro = pg.BarGraphItem(x=self.x_harms, height=[0]*8, width=0.55, brush=pg.mkBrush(C_THD), pen=pg.mkPen(C_GLOW, width=1.2))
         self.plt_espectro.addItem(self.bar_espectro); self.plt_espectro.setYRange(0, 110)
         self.plt_espectro.getAxis('bottom').setTicks([[(h, str(h)) for h in self.x_harms]])
         self._init_smart_zoom(self.plt_espectro, 'esp'); lay.addWidget(self.plt_espectro)
@@ -871,7 +893,7 @@ class ConsolaCFE(QMainWindow):
             plt.showGrid(x=False, y=True, alpha=0.1)
             plt.getAxis('left').setTextPen(C_NEUTRAL); plt.getAxis('left').setPen(C_BORDER); plt.getAxis('left').setWidth(40)
             plt.getAxis('bottom').setTextPen(C_NEUTRAL); plt.getAxis('bottom').setPen(C_BORDER)
-            line = plt.plot(pen=pg.mkPen(col, width=2))
+            line = plt.plot(pen=_holo_pen(col, 2), shadowPen=_glow_pen(col, 6), fillLevel=0, brush=_area_brush(col, 26))
             self._init_smart_zoom(plt, z_name); lay.addWidget(lbl); lay.addWidget(plt)
             setattr(self, attr, (plt, line))
         return w
@@ -883,9 +905,9 @@ class ConsolaCFE(QMainWindow):
         self.plt_tri.showGrid(x=True, y=True, alpha=0.1)
         self.plt_tri.getAxis('left').setTextPen(C_NEUTRAL); self.plt_tri.getAxis('bottom').setTextPen(C_NEUTRAL)
         self.plt_tri.getAxis('left').setPen(C_BORDER); self.plt_tri.getAxis('bottom').setPen(C_BORDER)
-        self.ln_p = self.plt_tri.plot(pen=pg.mkPen(C_P_ACT, width=2))
-        self.ln_q = self.plt_tri.plot(pen=pg.mkPen(C_P_REA, width=2))
-        self.ln_s = self.plt_tri.plot(pen=pg.mkPen(C_P_APP, width=1, style=Qt.PenStyle.DashLine))
+        self.ln_p = self.plt_tri.plot(pen=_holo_pen(C_P_ACT, 2.5), shadowPen=_glow_pen(C_P_ACT, 7))
+        self.ln_q = self.plt_tri.plot(pen=_holo_pen(C_P_REA, 2.5), shadowPen=_glow_pen(C_P_REA, 7))
+        self.ln_s = self.plt_tri.plot(pen=pg.mkPen(C_P_APP, width=1.4, style=Qt.PenStyle.DashLine))
         self.txt_P = pg.TextItem("P", color=C_P_ACT, anchor=(0.5,0.5)); self.plt_tri.addItem(self.txt_P)
         self.txt_Q = pg.TextItem("Q", color=C_P_REA, anchor=(0.5,0.5)); self.plt_tri.addItem(self.txt_Q)
         self.txt_S = pg.TextItem("S", color=C_P_APP, anchor=(0.5,0.5)); self.plt_tri.addItem(self.txt_S)
@@ -900,9 +922,9 @@ class ConsolaCFE(QMainWindow):
         self.plt_audit.showGrid(x=True, y=True, alpha=0.15)
         self.plt_audit.getAxis('left').setTextPen(C_NEUTRAL); self.plt_audit.getAxis('bottom').setTextPen(C_NEUTRAL)
         self.plt_audit.getAxis('left').setPen(C_BORDER); self.plt_audit.getAxis('bottom').setPen(C_BORDER)
-        self.ln_aud_salud = pg.PlotCurveItem(pen=pg.mkPen(C_SALUD, width=1.5)); self.plt_audit.addItem(self.ln_aud_salud)
-        self.ln_aud_thd   = pg.PlotCurveItem(pen=pg.mkPen(C_THD,   width=1.5)); self.plt_audit.addItem(self.ln_aud_thd)
-        self.ln_aud_vib   = pg.PlotCurveItem(pen=pg.mkPen(C_VIB,   width=1.5)); self.plt_audit.addItem(self.ln_aud_vib)
+        self.ln_aud_salud = pg.PlotCurveItem(pen=_holo_pen(C_SALUD, 2)); self.ln_aud_salud.setShadowPen(_glow_pen(C_SALUD, 6)); self.plt_audit.addItem(self.ln_aud_salud)
+        self.ln_aud_thd   = pg.PlotCurveItem(pen=_holo_pen(C_THD, 2));   self.ln_aud_thd.setShadowPen(_glow_pen(C_THD, 6));   self.plt_audit.addItem(self.ln_aud_thd)
+        self.ln_aud_vib   = pg.PlotCurveItem(pen=_holo_pen(C_VIB, 2));   self.ln_aud_vib.setShadowPen(_glow_pen(C_VIB, 6));   self.plt_audit.addItem(self.ln_aud_vib)
         leyenda_aud = self.plt_audit.addLegend(offset=(5,-5))
         leyenda_aud.setBrush(pg.mkBrush('#00000000')); leyenda_aud.setPen(pg.mkPen('#00000000'))
         leyenda_aud.addItem(self.ln_aud_salud, "Salud (%)"); leyenda_aud.addItem(self.ln_aud_thd, "THD (%)"); leyenda_aud.addItem(self.ln_aud_vib, "Vibración (mm/s)")
