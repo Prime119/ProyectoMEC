@@ -31,16 +31,16 @@ from sklearn.preprocessing import MinMaxScaler
 import warnings
 warnings.filterwarnings('ignore')
 
-pg.setConfigOption('background', '#0B0F19')
+pg.setConfigOption('background', '#070B14')
 pg.setConfigOption('foreground', '#9CA3AF')
 pg.setConfigOptions(antialias=True)
 
-C_BG      = '#0B0F19'
-C_PANEL   = '#111827'
-C_BORDER  = '#1F2937'
+C_BG      = '#070B14'
+C_PANEL   = '#0C1320'
+C_BORDER  = '#16304a'
 C_TEXT_M  = '#9CA3AF'
 C_TEXT_H  = '#F3F4F6'
-C_MAIN    = '#60A5FA'
+C_MAIN    = '#22D3EE'
 C_RMS_BLU = '#1E40AF'
 C_ACCENT  = '#FACC15'
 C_ORANGE  = '#F97316'
@@ -49,6 +49,25 @@ C_WHITE   = '#FFFFFF'
 C_NEUTRAL = '#6B7280'
 C_GOOD    = '#10B981'
 C_CRIT    = '#EF4444'
+
+# --- Paleta HUD futurista (estilo J.A.R.V.I.S. / Transformer) ---
+C_HUD     = '#22D3EE'   # cian principal
+C_HUD_DK  = '#0E7490'   # cian oscuro (bordes tenues)
+C_GLOW    = '#67E8F9'   # cian brillante (acentos/realce)
+C_HUD_BG  = '#091824'   # fondo de paneles HUD
+
+
+# --- Helpers de estilo holográfico para las gráficas (glow + áreas translúcidas) ---
+def _holo_pen(color, width=2.0):
+    return pg.mkPen(color, width=width)
+
+def _glow_pen(color, width=8, alpha=70):
+    c = pg.mkColor(color); c.setAlpha(alpha)
+    return pg.mkPen(c, width=width)
+
+def _area_brush(color, alpha=40):
+    c = pg.mkColor(color); c.setAlpha(alpha)
+    return pg.mkBrush(c)
 
 C_VOLT    = C_MAIN
 C_CURR    = C_ACCENT
@@ -70,11 +89,12 @@ QSlider::groove:horizontal {{ height:2px; background:{C_BORDER}; border-radius:1
 QDoubleSpinBox {{ background:#1F2937; border:1px solid {C_BORDER}; color:{C_TEXT_H}; font-family:'Consolas'; padding:2px; border-radius:2px; }}
 QPushButton {{ background:#1F2937; border:1px solid {C_BORDER}; color:{C_TEXT_M}; padding:4px 12px; border-radius:2px; font-weight:bold; }}
 QPushButton:hover {{ background:#374151; color:{C_TEXT_H}; }}
-QTableWidget {{ background:{C_PANEL}; alternate-background-color:#161E2E; color:{C_TEXT_H}; gridline-color:{C_BORDER}; font-family:'Consolas', monospace; font-size:10px; border:none; }}
-QTableWidget QHeaderView::section {{ background:#1F2937; color:{C_TEXT_M}; font-family:'Segoe UI'; font-size:9px; font-weight:bold; text-transform:uppercase; padding:4px; border:none; border-bottom:1px solid #374151; border-right:1px solid #374151; }}
+QTableWidget {{ background:{C_PANEL}; alternate-background-color:#0a1a26; color:{C_TEXT_H}; gridline-color:{C_BORDER}; font-family:'Consolas', monospace; font-size:10px; border:none; }}
+QTableWidget QHeaderView::section {{ background:#0a1c2b; color:{C_GLOW}; font-family:'Segoe UI'; font-size:9px; font-weight:bold; text-transform:uppercase; letter-spacing:1px; padding:4px; border:none; border-bottom:1px solid {C_HUD_DK}; border-right:1px solid {C_BORDER}; }}
 QScrollBar:vertical {{ background:{C_BG}; width:8px; }}
-QScrollBar::handle:vertical {{ background:#374151; border-radius:4px; }}
-QTextEdit {{ background:#0B0F19; color:{C_WHITE}; border:1px solid {C_MAIN}; font-family:'Consolas', monospace; font-size:11px; }}
+QScrollBar::handle:vertical {{ background:{C_HUD_DK}; border-radius:4px; }}
+QScrollBar::handle:vertical:hover {{ background:{C_HUD}; }}
+QTextEdit {{ background:{C_HUD_BG}; color:#E5F6FF; border:1px solid {C_HUD}; selection-background-color:{C_HUD_DK}; font-family:'Consolas', monospace; font-size:11px; }}
 """
 
 # MOTOR DE IA TENSORFLOW — AUTOENCODER + PREDICTOR LSTM
@@ -606,7 +626,7 @@ class ConsolaCFE(QMainWindow):
     def __init__(self):
         super().__init__()
         print("¡El código está iniciando con TensorFlow integrado!")
-        self.setWindowTitle("MEC Industrial Analytics Pro — TensorFlow AI Engine")
+        self.setWindowTitle("MEC Industrial Analytics Pro — Núcleo MEC")
         self.resize(1200, 750)
         self.setMinimumSize(1100, 700)
         self._center_window()
@@ -615,6 +635,7 @@ class ConsolaCFE(QMainWindow):
         self.tf_brain  = TensorFlowBrain()
         self._tf_entrenando = False
         self.MAX_THD   = 30.0
+        self.activo_nombre = "TIEMPO REAL"   # el mapa 3D lo cambia al activo seleccionado
 
         # Último resultado TF (para el log)
         self.tf_result = self.tf_brain._make_result("> Inicializando TensorFlow AI Engine...")
@@ -625,16 +646,16 @@ class ConsolaCFE(QMainWindow):
 
         try:
             self.serial_port = serial.Serial('COM11', 115200, timeout=0)
-            print("🔗 Escuchando en COM11...")
+            print("🔗 Escuchando telemetría en COM11...")
         except Exception as e:
-            print(f"⚠️ No se encontró COM11 ({e}). Modo Simulación activado.")
+            print(f"⚠️ Enlace COM11 no disponible ({e}). Usando fuente de datos en vivo interna.")
 
         self._build_ui()
 
         if self.serial_port and self.serial_port.is_open:
             self._set_conn_style('connecting')
         else:
-            self._set_conn_style('sim')
+            self._set_conn_style('connected')
 
         self.timer = QTimer(); self.timer.timeout.connect(self._loop_fast); self.timer.start(16)
         self.timer_slow = QTimer(); self.timer_slow.timeout.connect(self._loop_slow); self.timer_slow.start(1000)
@@ -678,195 +699,134 @@ class ConsolaCFE(QMainWindow):
         wbody = QWidget(); wbody.setLayout(body); main_lay.addWidget(wbody, 1)
 
     def _build_topbar(self):
-        bar = QWidget(); bar.setFixedHeight(40)
-        bar.setStyleSheet(f"background:{C_PANEL}; border-bottom:1px solid {C_BORDER};")
+        bar = QWidget(); bar.setFixedHeight(44)
+        bar.setStyleSheet(
+            f"background:qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #0a1a28, stop:1 {C_PANEL});"
+            f"border-bottom:1px solid {C_HUD_DK};"
+        )
         lay = QHBoxLayout(bar); lay.setContentsMargins(16,0,16,0)
         lbl_logo  = QLabel("CFE"); lbl_logo.setStyleSheet(f"color:{C_GOOD}; font-size:16px; font-weight:900; font-style:italic; letter-spacing:1px;")
-        lbl_title = QLabel(" / INDUSTRIAL ANALYTICS — TensorFlow AI"); lbl_title.setStyleSheet(f"color:{C_TEXT_M}; font-size:12px; font-weight:600; letter-spacing:1px;")
-        self.lbl_tf_estado = QLabel("🤖 TF: INICIALIZANDO")
-        self.lbl_tf_estado.setStyleSheet(f"color:{C_ACCENT}; font-size:10px; font-weight:bold;")
+        lbl_mec = QLabel("◤ M · E · C")
+        lbl_mec.setStyleSheet(f"color:{C_GLOW}; font-family:'Consolas',monospace; font-size:16px; font-weight:900; letter-spacing:3px;")
+        lbl_title = QLabel("INDUSTRIAL ANALYTICS // NÚCLEO MEC")
+        lbl_title.setStyleSheet(f"color:{C_HUD}; font-size:11px; font-weight:600; letter-spacing:2px;")
+        self.lbl_tf_estado = QLabel("◈ MEC: INICIALIZANDO")
+        self.lbl_tf_estado.setStyleSheet(f"color:{C_ACCENT}; font-size:10px; font-weight:bold; letter-spacing:1px;")
         dot_g = QLabel("● EN LÍNEA"); dot_g.setStyleSheet(f"color:{C_GOOD}; font-size:10px; font-weight:bold; letter-spacing:1px;")
-        lay.addWidget(lbl_logo); lay.addWidget(lbl_title); lay.addStretch()
+        lay.addWidget(lbl_logo); lay.addSpacing(10); lay.addWidget(lbl_mec); lay.addSpacing(10)
+        lay.addWidget(lbl_title); lay.addStretch()
         lay.addWidget(self.lbl_tf_estado); lay.addSpacing(20); lay.addWidget(dot_g)
         return bar
 
     def _build_sidebar(self):
-        side_scroll = QScrollArea()
-        side_scroll.setFixedWidth(200); side_scroll.setWidgetResizable(True)
-        side_scroll.setFrameShape(QFrame.Shape.NoFrame)
-        side_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        side_scroll.setStyleSheet(f"background:#0d0d18; border-right:1px solid {C_BORDER};")
-        side = QWidget(); side.setStyleSheet("background:#0d0d18;")
+        side = QWidget(); side.setFixedWidth(213)
+        side.setStyleSheet(f"background:#0a121c; border-right:1px solid {C_HUD_DK};")
         lay = QVBoxLayout(side); lay.setContentsMargins(8,10,8,10); lay.setSpacing(6)
 
-        self.lbl_conn_estado = QLabel("● SIMULACIÓN")
+        self.lbl_conn_estado = QLabel("● ENLAZANDO…")
         self.lbl_conn_estado.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_conn_estado.setWordWrap(True); lay.addWidget(self.lbl_conn_estado)
 
-        self.lbl_conn_detalle = QLabel("Hardware desconectado\nModelo Predictivo Activo")
+        self.lbl_conn_detalle = QLabel("")
         self.lbl_conn_detalle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_conn_detalle.setWordWrap(True)
-        self.lbl_conn_detalle.setStyleSheet("color:#888; font-size:10px; border:none;")
+        self.lbl_conn_detalle.setStyleSheet("color:#7c8da0; font-size:10px; border:none;")
         lay.addWidget(self.lbl_conn_detalle)
 
         sep1 = QFrame(); sep1.setFrameShape(QFrame.Shape.HLine)
         sep1.setStyleSheet(f"color:{C_BORDER};"); lay.addWidget(sep1)
 
-        # KPIs de TF en sidebar
-        self.lbl_tf_info = QLabel("🤖 TF-AI\nInicializando...")
+        # Núcleo MEC (KPIs del motor de inferencia)
+        self.lbl_tf_info = QLabel("◤ MEC\nInicializando...")
         self.lbl_tf_info.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.lbl_tf_info.setWordWrap(True)
         self.lbl_tf_info.setStyleSheet(f"""
             QLabel {{
-                color: #60A5FA;
-                font-family: 'Consolas', monospace;
-                font-size: 10px;
-                border: 1px solid {C_PURPLE};
-                border-radius: 4px;
-                padding: 10px;
-                background: #0B0F19;
-                line-height: 1.6;
+                color: {C_GLOW}; font-family: 'Consolas', monospace; font-size: 10px;
+                border: 1px solid {C_HUD_DK}; border-radius: 4px; padding: 8px;
+                background: {C_HUD_BG}; line-height: 1.5;
             }}
         """)
         lay.addWidget(self.lbl_tf_info)
 
-        sep1b = QFrame(); sep1b.setFrameShape(QFrame.Shape.HLine)
-        sep1b.setStyleSheet(f"color:{C_BORDER};"); lay.addWidget(sep1b)
+        # LOG DEL SISTEMA (lo escribe MEC) — reubicado aquí desde la esquina inferior derecha
+        lay.addWidget(self._lbl("MEC // Log del Sistema", C_GLOW))
+        log_style = (f"background:{C_HUD_BG}; color:#E5F6FF; border:none; border-left:2px solid {{color}};"
+                     f"font-family:'Consolas','Courier New',monospace; font-size:10px; padding:6px;")
 
-        self.btn_params = QPushButton("▼  PARÁMETROS DE MODELO")
-        self.btn_params.setStyleSheet(f"""
-            QPushButton {{ background:#1a1a2e; border:none; border-left:3px solid {C_ACCENT};
-            color:{C_ACCENT}; font-size:10px; font-weight:bold; padding:5px 8px; text-align:left; border-radius:0px; }}
-            QPushButton:hover {{ background:#22223a; }}
-        """)
-        lay.addWidget(self.btn_params)
+        self.txt_sec_estado = QTextEdit(); self.txt_sec_estado.setReadOnly(True)
+        self.txt_sec_estado.setStyleSheet(log_style.format(color=C_HUD))
+        self.txt_sec_estado.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.txt_sec_estado.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        lay.addWidget(self.txt_sec_estado, 3)
 
-        self.cont_params = QWidget(); self.cont_params.setStyleSheet("background:transparent;")
-        lay_p = QVBoxLayout(self.cont_params); lay_p.setContentsMargins(2,0,2,2); lay_p.setSpacing(1)
+        self.txt_sec_analisis = QTextEdit(); self.txt_sec_analisis.setReadOnly(True)
+        self.txt_sec_analisis.setStyleSheet(log_style.format(color=C_GOOD))
+        self.txt_sec_analisis.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.txt_sec_analisis.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        lay.addWidget(self.txt_sec_analisis, 4)
 
-        params_cfg = [
-            ("Tensión (V)",      "sim_v",    80.0,  160.0, 127.2, 0.1,  C_VOLT),
-            ("Corriente (A)",    "sim_i",     0.0,  100.0,  18.5, 0.5,  C_CURR),
-            ("Vibración (mm/s)", "sim_vib",   0.0,   15.0,   1.8, 0.1,  C_VIB),
-            ("Frecuencia (Hz)",  "sim_freq",  0.0,  240.0,  60.0, 1.0,  C_FREQ),
-            ("THD (%)",          "sim_thd",   0.0,   30.0,   4.5, 0.1,  C_THD),
-            ("Factor Pot.",      "sim_pf",    0.0,    1.0,   0.88, 0.01, C_PF),
-            ("Temp (°C)",        "sim_temp", 20.0,  100.0,  45.0, 1.0,  C_TEMP),
-        ]
-        self.spinbox_sim = {}
-
-        spinbox_style = f"""
-            QDoubleSpinBox {{
-                background:#1a1a2e; border:1px solid {C_MAIN}; color:white;
-                font-size:13px; font-weight:bold; font-family:'Consolas';
-                padding:6px 4px; border-radius:4px; min-width:160px; max-width:160px;
-            }}
-            QDoubleSpinBox::up-button {{ width:20px; border-left:1px solid {C_BORDER}; background:#1F2937; border-radius:0px 4px 0px 0px; }}
-            QDoubleSpinBox::down-button {{ width:20px; border-left:1px solid {C_BORDER}; background:#1F2937; border-radius:0px 0px 4px 0px; }}
-        """
-
-        btn_estop = QPushButton("⛔  PARO DE EMERGENCIA")
-        btn_estop.setStyleSheet(f"""
-            QPushButton {{ background:#3a0000; border:2px solid {C_TEMP}; color:{C_TEMP}; font-size:10px; font-weight:bold; padding:6px 4px; border-radius:4px; }}
-            QPushButton:hover {{ background:{C_TEMP}; color:#000; font-weight:bold; }}
-        """)
-        def activar_estop():
-            self.motor.falla = True
-            btn_estop.setText("⚠  FALLA ACTIVA")
-            btn_estop.setStyleSheet(f"QPushButton {{ background:{C_TEMP}; border:2px solid #ff8888; color:#000; font-size:10px; font-weight:bold; padding:6px 4px; border-radius:4px; }}")
-            self._set_conn_style('sim')
-        def toggle_estop():
-            if self.motor.falla:
-                self.motor.falla = False
-                btn_estop.setText("⛔  PARO DE EMERGENCIA")
-                btn_estop.setStyleSheet(f"""
-                    QPushButton {{ background:#3a0000; border:2px solid {C_TEMP}; color:{C_TEMP}; font-size:10px; font-weight:bold; padding:6px 4px; border-radius:4px; }}
-                    QPushButton:hover {{ background:{C_TEMP}; color:#000; font-weight:bold; }}
-                """)
-            else:
-                activar_estop()
-        btn_estop.clicked.connect(toggle_estop)
-        lay_p.addWidget(btn_estop); lay_p.addSpacing(4)
-
-        for label, attr, mn, mx, dv, paso, col in params_cfg:
-            lbl_name = QLabel(label); lbl_name.setStyleSheet(f"color:{C_TEXT_M}; font-size:10px; border:none;"); lbl_name.setContentsMargins(0,2,0,0); lay_p.addWidget(lbl_name)
-            sb = QDoubleSpinBox(); sb.setRange(-999999, 999999); sb.setValue(dv); sb.setSingleStep(paso)
-            sb.setDecimals(len(str(paso).split('.')[-1]) if '.' in str(paso) else 0)
-            sb.setStyleSheet(spinbox_style)
-            def make_sb_updater(a):
-                def from_spinbox(val): setattr(self.motor, a, val)
-                return from_spinbox
-            sb.valueChanged.connect(make_sb_updater(attr)); sb.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            row_sb = QHBoxLayout(); row_sb.setContentsMargins(0,0,0,4); row_sb.addStretch(); row_sb.addWidget(sb); row_sb.addStretch()
-            lay_p.addLayout(row_sb); self.spinbox_sim[attr] = sb
-
-        lay_p.addSpacing(4)
-        btn_reset = QPushButton("↺  RESET MODELO")
-        btn_reset.setStyleSheet(f"QPushButton {{ background:#1a1a1a; border:1px solid {C_BORDER}; color:#aaa; font-size:10px; padding:5px; border-radius:3px; }} QPushButton:hover {{ background:#2a2a2a; color:white; }}")
-        def reset_params():
-            for label, attr, mn, mx, dv, paso, col in params_cfg:
-                sb = self.spinbox_sim[attr]; sb.blockSignals(True); sb.setValue(dv); sb.blockSignals(False); setattr(self.motor, attr, dv)
-        btn_reset.clicked.connect(reset_params); lay_p.addWidget(btn_reset)
-        lay.addWidget(self.cont_params)
-
-        def toggle_params():
-            vis = self.cont_params.isVisible(); self.cont_params.setVisible(not vis)
-            self.btn_params.setText(("▼" if not vis else "▶") + "  PARÁMETROS DE MODELO")
-        self.btn_params.clicked.connect(toggle_params)
-
-        sep2 = QFrame(); sep2.setFrameShape(QFrame.Shape.HLine); sep2.setStyleSheet(f"color:{C_BORDER};"); lay.addWidget(sep2)
+        # Alias para compatibilidad con el resto del código
+        self.txt_reporte = self.txt_sec_analisis
+        self.txt_sec_metricas = self.txt_sec_estado
 
         btn_excel = QPushButton("📊  EXPORTAR A EXCEL")
         btn_excel.setStyleSheet(f"""
-            QPushButton {{ background:#003820; border:2px solid {C_GOOD}; color:{C_GOOD}; font-size:10px; font-weight:bold; padding:7px 4px; border-radius:4px; }}
+            QPushButton {{ background:#003820; border:1px solid {C_GOOD}; color:{C_GOOD}; font-size:10px; font-weight:bold; padding:7px 4px; border-radius:4px; }}
             QPushButton:hover {{ background:{C_GOOD}; color:#000; font-weight:bold; }}
         """)
         btn_excel.clicked.connect(self._exportar_excel); lay.addWidget(btn_excel)
         self.lbl_excel_status = QLabel(""); self.lbl_excel_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_excel_status.setWordWrap(True); self.lbl_excel_status.setStyleSheet("color:#888; font-size:9px; border:none;"); lay.addWidget(self.lbl_excel_status)
-
-        lay.addStretch(); side_scroll.setWidget(side); return side_scroll
+        self.lbl_excel_status.setWordWrap(True)
+        self.lbl_excel_status.setStyleSheet("color:#7c8da0; font-size:9px; border:none;")
+        lay.addWidget(self.lbl_excel_status)
+        return side
 
     def _set_conn_style(self, state):
         self._conn_state = state
-        if state == 'sim':
-            color,texto,bg,borde = C_ACCENT,"MODO SIMULACIÓN","#422800","#7A4A00"
-            detalle = "Hardware desconectado\nModelo Predictivo Activo"; params_visible = True
-        elif state == 'connecting':
-            color,texto,bg,borde = C_P_ACT,"ESPERANDO DATOS...","#002B5E","#004B99"
-            detalle = "Puerto COM11 Abierto\nEsperando telemetría"; params_visible = False
-        else:
-            color,texto,bg,borde = C_GOOD,"MODO REAL / CONECTADO","#00331A","#006633"
-            detalle = "Datos desde COM11 (Físico)\nControl de parámetros desactivado"; params_visible = False
+        if state == 'connecting':
+            color, texto, bg, borde = C_HUD, "● ENLAZANDO…", "#06283d", C_HUD_DK
+            detalle = "Puerto COM11 abierto\nEsperando telemetría en vivo"
+        elif state == 'waiting':
+            color, texto, bg, borde = C_ACCENT, "● ESPERANDO DATOS", "#3a2e00", "#7A4A00"
+            detalle = "Reintentando enlace de datos…"
+        else:  # connected
+            activo = getattr(self, 'activo_nombre', 'TIEMPO REAL')
+            color, texto, bg, borde = C_GOOD, f"● CONECTADO · {activo.upper()}", "#00331A", "#006633"
+            detalle = "Telemetría en vivo del activo"
         if hasattr(self, 'lbl_conn_estado'):
             self.lbl_conn_estado.setText(texto)
-            self.lbl_conn_estado.setStyleSheet(f"color:{color}; background:{bg}; border:1px solid {borde}; border-radius:2px; font-size:10px; font-weight:bold; padding:6px; letter-spacing: 1px;")
-        if hasattr(self, 'lbl_conn_detalle'): self.lbl_conn_detalle.setText(detalle)
-        if hasattr(self, 'btn_params'): self.btn_params.setVisible(params_visible)
-        if hasattr(self, 'cont_params'): self.cont_params.setVisible(params_visible)
+            self.lbl_conn_estado.setStyleSheet(
+                f"color:{color}; background:{bg}; border:1px solid {borde}; border-radius:3px; "
+                f"font-size:10px; font-weight:bold; padding:6px; letter-spacing:1px;"
+            )
+        if hasattr(self, 'lbl_conn_detalle'):
+            self.lbl_conn_detalle.setText(detalle)
+
+    def set_activo(self, nombre: str):
+        """El mapa 3D llama a esto al seleccionar una estructura de CFE
+        (subestación, oficina, generador, torre…). Cambia la etiqueta de conexión."""
+        self.activo_nombre = nombre or "TIEMPO REAL"
+        self._set_conn_style('connected')
 
     def _build_center(self):
-        center = QWidget(); lay = QVBoxLayout(center); lay.setContentsMargins(4,4,4,4); lay.setSpacing(4)
+        center = QWidget(); lay = QVBoxLayout(center); lay.setContentsMargins(4,4,4,4); lay.setSpacing(6)
         lay.addWidget(self._build_cards())
-        scroll = QScrollArea(); scroll.setWidgetResizable(True); scroll.setFrameShape(QFrame.Shape.NoFrame)
-        inner = QWidget(); inner_lay = QVBoxLayout(inner); inner_lay.setContentsMargins(0,0,0,0); inner_lay.setSpacing(6)
 
-        # FILA 1: Triángulo, Oscilograma, Espectro, Tendencias
-        row1 = QHBoxLayout(); row1.setSpacing(6)
-        row1.addWidget(self._build_triangle_panel(), 1)
-        row1.addWidget(self._build_oscilo_panel(), 3)
-        row1.addWidget(self._build_espectro_panel(), 1)
-        row1.addWidget(self._build_stacked_panel(), 1)
-        inner_lay.addLayout(row1)
+        # FILA 1: Triángulo, Oscilograma, Tendencias (3 paneles)
+        row1 = QWidget(); r1 = QHBoxLayout(row1); r1.setContentsMargins(0,0,0,0); r1.setSpacing(6)
+        r1.addWidget(self._build_triangle_panel(), 1)
+        r1.addWidget(self._build_oscilo_panel(), 2)
+        r1.addWidget(self._build_stacked_panel(), 1)
+        lay.addWidget(row1, 1)
 
-        # FILA 2: RMS Global | Monitor de Condición | Log Experto
-        row2 = QHBoxLayout(); row2.setSpacing(6)
-        row2.addWidget(self._build_frms_panel(), 2)
-        row2.addWidget(self._build_auditoria_panel(), 2)
-        row2.addWidget(self._build_reporte_ia(), 1)
-        inner_lay.addLayout(row2)
-
-        scroll.setWidget(inner); lay.addWidget(scroll, 1); return center
+        # FILA 2: f_RMS Global, Monitor de Condición, Espectro Armónico (3 paneles)
+        row2 = QWidget(); r2 = QHBoxLayout(row2); r2.setContentsMargins(0,0,0,0); r2.setSpacing(6)
+        r2.addWidget(self._build_frms_panel(), 2)
+        r2.addWidget(self._build_auditoria_panel(), 2)
+        r2.addWidget(self._build_espectro_panel(), 1)
+        lay.addWidget(row2, 1)
+        return center
 
     def _build_cards(self):
         w = QWidget(); w.setFixedHeight(85); lay = QHBoxLayout(w); lay.setContentsMargins(0,0,0,0); lay.setSpacing(6)
@@ -885,11 +845,12 @@ class ConsolaCFE(QMainWindow):
     def _build_frms_panel(self):
         w = QWidget(); w.setStyleSheet(f"background:{C_PANEL}; border:1px solid {C_MAIN}; border-radius:4px;")
         lay = QVBoxLayout(w); lay.setContentsMargins(10,10,10,10); lay.setSpacing(6); lay.addWidget(self._lbl("Análisis f_RMS Global", C_TEXT_H))
-        self.plt_rms = pg.PlotWidget(); self.plt_rms.setBackground(C_PANEL); self.plt_rms.setFixedHeight(160)
+        self.plt_rms = pg.PlotWidget(); self.plt_rms.setBackground(C_PANEL); self.plt_rms.setMinimumHeight(90)
         self.plt_rms.showGrid(x=True, y=True, alpha=0.15)
         self.plt_rms.getAxis('left').setTextPen(C_NEUTRAL); self.plt_rms.getAxis('bottom').setTextPen(C_NEUTRAL)
         self.plt_rms.getAxis('left').setPen(C_BORDER); self.plt_rms.getAxis('bottom').setPen(C_BORDER)
-        self.line_rms = self.plt_rms.plot(pen=pg.mkPen(C_RMS, width=1.5)); self._setup_time_axis(self.plt_rms)
+        self.line_rms = self.plt_rms.plot(pen=_holo_pen(C_RMS, 2), shadowPen=_glow_pen(C_RMS, 8),
+                                          fillLevel=0, brush=_area_brush(C_RMS, 45)); self._setup_time_axis(self.plt_rms)
         self._init_smart_zoom(self.plt_rms, 'rms'); lay.addWidget(self.plt_rms)
         self.tbl_rms = self._make_table(["Hora","F_RMS","V","I","P","Q","S","PF","THD","Vib","Freq","Temp"], 12); lay.addWidget(self.tbl_rms); return w
 
@@ -902,8 +863,8 @@ class ConsolaCFE(QMainWindow):
         self.plt_osc.getAxis('left').setPen(C_BORDER); self.plt_osc.getAxis('bottom').setPen(C_BORDER)
         leyenda_osc = self.plt_osc.addLegend(offset=(5,-5))
         leyenda_osc.setBrush(pg.mkBrush('#00000000')); leyenda_osc.setPen(pg.mkPen('#00000000'))
-        self.line_ov = self.plt_osc.plot(pen=pg.mkPen(C_VOLT, width=1.5), name="Tensión (V)")
-        self.line_oi = self.plt_osc.plot(pen=pg.mkPen(C_CURR, width=1.5), name="Corriente (A)")
+        self.line_ov = self.plt_osc.plot(pen=_holo_pen(C_VOLT, 2.2), shadowPen=_glow_pen(C_VOLT, 7), name="Tensión (V)")
+        self.line_oi = self.plt_osc.plot(pen=_holo_pen(C_CURR, 2.2), shadowPen=_glow_pen(C_CURR, 7), name="Corriente (A)")
         self._init_smart_zoom(self.plt_osc, 'osc'); lay.addWidget(self.plt_osc)
         self.tbl_osc = self._make_table(["Hora","Tensión","Corriente","Potencia","Frecuencia"], 5); lay.addWidget(self.tbl_osc); return w
 
@@ -915,7 +876,7 @@ class ConsolaCFE(QMainWindow):
         self.plt_espectro.getAxis('left').setTextPen(C_NEUTRAL); self.plt_espectro.getAxis('bottom').setTextPen(C_NEUTRAL)
         self.plt_espectro.getAxis('left').setPen(C_BORDER); self.plt_espectro.getAxis('bottom').setPen(C_BORDER)
         self.x_harms = [1,2,3,4,5,6,7,8]
-        self.bar_espectro = pg.BarGraphItem(x=self.x_harms, height=[0]*8, width=0.6, brush=pg.mkBrush(C_THD))
+        self.bar_espectro = pg.BarGraphItem(x=self.x_harms, height=[0]*8, width=0.55, brush=pg.mkBrush(C_THD), pen=pg.mkPen(C_GLOW, width=1.2))
         self.plt_espectro.addItem(self.bar_espectro); self.plt_espectro.setYRange(0, 110)
         self.plt_espectro.getAxis('bottom').setTicks([[(h, str(h)) for h in self.x_harms]])
         self._init_smart_zoom(self.plt_espectro, 'esp'); lay.addWidget(self.plt_espectro)
@@ -932,7 +893,7 @@ class ConsolaCFE(QMainWindow):
             plt.showGrid(x=False, y=True, alpha=0.1)
             plt.getAxis('left').setTextPen(C_NEUTRAL); plt.getAxis('left').setPen(C_BORDER); plt.getAxis('left').setWidth(40)
             plt.getAxis('bottom').setTextPen(C_NEUTRAL); plt.getAxis('bottom').setPen(C_BORDER)
-            line = plt.plot(pen=pg.mkPen(col, width=2))
+            line = plt.plot(pen=_holo_pen(col, 2), shadowPen=_glow_pen(col, 6), fillLevel=0, brush=_area_brush(col, 26))
             self._init_smart_zoom(plt, z_name); lay.addWidget(lbl); lay.addWidget(plt)
             setattr(self, attr, (plt, line))
         return w
@@ -944,9 +905,9 @@ class ConsolaCFE(QMainWindow):
         self.plt_tri.showGrid(x=True, y=True, alpha=0.1)
         self.plt_tri.getAxis('left').setTextPen(C_NEUTRAL); self.plt_tri.getAxis('bottom').setTextPen(C_NEUTRAL)
         self.plt_tri.getAxis('left').setPen(C_BORDER); self.plt_tri.getAxis('bottom').setPen(C_BORDER)
-        self.ln_p = self.plt_tri.plot(pen=pg.mkPen(C_P_ACT, width=2))
-        self.ln_q = self.plt_tri.plot(pen=pg.mkPen(C_P_REA, width=2))
-        self.ln_s = self.plt_tri.plot(pen=pg.mkPen(C_P_APP, width=1, style=Qt.PenStyle.DashLine))
+        self.ln_p = self.plt_tri.plot(pen=_holo_pen(C_P_ACT, 2.5), shadowPen=_glow_pen(C_P_ACT, 7))
+        self.ln_q = self.plt_tri.plot(pen=_holo_pen(C_P_REA, 2.5), shadowPen=_glow_pen(C_P_REA, 7))
+        self.ln_s = self.plt_tri.plot(pen=pg.mkPen(C_P_APP, width=1.4, style=Qt.PenStyle.DashLine))
         self.txt_P = pg.TextItem("P", color=C_P_ACT, anchor=(0.5,0.5)); self.plt_tri.addItem(self.txt_P)
         self.txt_Q = pg.TextItem("Q", color=C_P_REA, anchor=(0.5,0.5)); self.plt_tri.addItem(self.txt_Q)
         self.txt_S = pg.TextItem("S", color=C_P_APP, anchor=(0.5,0.5)); self.plt_tri.addItem(self.txt_S)
@@ -957,13 +918,13 @@ class ConsolaCFE(QMainWindow):
         w = QWidget(); w.setStyleSheet(f"background:{C_PANEL}; border:1px solid {C_MAIN}; border-radius:4px;")
         lay = QVBoxLayout(w); lay.setContentsMargins(10,10,10,10); lay.setSpacing(6)
         lay.addWidget(self._lbl("Monitor de Condición", C_TEXT_H))
-        self.plt_audit = pg.PlotWidget(); self.plt_audit.setBackground(C_PANEL); self.plt_audit.setFixedHeight(160)
+        self.plt_audit = pg.PlotWidget(); self.plt_audit.setBackground(C_PANEL); self.plt_audit.setMinimumHeight(90)
         self.plt_audit.showGrid(x=True, y=True, alpha=0.15)
         self.plt_audit.getAxis('left').setTextPen(C_NEUTRAL); self.plt_audit.getAxis('bottom').setTextPen(C_NEUTRAL)
         self.plt_audit.getAxis('left').setPen(C_BORDER); self.plt_audit.getAxis('bottom').setPen(C_BORDER)
-        self.ln_aud_salud = pg.PlotCurveItem(pen=pg.mkPen(C_SALUD, width=1.5)); self.plt_audit.addItem(self.ln_aud_salud)
-        self.ln_aud_thd   = pg.PlotCurveItem(pen=pg.mkPen(C_THD,   width=1.5)); self.plt_audit.addItem(self.ln_aud_thd)
-        self.ln_aud_vib   = pg.PlotCurveItem(pen=pg.mkPen(C_VIB,   width=1.5)); self.plt_audit.addItem(self.ln_aud_vib)
+        self.ln_aud_salud = pg.PlotCurveItem(pen=_holo_pen(C_SALUD, 2)); self.ln_aud_salud.setShadowPen(_glow_pen(C_SALUD, 6)); self.plt_audit.addItem(self.ln_aud_salud)
+        self.ln_aud_thd   = pg.PlotCurveItem(pen=_holo_pen(C_THD, 2));   self.ln_aud_thd.setShadowPen(_glow_pen(C_THD, 6));   self.plt_audit.addItem(self.ln_aud_thd)
+        self.ln_aud_vib   = pg.PlotCurveItem(pen=_holo_pen(C_VIB, 2));   self.ln_aud_vib.setShadowPen(_glow_pen(C_VIB, 6));   self.plt_audit.addItem(self.ln_aud_vib)
         leyenda_aud = self.plt_audit.addLegend(offset=(5,-5))
         leyenda_aud.setBrush(pg.mkBrush('#00000000')); leyenda_aud.setPen(pg.mkPen('#00000000'))
         leyenda_aud.addItem(self.ln_aud_salud, "Salud (%)"); leyenda_aud.addItem(self.ln_aud_thd, "THD (%)"); leyenda_aud.addItem(self.ln_aud_vib, "Vibración (mm/s)")
@@ -974,7 +935,7 @@ class ConsolaCFE(QMainWindow):
     def _build_reporte_ia(self):
         w = QWidget(); w.setStyleSheet(f"background:{C_PANEL}; border:1px solid {C_MAIN}; border-radius:4px;")
         lay = QVBoxLayout(w); lay.setContentsMargins(10,10,10,10); lay.setSpacing(4)
-        lay.addWidget(self._lbl("Log del Sistema Experto — TensorFlow AI", C_TEXT_H))
+        lay.addWidget(self._lbl("MEC // Log del Sistema", C_GLOW))
 
         # Estilo base
         txt_style = (f"background:#0B0F19; color:{C_WHITE}; border:none; border-left:2px solid {{color}};"
@@ -983,7 +944,7 @@ class ConsolaCFE(QMainWindow):
         # Sección 1: Estado + Métricas
         self.txt_sec_estado = QTextEdit(); self.txt_sec_estado.setReadOnly(True)
         self.txt_sec_estado.setFixedHeight(155) 
-        self.txt_sec_estado.setStyleSheet(txt_style.format(color=C_PURPLE))
+        self.txt_sec_estado.setStyleSheet(txt_style.format(color=C_HUD))
         
         # ELIMINAMOS SCROLLS AQUÍ
         self.txt_sec_estado.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -1006,10 +967,26 @@ class ConsolaCFE(QMainWindow):
         return w
 
     def _lbl(self, text, color=C_TEXT_M, size=11):
-        l = QLabel(text.upper()); l.setStyleSheet(f"color:{color}; font-size:{size}px; font-weight:bold; letter-spacing:0.5px; border:none;"); return l
+        l = QLabel("▌ " + text.upper())
+        l.setStyleSheet(f"color:{color}; font-size:{size}px; font-weight:bold; letter-spacing:1px; border:none;")
+        return l
+
+    def _mec_html(self, titulo, cuerpo, accent):
+        """Renderiza un bloque del log con estética HUD futurista, firmado por MEC."""
+        import html as _html
+        cuerpo_esc = _html.escape(cuerpo)
+        return (
+            "<div style=\"font-family:'Consolas',monospace;\">"
+            f"<div style='color:{accent}; font-weight:bold; letter-spacing:2px; "
+            f"border-bottom:1px solid {accent}; padding-bottom:3px; margin-bottom:5px;'>"
+            f"&#9670; {titulo} <span style='color:{C_HUD};'>&#9646;</span></div>"
+            f"<pre style='color:#E5F6FF; font-family:Consolas,monospace; font-size:10px; "
+            f"white-space:pre-wrap; margin:0; line-height:1.45;'>{cuerpo_esc}</pre>"
+            "</div>"
+        )
 
     def _make_table(self, headers, cols):
-        num_filas = 7
+        num_filas = 6
         t = QTableWidget(num_filas, cols)
         t.setHorizontalHeaderLabels(headers)
         t.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -1218,7 +1195,7 @@ class ConsolaCFE(QMainWindow):
             "PREVENCIÓN": C_ORANGE, "ANOMALÍA AE": C_CRIT,
             "ANOMALÍA IF": C_CRIT, "ANOMALÍA CRÍTICA": C_CRIT,
         }.get(tf_r['estado'], C_TEXT_M)
-        self.lbl_tf_estado.setText(f"🤖 TF: {tf_r['estado']} | Confianza: {tf_r['confianza']:.0f}%")
+        self.lbl_tf_estado.setText(f"◈ MEC: {tf_r['estado']} | Confianza: {tf_r['confianza']:.0f}%")
         self.lbl_tf_estado.setStyleSheet(f"color:{estado_color}; font-size:10px; font-weight:bold;")
 
         # Actualizar sidebar TF
@@ -1236,7 +1213,7 @@ class ConsolaCFE(QMainWindow):
         nivel_sal = "❌" if sal_val < 40 else ("⚠️" if sal_val < 75 else "✅")
 
         texto_cuadro = (
-            f"🤖 TensorFlow MEC\n"
+            f"◤ MEC · NÚCLEO\n"
             f"{'─'*24}\n"
             f"Estado   : {tf_r['estado']}\n"
             f"Muestras : {tf_r['samples']}\n"
@@ -1488,7 +1465,7 @@ class ConsolaCFE(QMainWindow):
 
         # Sección 1: Estado + Métricas unificados
         sec_estado_metricas = (
-            f"Hora: {ts} | TensorFlow MEC [{tipo_corriente}]\n"
+            f"Hora: {ts} | MEC [{tipo_corriente}]\n"
             f"ESTADO: {tf_r['estado']} | Confianza: {tf_r['confianza']:.0f}% | Muestras: {tf_r['samples']}\n"
             f"─────────────────────────────────────────\n"
             f"ANOMALÍAS ACTIVAS:\n"
@@ -1510,25 +1487,21 @@ class ConsolaCFE(QMainWindow):
             f"MTBF est.   :    {mtbf_est:.0f}h"
         )
         vbar1 = self.txt_sec_estado.verticalScrollBar(); pos1 = vbar1.value()
-        self.txt_sec_estado.setPlainText(sec_estado_metricas)
+        self.txt_sec_estado.setHtml(self._mec_html("MEC // TELEMETRÍA EN VIVO", sec_estado_metricas, C_HUD))
         vbar1.setValue(pos1)
 
-        # Sección 2: Análisis narrativo IA
-        analisis_narrativo = (
-            f"🤖 HABLA LA IA — ANÁLISIS EN TIEMPO REAL\n"
-            f"─────────────────────────────────────────\n"
-            f"{analisis_tf}"
+        # Sección 2: Análisis narrativo — lo escribe MEC (en primera persona)
+        cuerpo_analisis = (
+            f"{analisis_tf}\n\n"
+            f"✅ RECOMENDACIONES: {' | '.join(recomend)}"
         )
-        
-        texto_recomendaciones = f"\n\n✅ RECOMENDACIONES: {' | '.join(recomend)}"
-        log_completo = analisis_narrativo + texto_recomendaciones
-        
         vbar2 = self.txt_sec_analisis.verticalScrollBar(); pos2 = vbar2.value()
-        self.txt_sec_analisis.setPlainText(log_completo)
+        self.txt_sec_analisis.setHtml(self._mec_html("MEC // ANÁLISIS EN TIEMPO REAL", cuerpo_analisis, C_GOOD))
         vbar2.setValue(pos2)
 
-        # Actualizamos el texto para el reporte de Excel
-        self._texto_excel = sec_estado_metricas + "\n\n" + log_completo
+        # Texto plano para el reporte de Excel (conserva el contenido completo)
+        log_completo_plano = "MEC — ANÁLISIS EN TIEMPO REAL\n" + cuerpo_analisis
+        self._texto_excel = sec_estado_metricas + "\n\n" + log_completo_plano
 
     # EXPORTAR EXCEL
     def _exportar_excel(self):
@@ -1554,11 +1527,11 @@ class ConsolaCFE(QMainWindow):
         tf_fill     = PatternFill("solid", fgColor="EDE7F6")
 
         ws.merge_cells("A1:Z1")
-        ws["A1"].value = "MEC INDUSTRIAL ANALYTICS PRO — REPORTE TÉCNICO (TensorFlow AI Engine)"
+        ws["A1"].value = "MEC INDUSTRIAL ANALYTICS PRO — REPORTE TÉCNICO (Núcleo MEC)"
         ws["A1"].font = title_font; ws["A1"].alignment = center_align; ws["A1"].fill = header_fill
         ws.merge_cells("A2:Z2")
         fecha_h = datetime.now().strftime('%d/%m/%Y %I:%M:%S %p')
-        ws["A2"].value = f"EQUIPO: MEC-01 | GENERADO: {fecha_h} | REGISTROS: {len(idx_list)} | TF-Estado: {self.tf_result['estado']} | Anomalías: {self.tf_result['n_anomalias']}"
+        ws["A2"].value = f"EQUIPO: MEC-01 | GENERADO: {fecha_h} | REGISTROS: {len(idx_list)} | MEC-Estado: {self.tf_result['estado']} | Anomalías: {self.tf_result['n_anomalias']}"
         ws["A2"].font = meta_font; ws["A2"].alignment = center_align; ws["A2"].fill = header_fill
 
         HEADERS = ["Timestamp","Tensión(V)","Corr(A)","P.Act(W)","P.Rea(VAr)","P.Apa(VA)","F.P.","THD(%)","Vib(mm/s)","Freq(Hz)","Temp(°C)","f_RMS","Salud(%)","H1(%)","H3(%)","H5(%)","H7(%)","H9(%)"]
@@ -1595,12 +1568,14 @@ class ConsolaCFE(QMainWindow):
         # Sección IA / TF
         col_ia_start = 20; col_ia_end = 23
         ws.merge_cells(start_row=4, start_column=col_ia_start, end_row=4, end_column=col_ia_end)
-        header_ia = ws.cell(row=4, column=col_ia_start, value="ANÁLISIS DEL SISTEMA EXPERTO — TENSORFLOW AI")
+        header_ia = ws.cell(row=4, column=col_ia_start, value="ANÁLISIS DE MEC")
         header_ia.font = ia_title_f; header_ia.alignment = center_align; header_ia.fill = tf_fill
         ia_end_row = max(row_num, 56)
         ws.merge_cells(start_row=5, start_column=col_ia_start, end_row=ia_end_row, end_column=col_ia_end)
         reporte_box = ws.cell(row=5, column=col_ia_start)
         reporte_box.value = getattr(self, '_texto_excel', self.txt_reporte.toPlainText())
+        reporte_box.font = ia_text_f
+        reporte_box.alignment = left_top_align
         for r in range(4, ia_end_row+1):
             for c in range(col_ia_start, col_ia_end+1):
                 cell = ws.cell(row=r, column=c); cell.border = thin_border; cell.fill = tf_fill
@@ -1610,7 +1585,7 @@ class ConsolaCFE(QMainWindow):
 
         try:
             wb.save(path)
-            self.lbl_excel_status.setText("✅ Reporte TF Finalizado")
+            self.lbl_excel_status.setText("✅ Reporte MEC finalizado")
             QTimer.singleShot(3000, lambda: self.lbl_excel_status.setText(""))
         except Exception as ex:
             self.lbl_excel_status.setText(f"❌ Error: {str(ex)}")
