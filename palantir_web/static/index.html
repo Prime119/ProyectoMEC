@@ -137,41 +137,75 @@ fetch('/api/lineas').then(r=>r.json()).then(lineas=>{
   });
 });
 
-// Cargar torres de transmisión (capa que aparece al acercar)
-var capaTorres = L.layerGroup();
-fetch('/api/torres').then(r=>r.json()).then(torres=>{
-  torres.forEach(t=>{
-    var col = t.clase==='torre_grande'?'#5a8ab0':'#4a6a8a';
-    var mk = L.circleMarker([t.lat,t.lon],{
-      radius:2.5, color:col, weight:1, fillColor:col, fillOpacity:0.8
-    });
-    mk.bindPopup('🗼 Torre '+t.tension+'<br><span style="color:#8899aa">'+t.linea+'</span>');
-    capaTorres.addLayer(mk);
+// === OPENSTREETMAP: INFRAESTRUCTURA REAL ===
+var capaOSM = L.layerGroup().addTo(map);        // subestaciones + plantas reales
+var capaOSMLineas = L.layerGroup().addTo(map);  // líneas reales
+var capaTorres = L.layerGroup();                // torres/postes (zoom cercano)
+
+fetch('/api/osm').then(r=>r.json()).then(osm=>{
+  // Líneas reales de transmisión
+  (osm.lineas||[]).forEach(l=>{
+    L.polyline(l.coords,{color:'#3fa9ff',weight:1.2,opacity:0.45})
+      .bindPopup('<b>'+(l.nombre||'Línea')+'</b><br>'+(l.voltaje?l.voltaje+' V':'')+'<br><span style="color:#6688aa">OpenStreetMap</span>')
+      .addTo(capaOSMLineas);
   });
-  actualizarVisibilidadTorres();
-});
-// Mostrar torres solo cuando se hace zoom (para no saturar la vista regional)
-function actualizarVisibilidadTorres(){
-  if(map.getZoom() >= 8){
-    if(!map.hasLayer(capaTorres)) map.addLayer(capaTorres);
-  } else {
+  // Subestaciones reales
+  (osm.subestaciones||[]).forEach(s=>{
+    L.circleMarker([s.lat,s.lon],{radius:4,color:'#00d4ff',weight:1.5,fillColor:'#00334d',fillOpacity:0.7})
+      .bindPopup('<b style="color:#00d4ff">⚡ '+(s.nombre||'Subestación')+'</b><br>'+(s.voltaje?s.voltaje+' V<br>':'')+(s.operador?s.operador+'<br>':'')+'<span style="color:#6688aa">OpenStreetMap</span>')
+      .addTo(capaOSM);
+  });
+  // Plantas reales
+  (osm.plantas||[]).forEach(p=>{
+    L.circleMarker([p.lat,p.lon],{radius:6,color:'#ff9100',weight:2,fillColor:'#ff910066',fillOpacity:0.6})
+      .bindPopup('<b style="color:#ff9100">🏭 '+(p.nombre||'Central')+'</b><br>'+(p.fuente?p.fuente+'<br>':'')+'<span style="color:#6688aa">OpenStreetMap</span>')
+      .addTo(capaOSM);
+  });
+  console.log('OSM cargado:',(osm.subestaciones||[]).length,'subest,',(osm.plantas||[]).length,'plantas,',(osm.lineas||[]).length,'lineas');
+}).catch(e=>console.error('Error OSM:',e));
+
+// Torres/postes reales por área visible (solo al acercar)
+var torresCargadas = {};
+function cargarTorresVisibles(){
+  if(map.getZoom() < 12){
     if(map.hasLayer(capaTorres)) map.removeLayer(capaTorres);
+    return;
   }
+  if(!map.hasLayer(capaTorres)) map.addLayer(capaTorres);
+  var b = map.getBounds();
+  var clave = [b.getSouth().toFixed(1),b.getWest().toFixed(1),b.getNorth().toFixed(1),b.getEast().toFixed(1)].join('_');
+  if(torresCargadas[clave]) return;
+  torresCargadas[clave] = true;
+  var url = `/api/osm/torres?s=${b.getSouth()}&w=${b.getWest()}&n=${b.getNorth()}&e=${b.getEast()}`;
+  fetch(url).then(r=>r.json()).then(torres=>{
+    torres.forEach(t=>{
+      var col = t.tipo==='tower'?'#5a8ab0':'#7a9a6a';
+      var rad = t.tipo==='tower'?2.5:1.8;
+      L.circleMarker([t.lat,t.lon],{radius:rad,color:col,weight:1,fillColor:col,fillOpacity:0.85})
+        .bindPopup(t.tipo==='tower'?'🗼 Torre':'📍 Poste')
+        .addTo(capaTorres);
+    });
+    console.log('Torres/postes OSM cargados:',torres.length);
+  }).catch(e=>console.error('Error torres OSM:',e));
 }
-map.on('zoomend', actualizarVisibilidadTorres);
+map.on('moveend', cargarTorresVisibles);
+map.on('zoomend', cargarTorresVisibles);
 
 // Leyenda
 document.getElementById('leyenda').innerHTML = `
-  <b>INFRAESTRUCTURA CFE</b><br>
-  <span class="dot" style="background:#ff9100"></span>Ciclo Combinado<br>
-  <span class="dot" style="background:#ff5252"></span>Termoeléctrica<br>
-  <span class="dot" style="background:#aa00ff"></span>Geotérmica<br>
-  <span class="dot" style="background:#ffd600"></span>Solar<br>
-  <span class="dot" style="background:#00e5ff"></span>Eólica<br>
-  <span class="dot" style="background:#2979ff"></span>Hidroeléctrica<br>
-  <span class="dot" style="background:#00d4ff"></span>Subestación<br>
-  <span class="dot" style="background:#00e676"></span>Línea 400kV<br>
-  <span class="dot" style="background:#5a8ab0"></span>Torres (zoom +)
+  <b>FALCON — INFRAESTRUCTURA CFE</b><br>
+  <span style="color:#6688aa;font-size:9px">● Monitoreo en vivo (simulado):</span><br>
+  <span class="dot" style="background:#ff9100"></span>Ciclo Combinado
+  <span class="dot" style="background:#ff5252;margin-left:6px"></span>Termo
+  <span class="dot" style="background:#ffd600;margin-left:6px"></span>Solar<br>
+  <span class="dot" style="background:#00e5ff"></span>Eólica
+  <span class="dot" style="background:#2979ff;margin-left:6px"></span>Hidro
+  <span class="dot" style="background:#aa00ff;margin-left:6px"></span>Geotérmica<br>
+  <span style="color:#6688aa;font-size:9px">● Datos reales (OpenStreetMap):</span><br>
+  <span class="dot" style="background:#00334d;border:1px solid #00d4ff"></span>Subestación
+  <span class="dot" style="background:#5a8ab0;margin-left:6px"></span>Torre/Poste (zoom +)<br>
+  <span class="dot" style="background:#3fa9ff"></span>Línea real
+  <span class="dot" style="background:#00e676;margin-left:6px"></span>Línea 400kV
 `;
 
 // === POLLING: DATOS EN TIEMPO REAL (cada 2 seg) ===

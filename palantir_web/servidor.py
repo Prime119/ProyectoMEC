@@ -172,6 +172,37 @@ async def handle_torres(request):
     return web.json_response(TORRES)
 
 
+async def handle_osm_region(request):
+    """Infraestructura eléctrica real de OpenStreetMap (subestaciones, plantas, líneas)."""
+    from palantir_web import osm
+    loop = asyncio.get_event_loop()
+    try:
+        data = await loop.run_in_executor(None, osm.obtener_infraestructura_region)
+    except Exception as e:
+        print(f"[OSM] Error: {e}")
+        data = {"subestaciones": [], "plantas": [], "lineas": []}
+    return web.json_response(data)
+
+
+async def handle_osm_torres(request):
+    """Torres y postes reales de OSM dentro del área visible (bbox)."""
+    from palantir_web import osm
+    try:
+        s = float(request.query.get("s"))
+        w = float(request.query.get("w"))
+        n = float(request.query.get("n"))
+        e = float(request.query.get("e"))
+    except (TypeError, ValueError):
+        return web.json_response([])
+    loop = asyncio.get_event_loop()
+    try:
+        torres = await loop.run_in_executor(None, osm.obtener_torres_bbox, s, w, n, e)
+    except Exception as ex:
+        print(f"[OSM] Error torres: {ex}")
+        torres = []
+    return web.json_response(torres)
+
+
 # === WEBSOCKET: envía estado cada 2 seg ===
 ws_clients: set = set()
 
@@ -260,6 +291,8 @@ def main():
     app.router.add_get("/api/estado", handle_estado)
     app.router.add_get("/api/lineas", handle_lineas_coords)
     app.router.add_get("/api/torres", handle_torres)
+    app.router.add_get("/api/osm", handle_osm_region)
+    app.router.add_get("/api/osm/torres", handle_osm_torres)
     app.router.add_post("/api/mec", handle_mec_chat)
     app.router.add_get("/static/{name}", handle_static)
 

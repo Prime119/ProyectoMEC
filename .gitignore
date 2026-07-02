@@ -186,3 +186,8 @@ Reportes/
 palantir_cfe/cache_tiles/
 *.onnx
 mec_memory.db
+
+
+# FALCON: cache de OpenStreetMap
+palantir_web/cache_osm/
+palantir_web/static/_mapa_osint.html
