@@ -102,6 +102,18 @@ CATALOGO: dict[str, ClaseActivo] = {
         2, 15, prioridad=2, icono="🔲"),
 
     # === DISTRIBUCIÓN / MEDICIÓN ===
+    "poste_grande": ClaseActivo(
+        "poste_grande", "Poste de Transmisión Grande", CategoriaActivo.DISTRIBUCION,
+        "#ff6e40", "Poste de concreto/acero alto (15-25m), un solo mástil, líneas de subtransmisión",
+        3, 25, prioridad=3, icono="🪧"),
+    "poste_mediano": ClaseActivo(
+        "poste_mediano", "Poste de Transmisión Mediano", CategoriaActivo.DISTRIBUCION,
+        "#ffab40", "Poste de concreto medio (10-15m), distribución primaria, crucetas visibles",
+        2, 15, prioridad=3, icono="🪧"),
+    "poste_chico": ClaseActivo(
+        "poste_chico", "Poste de Transmisión Chico", CategoriaActivo.DISTRIBUCION,
+        "#ffd180", "Poste bajo (<10m), distribución secundaria/alumbrado, muy común en calles",
+        1, 10, prioridad=3, icono="🪧"),
     "medidor": ClaseActivo(
         "medidor", "Medidor / Punto de Medición", CategoriaActivo.MEDICION,
         "#b2ff59", "Gabinete pequeño en poste o muro, difícil de ver, cerca de acometidas",

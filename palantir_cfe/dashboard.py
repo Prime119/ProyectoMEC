@@ -340,6 +340,7 @@ class PalantirCFE(QMainWindow):
         self.tabs.addTab(self._build_tab_alertas(), "🚨 ALERTAS")
         self.tabs.addTab(self._build_tab_mec(), "🤖 MEC")
         self.tabs.addTab(self._build_tab_satelite(), "🛰️ SATÉLITE")
+        self.tabs.addTab(self._build_tab_3d(), "🧊 3D")
         right_lay.addWidget(self.tabs)
         body_splitter.addWidget(right_widget)
 
@@ -524,6 +525,21 @@ class PalantirCFE(QMainWindow):
         self.visor_sat = VisorSatelital(modelo_onnx=modelo)
         return self.visor_sat
 
+    def _build_tab_3d(self):
+        """Tab con el gemelo digital 3D holográfico de las estructuras CFE."""
+        try:
+            from .vista_3d import Vista3D
+            self.vista_3d = Vista3D()
+            return self.vista_3d
+        except Exception as e:
+            from PyQt6.QtWidgets import QLabel
+            self.vista_3d = None
+            lbl = QLabel(f"Vista 3D no disponible: {e}\n\n"
+                         "Instala: pip install PyOpenGL PyOpenGL_accelerate")
+            lbl.setStyleSheet(f"color:{C_TEXT}; padding:40px;")
+            lbl.setWordWrap(True)
+            return lbl
+
 
     # === UPDATE LOOP ===
     def _update_loop(self):
@@ -563,6 +579,16 @@ class PalantirCFE(QMainWindow):
 
         # Actualizar alertas
         self._update_alertas()
+
+        # Alimentar la vista 3D con telemetría real (si está activa)
+        if getattr(self, "vista_3d", None) is not None:
+            try:
+                gen_mw = resumen['generacion_total_mw'] / max(resumen['plantas_operando'], 1)
+                temp = 480 + (resumen['factor_carga_sistema'] - 60) * 2
+                vib = 1.5 + resumen['alertas_activas'] * 0.15
+                self.vista_3d.actualizar_telemetria_externa(gen_mw, temp, vib)
+            except Exception:
+                pass
 
         # Alimentar datos a MEC
         if self.mec_assistant:

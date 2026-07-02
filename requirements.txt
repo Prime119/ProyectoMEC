@@ -31,3 +31,8 @@ pillow>=10.0           # composición y manejo de imágenes satelitales
 # Descomenta si vas a usar un modelo YOLOv8/ONNX entrenado:
 # onnxruntime>=1.16    # inferencia del modelo (usa onnxruntime-gpu si tienes CUDA)
 # ultralytics>=8.0     # solo si quieres entrenar/exportar tu propio modelo YOLOv8
+
+
+# --- Palantir CFE: Visualización 3D holográfica (gemelo digital) ---
+PyOpenGL>=3.1          # motor 3D para el visor holográfico (pyqtgraph.opengl)
+PyOpenGL_accelerate>=3.1  # opcional: acelera el render 3D

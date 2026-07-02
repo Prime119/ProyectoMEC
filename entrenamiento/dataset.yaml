@@ -1,0 +1,39 @@
+# ===================================================================
+# Dataset CFE — Detección satelital de infraestructura
+# GENERADO AUTOMÁTICAMENTE desde palantir_cfe/catalogo_activos.py
+# No editar a mano — vuelve a correr: python entrenamiento/generar_config.py
+# ===================================================================
+
+path: ./datos   # raíz del dataset
+train: images/train      # imágenes de entrenamiento (relativo a path)
+val: images/val          # imágenes de validación
+test: images/test        # imágenes de prueba (opcional)
+
+nc: 24   # número de clases
+
+# Nombres de clases (el ÍNDICE debe coincidir con el catálogo)
+names:
+  0: hidroelectrica   # Hidroeléctrica
+  1: eolica   # Central Eólica
+  2: termoelectrica   # Termoeléctrica
+  3: solar   # Central Solar FV
+  4: nucleoelectrica   # Nucleoeléctrica
+  5: ciclo_combinado   # Ciclo Combinado
+  6: carbonifera   # Carboeléctrica
+  7: subestacion   # Subestación
+  8: torre_grande   # Torre de Transmisión Grande (400kV+)
+  9: torre_mediana   # Torre de Transmisión Mediana (230kV)
+  10: torre_chica   # Torre de Transmisión Chica (115kV-)
+  11: linea_transmision   # Línea de Transmisión
+  12: transformador   # Transformador
+  13: poste_grande   # Poste de Transmisión Grande
+  14: poste_mediano   # Poste de Transmisión Mediano
+  15: poste_chico   # Poste de Transmisión Chico
+  16: medidor   # Medidor / Punto de Medición
+  17: oficina_central   # Oficinas Centrales
+  18: oficina_regional   # Oficina Regional
+  19: oficina   # Oficina
+  20: centro_atencion   # Centro de Atención a Clientes
+  21: centro_capacitacion   # Centro de Capacitación
+  22: cajero   # Cajero Automático CFE
+  23: almacen   # Almacén

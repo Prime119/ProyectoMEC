@@ -22,6 +22,24 @@ python -m palantir_cfe
 | `satelite.py` | Descarga y georreferenciación de imágenes satelitales |
 | `deteccion_ia.py` | Motor de detección de infraestructura (3 niveles) |
 | `visor_satelital.py` | Visor con overlay de detecciones IA |
+| `modelos_3d.py` | Geometría 3D holográfica de cada tipo de estructura |
+| `vista_3d.py` | Gemelo digital 3D con gráficas de monitoreo en tiempo real |
+
+## 🧊 Gemelo Digital 3D (pestaña 🧊 3D)
+
+Cuando seleccionas una estructura de CFE, se renderiza en 3D con estética
+holográfica (wireframe brillante estilo Palantir/Tron):
+
+- **Piso holográfico** con rejilla, edificios de contexto urbano alrededor
+- **Estructuras modeladas en 3D:** torres de enfriamiento hiperbólicas,
+  chimeneas, aerogeneradores, torres de transmisión de celosía, postes,
+  paneles solares, presas, subestaciones, edificios
+- **Cámara con órbita automática** (efecto showroom)
+- **Tarjeta de información** con datos del activo (capacidad, coords, tipo)
+- **Gráficas de monitoreo en tiempo real** al lado: generación, temperatura, vibración
+
+Requiere `PyOpenGL`. Si no está instalado, el resto del dashboard funciona igual.
+
 
 ## 🤖 Detección con IA — Cómo funciona
 
