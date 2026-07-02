@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PALANTIR CFE — Infraestructura Eléctrica Noroeste</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#05080f;color:#8899aa;font-family:'Segoe UI',sans-serif;overflow:hidden;height:100vh;}
+/* TOPBAR */
+#topbar{height:42px;background:#0a1018;border-bottom:1px solid #1a2a3a;display:flex;align-items:center;padding:0 16px;gap:20px;}
+#topbar .logo{color:#00d4ff;font-size:16px;font-weight:900;letter-spacing:2px;}
+#topbar .sub{color:#6688aa;font-size:11px;}
+#topbar .right{margin-left:auto;display:flex;gap:16px;align-items:center;}
+.freq{color:#00e676;font-weight:bold;font-size:12px;}
+.clock{color:#e1e8f0;font-family:'Consolas',monospace;font-size:12px;}
+/* LAYOUT */
+#main{display:flex;height:calc(100vh - 42px);}
+#map-panel{flex:1;position:relative;}
+#map{width:100%;height:100%;}
+#right-panel{width:520px;background:#0a1018;border-left:1px solid #1a2a3a;display:flex;flex-direction:column;overflow:hidden;}
+/* KPIs */
+#kpis{display:flex;gap:12px;padding:8px 12px;border-bottom:1px solid #1a2a3a;flex-wrap:wrap;}
+.kpi{text-align:center;min-width:70px;}
+.kpi .label{font-size:9px;color:#6688aa;text-transform:uppercase;letter-spacing:.5px;}
+.kpi .value{font-size:18px;font-weight:bold;font-family:'Consolas',monospace;color:#00e676;}
+/* TABS */
+#tabs{display:flex;border-bottom:1px solid #1a2a3a;}
+.tab{padding:8px 14px;font-size:11px;cursor:pointer;color:#6688aa;border-bottom:2px solid transparent;}
+.tab.active{color:#00d4ff;border-bottom-color:#00d4ff;}
+.tab:hover{color:#e1e8f0;}
+#tab-content{flex:1;overflow-y:auto;padding:8px;}
+.tab-pane{display:none;}
+.tab-pane.active{display:block;}
+/* TABLE */
+table{width:100%;border-collapse:collapse;font-size:10px;font-family:'Consolas',monospace;}
+th{background:#0d1520;color:#00d4ff;padding:5px 4px;text-align:left;position:sticky;top:0;font-size:9px;text-transform:uppercase;}
+td{padding:4px;border-bottom:1px solid #111a28;color:#cfe3f5;}
+tr:hover td{background:#0d1a28;}
+.st-ok{color:#00e676;} .st-warn{color:#ffd600;} .st-bad{color:#ff1744;font-weight:bold;}
+/* ALERTAS */
+#alertas-feed{font-family:'Consolas',monospace;font-size:10px;max-height:100%;overflow-y:auto;}
+.alerta{padding:3px 0;border-bottom:1px solid #111a28;}
+.alerta-crit{color:#ff1744;} .alerta-warn{color:#ffd600;} .alerta-info{color:#00d4ff;}
+/* MEC CHAT */
+#mec-panel{display:flex;flex-direction:column;height:100%;}
+#mec-messages{flex:1;overflow-y:auto;font-family:'Consolas',monospace;font-size:10px;padding:6px;background:#060810;border:1px solid #1a2a3a;border-radius:4px;margin-bottom:6px;}
+.msg-mec{color:#aa00ff;} .msg-user{color:#00d4ff;} .msg-sys{color:#555;}
+#mec-input-bar{display:flex;gap:4px;}
+#mec-input{flex:1;background:#0d1520;border:1px solid #aa00ff;color:#e1e8f0;padding:6px 8px;border-radius:4px;font-size:11px;outline:none;}
+#mec-send{background:#aa00ff;color:#000;border:none;padding:6px 14px;border-radius:4px;font-weight:bold;cursor:pointer;}
+/* MAP CONTROLS */
+#map-search{position:absolute;top:10px;left:10px;z-index:1000;display:flex;gap:6px;}
+#map-search input{background:rgba(10,20,32,.92);border:1px solid #00d4ff;color:#e1e8f0;padding:6px 10px;border-radius:4px;font-size:12px;width:240px;outline:none;}
+#map-search button{background:#00d4ff;color:#000;border:none;padding:6px 12px;border-radius:4px;font-weight:bold;cursor:pointer;}
+#leyenda{position:absolute;bottom:16px;left:10px;z-index:1000;background:rgba(10,20,32,.92);border:1px solid #1a2a3a;border-radius:6px;padding:8px 10px;font-size:11px;line-height:1.7;}
+#leyenda b{color:#00d4ff;}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle;}
+.leaflet-container{background:#05080f !important;}
+</style>
+</head>
+<body>
+<!-- TOPBAR -->
+<div id="topbar">
+  <span class="logo">PALANTIR</span>
+  <span class="sub">/ CFE NOROESTE — Infraestructura Eléctrica en Tiempo Real</span>
+  <div class="right">
+    <span class="freq" id="freq">60.000 Hz</span>
+    <span class="clock" id="clock">--</span>
+  </div>
+</div>
+<!-- MAIN -->
+<div id="main">
+  <!-- MAP -->
+  <div id="map-panel">
+    <div id="map"></div>
+    <div id="map-search">
+      <input id="search-input" placeholder="LOCALIZAR activo CFE..." />
+      <button onclick="buscar()">🔍 LOCALIZAR</button>
+    </div>
+    <div id="leyenda"></div>
+  </div>
+  <!-- RIGHT PANEL -->
+  <div id="right-panel">
+    <div id="kpis">
+      <div class="kpi"><div class="label">Generación</div><div class="value" id="kpi-gen">—</div></div>
+      <div class="kpi"><div class="label">Demanda</div><div class="value" id="kpi-dem" style="color:#00d4ff">—</div></div>
+      <div class="kpi"><div class="label">Factor Carga</div><div class="value" id="kpi-fc" style="color:#ffd600">—</div></div>
+      <div class="kpi"><div class="label">Plantas Op.</div><div class="value" id="kpi-pl">—</div></div>
+      <div class="kpi"><div class="label">Líneas Op.</div><div class="value" id="kpi-ln">—</div></div>
+      <div class="kpi"><div class="label">Alertas</div><div class="value" id="kpi-al" style="color:#ff1744">—</div></div>
+    </div>
+    <div id="tabs">
+      <div class="tab active" onclick="openTab('plantas')">⚡ PLANTAS</div>
+      <div class="tab" onclick="openTab('lineas')">🔌 LÍNEAS</div>
+      <div class="tab" onclick="openTab('alertas')">🚨 ALERTAS</div>
+      <div class="tab" onclick="openTab('mec')">🤖 MEC</div>
+    </div>
+    <div id="tab-content">
+      <div id="pane-plantas" class="tab-pane active"><table id="tbl-plantas"><thead><tr><th>Planta</th><th>Estado</th><th>Tipo</th><th>Gen MW</th><th>Cap MW</th><th>%</th><th>Temp</th><th>Vib</th></tr></thead><tbody></tbody></table></div>
+      <div id="pane-lineas" class="tab-pane"><table id="tbl-lineas"><thead><tr><th>Línea</th><th>Tensión</th><th>Carga%</th><th>Flujo MW</th><th>Corriente</th><th>Temp</th><th>Estado</th></tr></thead><tbody></tbody></table></div>
+      <div id="pane-alertas" class="tab-pane"><div id="alertas-feed"></div></div>
+      <div id="pane-mec" class="tab-pane"><div id="mec-panel"><div id="mec-messages"></div><div id="mec-input-bar"><input id="mec-input" placeholder="Pregunta sobre la infraestructura..." /><button id="mec-send" onclick="mecSend()">ENVIAR</button></div></div></div>
+    </div>
+  </div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+
+
+// === MAPA LEAFLET (OSCURO ESTILO OSINT) ===
+var map = L.map('map',{center:[28.5,-111],zoom:6,zoomControl:true});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+  attribution:'CARTO',subdomains:'abcd',maxZoom:19
+}).addTo(map);
+
+var markers = {};  // id -> L.circleMarker
+var polylines = {}; // id -> L.polyline
+
+// Cargar líneas de transmisión
+fetch('/api/lineas').then(r=>r.json()).then(lineas=>{
+  lineas.forEach(l=>{
+    var color = l.es_400?'#00e676':'#00d4ff';
+    var pl = L.polyline(l.coords,{color:color,weight:l.es_400?3:2,opacity:0.7});
+    pl.bindPopup('<b>'+l.nombre+'</b><br>'+l.tension);
+    pl.addTo(map);
+    polylines[l.id] = pl;
+  });
+});
+
+// Leyenda
+document.getElementById('leyenda').innerHTML = `
+  <b>INFRAESTRUCTURA CFE</b><br>
+  <span class="dot" style="background:#ff9100"></span>Ciclo Combinado<br>
+  <span class="dot" style="background:#ff5252"></span>Termoeléctrica<br>
+  <span class="dot" style="background:#aa00ff"></span>Geotérmica<br>
+  <span class="dot" style="background:#ffd600"></span>Solar<br>
+  <span class="dot" style="background:#00e5ff"></span>Eólica<br>
+  <span class="dot" style="background:#2979ff"></span>Hidroeléctrica<br>
+  <span class="dot" style="background:#00d4ff"></span>Subestación<br>
+  <span class="dot" style="background:#00e676"></span>Línea 400kV
+`;
+
+// === WEBSOCKET: DATOS EN TIEMPO REAL ===
+var ws = new WebSocket('ws://'+location.host+'/ws');
+ws.onmessage = function(e){
+  var data = JSON.parse(e.data);
+  actualizarKPIs(data.resumen);
+  actualizarMapa(data.plantas);
+  actualizarLineas(data.lineas);
+  actualizarTabla(data.plantas);
+  actualizarTablaLineas(data.lineas);
+  actualizarAlertas(data.plantas, data.lineas);
+};
+ws.onclose = function(){ setTimeout(()=>{ ws=new WebSocket('ws://'+location.host+'/ws'); ws.onmessage=arguments.callee; },3000); };
+
+function actualizarKPIs(r){
+  if(!r) return;
+  document.getElementById('kpi-gen').textContent = Math.round(r.generacion_total_mw)+' MW';
+  document.getElementById('kpi-dem').textContent = Math.round(r.demanda_estimada_mw)+' MW';
+  document.getElementById('kpi-fc').textContent = r.factor_carga_sistema.toFixed(1)+'%';
+  document.getElementById('kpi-pl').textContent = r.plantas_operando+'/'+r.plantas_total;
+  document.getElementById('kpi-ln').textContent = r.lineas_operando+'/'+r.lineas_total;
+  document.getElementById('kpi-al').textContent = r.alertas_activas;
+  document.getElementById('freq').textContent = r.frecuencia_sistema.toFixed(3)+' Hz';
+  document.getElementById('clock').textContent = r.timestamp;
+  // Colors
+  var fc = r.factor_carga_sistema;
+  document.getElementById('kpi-fc').style.color = fc>85?'#ff1744':(fc>70?'#ffd600':'#00e676');
+  document.getElementById('kpi-al').style.color = r.alertas_activas>0?'#ff1744':'#00e676';
+  document.getElementById('kpi-pl').style.color = r.plantas_falla>0?'#ff1744':'#00e676';
+}
+
+function actualizarMapa(plantas){
+  plantas.forEach(p=>{
+    var color = p.estado==='Falla'?'#ff1744':(p.estado==='Mantenimiento'||p.estado==='Arranque'?'#ffd600':p.color);
+    var radius = 6 + p.factor*8;
+    if(!markers[p.id]){
+      var m = L.circleMarker([p.lat,p.lon],{radius:radius,color:color,weight:2,fillColor:color,fillOpacity:0.55});
+      m.bindPopup(popupHTML(p));
+      m.addTo(map);
+      markers[p.id] = m;
+      m._data = p;
+    } else {
+      var m = markers[p.id];
+      m.setStyle({color:color,fillColor:color,radius:radius});
+      m.setPopupContent(popupHTML(p));
+      m._data = p;
+    }
+  });
+}
+function popupHTML(p){
+  var cls = p.estado==='Falla'?'st-bad':(p.estado==='Operando'?'st-ok':'st-warn');
+  return `<b style="color:#00d4ff">${p.icono} ${p.nombre}</b><br>
+    <span style="color:#8899aa">${p.detalle}</span><br>
+    <span class="${cls}">● ${p.estado}</span> · ${p.gen_mw.toFixed(0)}/${p.cap_mw} MW<br>
+    <span style="color:#6688aa;font-size:10px">${p.lat.toFixed(4)}, ${p.lon.toFixed(4)}</span>`;
+}
+function actualizarLineas(lineas){
+  lineas.forEach(l=>{
+    var pl = polylines[l.id]; if(!pl) return;
+    var color = l.estado==='Falla'?'#ff1744':(l.carga>85?'#ff9100':(l.carga>70?'#ffd600':(l.es_400?'#00e676':'#00d4ff')));
+    pl.setStyle({color:color});
+  });
+}
+
+
+// === TABLAS ===
+function actualizarTabla(plantas){
+  var html='';
+  plantas.forEach(p=>{
+    var cls=p.estado==='Falla'?'st-bad':(p.estado==='Operando'?'st-ok':'st-warn');
+    var pct = p.cap_mw>0?Math.round(p.gen_mw/p.cap_mw*100):0;
+    html+=`<tr><td>${p.nombre.substring(0,22)}</td><td class="${cls}">${p.estado}</td>
+      <td>${p.tipo.substring(0,12)}</td><td>${p.gen_mw.toFixed(0)}</td>
+      <td>${p.cap_mw}</td><td>${pct}%</td>
+      <td>${p.temp.toFixed(0)}°C</td><td>${p.vib.toFixed(1)}</td></tr>`;
+  });
+  document.querySelector('#tbl-plantas tbody').innerHTML=html;
+}
+function actualizarTablaLineas(lineas){
+  var html='';
+  lineas.forEach(l=>{
+    var cls=l.estado==='Falla'?'st-bad':(l.carga>85?'st-warn':'st-ok');
+    html+=`<tr><td>${l.nombre.substring(0,28)}</td><td>${l.tension}</td>
+      <td class="${cls}">${l.carga.toFixed(0)}%</td><td>${l.flujo_mw.toFixed(0)}</td>
+      <td>${l.corriente.toFixed(0)}A</td><td>${l.temp.toFixed(0)}°C</td>
+      <td class="${l.estado==='Falla'?'st-bad':'st-ok'}">${l.estado}</td></tr>`;
+  });
+  document.querySelector('#tbl-lineas tbody').innerHTML=html;
+}
+
+// === ALERTAS ===
+var alertasFeed = document.getElementById('alertas-feed');
+function actualizarAlertas(plantas,lineas){
+  var nuevas=[];
+  var ts = new Date().toLocaleTimeString();
+  plantas.forEach(p=>{
+    if(p.estado==='Falla') nuevas.push({cls:'alerta-crit',msg:`[${ts}] 🚨 FALLA: ${p.nombre}`});
+    p.alertas.forEach(a=> nuevas.push({cls:'alerta-warn',msg:`[${ts}] ⚡ ${p.nombre}: ${a}`}));
+  });
+  lineas.forEach(l=>{
+    if(l.estado==='Falla') nuevas.push({cls:'alerta-crit',msg:`[${ts}] 🔌 LÍNEA FUERA: ${l.nombre}`});
+    l.alertas.forEach(a=> nuevas.push({cls:'alerta-warn',msg:`[${ts}] ${l.nombre}: ${a}`}));
+  });
+  nuevas.forEach(a=>{
+    var div=document.createElement('div');
+    div.className='alerta '+a.cls;
+    div.textContent=a.msg;
+    alertasFeed.prepend(div);
+  });
+  while(alertasFeed.children.length>200) alertasFeed.removeChild(alertasFeed.lastChild);
+}
+
+// === TABS ===
+function openTab(name){
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('pane-'+name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// === BUSCADOR ===
+function buscar(){
+  var q = document.getElementById('search-input').value.toLowerCase();
+  for(var id in markers){
+    if(markers[id]._data && markers[id]._data.nombre.toLowerCase().includes(q)){
+      map.flyTo(markers[id].getLatLng(),12,{duration:1});
+      markers[id].openPopup();
+      return;
+    }
+  }
+}
+document.getElementById('search-input').addEventListener('keydown',e=>{if(e.key==='Enter')buscar();});
+
+// === MEC CHAT ===
+var mecMsgs = document.getElementById('mec-messages');
+function mecAppend(sender,text,cls){
+  var ts = new Date().toLocaleTimeString();
+  mecMsgs.innerHTML += `<div class="${cls}">[${ts}] <b>${sender}:</b> ${text}</div>`;
+  mecMsgs.scrollTop = mecMsgs.scrollHeight;
+}
+function mecSend(){
+  var input = document.getElementById('mec-input');
+  var texto = input.value.trim(); if(!texto) return;
+  input.value='';
+  mecAppend('Tú',texto,'msg-user');
+  fetch('/api/mec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({texto:texto})})
+    .then(r=>r.json()).then(d=>mecAppend('MEC',d.respuesta,'msg-mec'))
+    .catch(e=>mecAppend('Sistema','Error: '+e,'msg-sys'));
+}
+document.getElementById('mec-input').addEventListener('keydown',e=>{if(e.key==='Enter')mecSend();});
+mecAppend('MEC','Listo, ingeniero. Tengo vista de toda la infraestructura del Noroeste. Pregúntame lo que necesites.','msg-mec');
+</script>
+</body>
+</html>

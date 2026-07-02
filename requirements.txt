@@ -41,3 +41,7 @@ PyOpenGL_accelerate>=3.1  # opcional: acelera el render 3D
 # --- Palantir CFE: Mapa OSINT geográfico (Leaflet en QWebEngineView) ---
 PyQt6-WebEngine>=6.5   # navegador embebido para el mapa Leaflet estilo OSINT
 # Requiere internet para las teselas del mapa y la librería Leaflet (CDN).
+
+
+# --- Palantir CFE: Versión Web (recomendada — se abre en el navegador) ---
+aiohttp>=3.9           # servidor web async + WebSocket para datos en tiempo real
