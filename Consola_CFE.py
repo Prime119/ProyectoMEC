@@ -10,9 +10,9 @@ from PyQt6.QtWidgets import (
     QLabel, QGridLayout, QSplitter, QPushButton, QTableWidget,
     QTableWidgetItem, QCheckBox, QDoubleSpinBox, QGroupBox,
     QScrollArea, QSlider, QComboBox, QFrame, QSizePolicy, QHeaderView,
-    QAbstractItemView, QTextEdit
+    QAbstractItemView, QTextEdit, QLineEdit
 )
-from PyQt6.QtCore import QTimer, Qt, QSize, QFileSystemWatcher
+from PyQt6.QtCore import QTimer, Qt, QSize, QFileSystemWatcher, pyqtSignal
 from PyQt6.QtGui import QFont, QColor, QPalette, QLinearGradient, QPainter, QBrush, QPen
 import pyqtgraph as pg
 from openpyxl import Workbook
@@ -30,6 +30,14 @@ from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import MinMaxScaler
 import warnings
 warnings.filterwarnings('ignore')
+
+# MEC ASSISTANT: Asistente cognitivo industrial (basado en Astra)
+try:
+    from mec_assistant import MECAssistant
+    MEC_AVAILABLE = True
+except ImportError:
+    MEC_AVAILABLE = False
+    print("⚠️ mec_assistant no disponible. El chat IA estará deshabilitado.")
 
 pg.setConfigOption('background', '#0B0F19')
 pg.setConfigOption('foreground', '#9CA3AF')
@@ -639,6 +647,19 @@ class ConsolaCFE(QMainWindow):
         self.timer = QTimer(); self.timer.timeout.connect(self._loop_fast); self.timer.start(16)
         self.timer_slow = QTimer(); self.timer_slow.timeout.connect(self._loop_slow); self.timer_slow.start(1000)
 
+        # MEC ASSISTANT: Inicializar asistente cognitivo
+        self.mec_assistant = None
+        if MEC_AVAILABLE:
+            try:
+                self.mec_assistant = MECAssistant.boot()
+                print(f"🤖 Asistente MEC iniciado (tier: {self.mec_assistant.config.hardware.tier})")
+                self._mec_append_msg("MEC", "Soy MEC, tu asistente de monitoreo industrial. "
+                                     "Puedo analizar el estado del motor, responder preguntas técnicas "
+                                     "y alertarte sobre anomalías. Escríbeme aquí abajo.")
+            except Exception as e:
+                print(f"⚠️ Error al iniciar MEC Assistant: {e}")
+                self._mec_append_msg("SISTEMA", f"Error al iniciar asistente: {e}")
+
         self.watcher = QFileSystemWatcher([os.path.abspath(__file__)])
         self.watcher.fileChanged.connect(self._restart_app)
 
@@ -866,6 +887,9 @@ class ConsolaCFE(QMainWindow):
         row2.addWidget(self._build_reporte_ia(), 1)
         inner_lay.addLayout(row2)
 
+        # FILA 3: Chat del Asistente MEC (Basado en Astra)
+        inner_lay.addWidget(self._build_mec_chat_panel())
+
         scroll.setWidget(inner); lay.addWidget(scroll, 1); return center
 
     def _build_cards(self):
@@ -1004,6 +1028,146 @@ class ConsolaCFE(QMainWindow):
         self.txt_reporte = self.txt_sec_analisis
         self.txt_sec_metricas = self.txt_sec_estado
         return w
+
+    def _build_mec_chat_panel(self):
+        """Panel de chat con el asistente MEC (basado en Astra, 1/3 de capacidad)."""
+        w = QWidget(); w.setStyleSheet(f"background:{C_PANEL}; border:1px solid {C_PURPLE}; border-radius:4px;")
+        w.setFixedHeight(220)
+        lay = QVBoxLayout(w); lay.setContentsMargins(10,8,10,8); lay.setSpacing(4)
+
+        # Header del chat
+        header_lay = QHBoxLayout(); header_lay.setSpacing(8)
+        lbl_title = QLabel("ASISTENTE MEC — CHAT INTELIGENTE")
+        lbl_title.setStyleSheet(f"color:{C_PURPLE}; font-size:11px; font-weight:bold; letter-spacing:0.5px; border:none;")
+        self.lbl_mec_status = QLabel("● LISTO")
+        self.lbl_mec_status.setStyleSheet(f"color:{C_GOOD}; font-size:9px; font-weight:bold; border:none;")
+        btn_analyze = QPushButton("⚡ ANÁLISIS RÁPIDO")
+        btn_analyze.setStyleSheet(f"""
+            QPushButton {{ background:#1a0030; border:1px solid {C_PURPLE}; color:{C_PURPLE}; 
+            font-size:9px; font-weight:bold; padding:3px 10px; border-radius:3px; }}
+            QPushButton:hover {{ background:{C_PURPLE}; color:#000; }}
+        """)
+        btn_analyze.clicked.connect(self._mec_quick_analysis)
+        btn_clear = QPushButton("LIMPIAR")
+        btn_clear.setStyleSheet(f"""
+            QPushButton {{ background:#1a1a1a; border:1px solid {C_BORDER}; color:{C_TEXT_M}; 
+            font-size:9px; padding:3px 8px; border-radius:3px; }}
+            QPushButton:hover {{ background:#2a2a2a; color:white; }}
+        """)
+        btn_clear.clicked.connect(self._mec_clear_chat)
+        header_lay.addWidget(lbl_title); header_lay.addStretch()
+        header_lay.addWidget(self.lbl_mec_status); header_lay.addWidget(btn_analyze); header_lay.addWidget(btn_clear)
+        lay.addLayout(header_lay)
+
+        # Área de mensajes
+        self.txt_mec_chat = QTextEdit(); self.txt_mec_chat.setReadOnly(True)
+        self.txt_mec_chat.setStyleSheet(f"""
+            QTextEdit {{
+                background:#060610; color:{C_WHITE}; border:1px solid {C_BORDER};
+                border-radius:3px; font-family:'Consolas','Courier New',monospace; 
+                font-size:10px; padding:6px;
+            }}
+        """)
+        lay.addWidget(self.txt_mec_chat, 1)
+
+        # Barra de entrada
+        input_lay = QHBoxLayout(); input_lay.setSpacing(4)
+        self.input_mec = QLineEdit()
+        self.input_mec.setPlaceholderText("Pregunta algo sobre el motor... (Ej: '¿por qué la vibración está alta?')")
+        self.input_mec.setStyleSheet(f"""
+            QLineEdit {{
+                background:#0d0d1a; border:1px solid {C_PURPLE}; color:{C_WHITE};
+                font-family:'Consolas', monospace; font-size:11px; padding:6px 10px;
+                border-radius:3px;
+            }}
+            QLineEdit:focus {{ border:1px solid {C_MAIN}; }}
+        """)
+        self.input_mec.returnPressed.connect(self._mec_send_message)
+        btn_send = QPushButton("ENVIAR")
+        btn_send.setStyleSheet(f"""
+            QPushButton {{ background:{C_PURPLE}; border:none; color:#000; font-size:10px;
+            font-weight:bold; padding:6px 16px; border-radius:3px; }}
+            QPushButton:hover {{ background:#C084FC; }}
+        """)
+        btn_send.clicked.connect(self._mec_send_message)
+        input_lay.addWidget(self.input_mec, 1); input_lay.addWidget(btn_send)
+        lay.addLayout(input_lay)
+        return w
+
+    def _mec_append_msg(self, sender: str, text: str):
+        """Agrega un mensaje al chat del asistente MEC."""
+        if not hasattr(self, 'txt_mec_chat'):
+            return
+        ts = datetime.now().strftime("%H:%M:%S")
+        if sender == "MEC":
+            color = C_PURPLE
+            prefix = "🤖 MEC"
+        elif sender == "TÚ":
+            color = C_MAIN
+            prefix = "👤 Tú"
+        else:
+            color = C_NEUTRAL
+            prefix = f"⚙️ {sender}"
+        self.txt_mec_chat.append(
+            f'<span style="color:{C_NEUTRAL}; font-size:9px;">[{ts}]</span> '
+            f'<span style="color:{color}; font-weight:bold;">{prefix}:</span> '
+            f'<span style="color:{C_WHITE};">{text}</span>'
+        )
+        # Auto-scroll al final
+        vbar = self.txt_mec_chat.verticalScrollBar()
+        vbar.setValue(vbar.maximum())
+
+    def _mec_send_message(self):
+        """Envía un mensaje del operador al asistente MEC."""
+        text = self.input_mec.text().strip()
+        if not text:
+            return
+        self.input_mec.clear()
+        self._mec_append_msg("TÚ", text)
+
+        if not self.mec_assistant:
+            self._mec_append_msg("SISTEMA", "Asistente no disponible. Verifica que mec_assistant esté instalado.")
+            return
+
+        # Indicar que está pensando
+        self.lbl_mec_status.setText("● PENSANDO...")
+        self.lbl_mec_status.setStyleSheet(f"color:{C_ACCENT}; font-size:9px; font-weight:bold; border:none;")
+
+        # Enviar en hilo separado para no bloquear la UI
+        def on_response(response):
+            # Usar QTimer.singleShot para volver al hilo principal
+            QTimer.singleShot(0, lambda: self._mec_on_response(response))
+
+        self.mec_assistant.handle_async(text, on_response)
+
+    def _mec_on_response(self, response: str):
+        """Callback cuando el asistente MEC responde (en hilo principal)."""
+        self._mec_append_msg("MEC", response)
+        self.lbl_mec_status.setText("● LISTO")
+        self.lbl_mec_status.setStyleSheet(f"color:{C_GOOD}; font-size:9px; font-weight:bold; border:none;")
+
+    def _mec_quick_analysis(self):
+        """Pide al asistente MEC un análisis rápido del estado actual."""
+        if not self.mec_assistant:
+            self._mec_append_msg("SISTEMA", "Asistente no disponible.")
+            return
+
+        self._mec_append_msg("TÚ", "[Análisis rápido del estado actual del motor]")
+        self.lbl_mec_status.setText("● ANALIZANDO...")
+        self.lbl_mec_status.setStyleSheet(f"color:{C_ORANGE}; font-size:9px; font-weight:bold; border:none;")
+
+        def on_response(response):
+            QTimer.singleShot(0, lambda: self._mec_on_response(response))
+
+        self.mec_assistant.quick_analysis_async(on_response)
+
+    def _mec_clear_chat(self):
+        """Limpia el historial del chat."""
+        if hasattr(self, 'txt_mec_chat'):
+            self.txt_mec_chat.clear()
+            self._mec_append_msg("MEC", "Chat limpiado. ¿En qué puedo ayudarte?")
+        if self.mec_assistant:
+            self.mec_assistant.history.clear()
 
     def _lbl(self, text, color=C_TEXT_M, size=11):
         l = QLabel(text.upper()); l.setStyleSheet(f"color:{color}; font-size:{size}px; font-weight:bold; letter-spacing:0.5px; border:none;"); return l
@@ -1529,6 +1693,16 @@ class ConsolaCFE(QMainWindow):
 
         # Actualizamos el texto para el reporte de Excel
         self._texto_excel = sec_estado_metricas + "\n\n" + log_completo
+
+        # MEC ASSISTANT: Alimentar datos del motor en tiempo real
+        if self.mec_assistant:
+            self.mec_assistant.update_motor_data({
+                'v': v, 'i': i, 'p': p, 'q': q, 's': s, 'pf': pf,
+                'thd': thd, 'vib': vib, 'freq': freq, 'temp': temp,
+                'salud': salud, 'tf_estado': tf_r['estado'],
+                'ae_loss': tf_r['ae_loss'], 'pred_salud': tf_r['pred_salud'],
+                'n_anomalias': tf_r['n_anomalias'], 'anomaly_score': tf_r['anomaly_score'],
+            })
 
     # EXPORTAR EXCEL
     def _exportar_excel(self):

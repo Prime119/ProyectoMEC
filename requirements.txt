@@ -1,0 +1,18 @@
+# ============================================================
+#  ProyectoMEC — Dependencias
+# ============================================================
+
+# --- Consola Industrial (existente) ---
+numpy>=1.24
+pandas>=2.0
+PyQt6>=6.5
+pyqtgraph>=0.13
+pyserial>=3.5
+openpyxl>=3.1
+tensorflow>=2.15
+keras>=3.0
+scikit-learn>=1.3
+
+# --- Asistente MEC (nuevo — basado en Astra) ---
+httpx>=0.27            # cliente HTTP para Ollama (cerebro LLM local)
+psutil>=5.9            # detección de hardware (RAM/CPU)
