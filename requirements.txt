@@ -36,3 +36,8 @@ pillow>=10.0           # composición y manejo de imágenes satelitales
 # --- Palantir CFE: Visualización 3D holográfica (gemelo digital) ---
 PyOpenGL>=3.1          # motor 3D para el visor holográfico (pyqtgraph.opengl)
 PyOpenGL_accelerate>=3.1  # opcional: acelera el render 3D
+
+
+# --- Palantir CFE: Mapa OSINT geográfico (Leaflet en QWebEngineView) ---
+PyQt6-WebEngine>=6.5   # navegador embebido para el mapa Leaflet estilo OSINT
+# Requiere internet para las teselas del mapa y la librería Leaflet (CDN).

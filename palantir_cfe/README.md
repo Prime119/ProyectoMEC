@@ -18,12 +18,31 @@ python -m palantir_cfe
 | `dashboard.py` | Interfaz principal: mapa, KPIs, tablas, alertas, chat MEC, satélite |
 | `datos_geograficos.py` | Base de datos real: 28 plantas, 19 subestaciones, 15 líneas |
 | `simulador_telemetria.py` | Telemetría simulada en tiempo real de toda la infraestructura |
-| `catalogo_activos.py` | Taxonomía de 21 clases de activos detectables |
+| `catalogo_activos.py` | Taxonomía de 24 clases de activos detectables |
 | `satelite.py` | Descarga y georreferenciación de imágenes satelitales |
 | `deteccion_ia.py` | Motor de detección de infraestructura (3 niveles) |
 | `visor_satelital.py` | Visor con overlay de detecciones IA |
+| `mapa_osint.py` | Mapa geográfico real oscuro (Leaflet) estilo OSINT |
 | `modelos_3d.py` | Geometría 3D holográfica de cada tipo de estructura |
 | `vista_3d.py` | Gemelo digital 3D con gráficas de monitoreo en tiempo real |
+
+## 🗺️ Mapa OSINT geográfico (mapa principal)
+
+El mapa principal usa un **basemap real oscuro** (Leaflet + CartoDB dark_matter),
+estilo Palantir / ShadowBroker OSINT:
+
+- **Mapa mundial real** centrado en el Noroeste, con toggle a vista **satelital** (Esri)
+- **Marcadores de toda la infraestructura CFE** coloreados por tipo de activo
+- **Estado operativo en tiempo real**: verde (operando), amarillo (mantenimiento/arranque),
+  rojo pulsante (falla)
+- **Líneas de transmisión** dibujadas y coloreadas por carga (verde→amarillo→naranja)
+- **Filtros por capa** (encender/apagar categorías, como en OSINT)
+- **Buscador LOCALIZAR** para saltar a cualquier activo por nombre
+- **Herramienta de medición** de distancia (clic en dos puntos)
+- **Clic en un marcador** → abre su gemelo digital 3D en la pestaña 🧊 3D
+
+Requiere `PyQt6-WebEngine` e internet (para teselas y Leaflet). Si no está disponible,
+el dashboard cae automáticamente al mapa `pyqtgraph` (sin internet, esquemático).
 
 ## 🧊 Gemelo Digital 3D (pestaña 🧊 3D)
 

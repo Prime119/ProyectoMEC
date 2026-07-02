@@ -323,7 +323,19 @@ class PalantirCFE(QMainWindow):
         left_lay.setContentsMargins(4, 4, 4, 4)
         left_lay.setSpacing(4)
         left_lay.addWidget(self._build_kpi_bar())
-        self.mapa = MapaNoroeste()
+        # Mapa principal: intentar OSINT (Leaflet/WebEngine), si no, usar pyqtgraph
+        self._mapa_es_osint = False
+        try:
+            from .mapa_osint import MapaOSINT, WEBENGINE_DISPONIBLE
+            if not WEBENGINE_DISPONIBLE:
+                raise ImportError("PyQt6-WebEngine no disponible")
+            self.mapa = MapaOSINT()
+            self.mapa.activoSeleccionado.connect(self._on_activo_mapa)
+            self._mapa_es_osint = True
+            print("🗺️ Mapa OSINT (Leaflet) activo")
+        except Exception as e:
+            print(f"⚠️ Mapa OSINT no disponible ({e}). Usando mapa pyqtgraph.")
+            self.mapa = MapaNoroeste()
         left_lay.addWidget(self.mapa, 1)
         body_splitter.addWidget(left_widget)
 
@@ -567,9 +579,26 @@ class PalantirCFE(QMainWindow):
         self._update_kpi(self.kpi_alertas, str(n_alertas),
                          C_GREEN if n_alertas == 0 else (C_YELLOW if n_alertas < 5 else C_RED))
 
-        # Actualizar mapa
-        self.mapa.update_plantas(self.plantas_tel)
-        self.mapa.update_lineas(self.lineas_tel)
+        # Actualizar mapa (OSINT Leaflet o pyqtgraph según disponibilidad)
+        if self._mapa_es_osint:
+            estados_activos = {}
+            for t in self.plantas_tel:
+                estados_activos[t.planta_id] = {
+                    "estado": t.estado_operativo.value,
+                    "escala": t.factor_planta,
+                    "info": f"{t.generacion_actual_mw:.0f}/{t.capacidad_mw:.0f} MW · "
+                            f"{t.temperatura_caldera_c:.0f}°C · vib {t.vibracion_turbina_mms:.1f}",
+                }
+            estados_lineas = {}
+            for t in self.lineas_tel:
+                estados_lineas[t.linea_id] = {
+                    "carga": t.carga_pct,
+                    "estado": t.estado_operativo.value,
+                }
+            self.mapa.actualizar_estados(estados_activos, estados_lineas)
+        else:
+            self.mapa.update_plantas(self.plantas_tel)
+            self.mapa.update_lineas(self.lineas_tel)
 
         # Actualizar tabla de plantas
         self._update_tabla_plantas()
@@ -688,6 +717,21 @@ class PalantirCFE(QMainWindow):
 
 
     # === MEC INTEGRATION ===
+    def _on_activo_mapa(self, activo_id: str):
+        """Al hacer clic en un activo del mapa OSINT: abre su gemelo digital 3D."""
+        if getattr(self, "vista_3d", None) is not None:
+            combo = self.vista_3d.combo
+            for i in range(combo.count()):
+                data = combo.itemData(i)
+                if data and data[0] == activo_id:
+                    combo.setCurrentIndex(i)
+                    # Cambiar a la pestaña 3D
+                    for t in range(self.tabs.count()):
+                        if "3D" in self.tabs.tabText(t):
+                            self.tabs.setCurrentIndex(t)
+                            break
+                    break
+
     def _mec_msg(self, sender: str, text: str):
         ts = datetime.now().strftime("%H:%M:%S")
         if sender == "MEC":
