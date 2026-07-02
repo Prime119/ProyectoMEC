@@ -71,7 +71,7 @@ def obtener_infraestructura_region(refrescar: bool = False) -> dict:
     Obtiene subestaciones, plantas y líneas de toda la región (cacheado).
     Devuelve {"subestaciones": [...], "plantas": [...], "lineas": [...]}.
     """
-    cache = CACHE_DIR / "region.json"
+    cache = CACHE_DIR / "region_mx.json"
     if cache.exists() and not refrescar:
         # Cache válido por 30 días
         if time.time() - cache.stat().st_mtime < 30 * 86400:
@@ -83,11 +83,12 @@ def obtener_infraestructura_region(refrescar: bool = False) -> dict:
     s, w, n, e = REGION_BBOX
     bbox = f"{s},{w},{n},{e}"
     query = f"""
-    [out:json][timeout:90];
+    [out:json][timeout:120];
+    area["ISO3166-1"="MX"][admin_level=2]->.mx;
     (
-      nwr["power"="substation"]({bbox});
-      nwr["power"="plant"]({bbox});
-      way["power"="line"]({bbox});
+      nwr["power"="substation"](area.mx)({bbox});
+      nwr["power"="plant"](area.mx)({bbox});
+      way["power"="line"](area.mx)({bbox});
     );
     out geom;
     """
@@ -139,7 +140,7 @@ def obtener_torres_bbox(s: float, w: float, n: float, e: float) -> list[dict]:
         w, e = cx - 0.3, cx + 0.3
 
     # Clave de cache redondeada a 0.1°
-    clave = f"torres_{round(s,1)}_{round(w,1)}_{round(n,1)}_{round(e,1)}.json"
+    clave = f"torres_mx_{round(s,1)}_{round(w,1)}_{round(n,1)}_{round(e,1)}.json"
     cache = CACHE_DIR / clave
     if cache.exists() and time.time() - cache.stat().st_mtime < 7 * 86400:
         try:
@@ -149,14 +150,15 @@ def obtener_torres_bbox(s: float, w: float, n: float, e: float) -> list[dict]:
 
     bbox = f"{s},{w},{n},{e}"
     query = f"""
-    [out:json][timeout:40];
+    [out:json][timeout:50];
+    area["ISO3166-1"="MX"][admin_level=2]->.mx;
     (
-      node["power"="tower"]({bbox});
-      node["power"="pole"]({bbox});
+      node["power"="tower"](area.mx)({bbox});
+      node["power"="pole"](area.mx)({bbox});
     );
     out;
     """
-    data = _consultar_overpass(query, timeout=45)
+    data = _consultar_overpass(query, timeout=55)
     torres = []
     for el in data.get("elements", []):
         tags = el.get("tags", {})

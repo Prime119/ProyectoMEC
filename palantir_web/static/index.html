@@ -50,6 +50,9 @@ tr:hover td{background:#0d1a28;}
 #mec-input-bar{display:flex;gap:4px;}
 #mec-input{flex:1;background:#0d1520;border:1px solid #aa00ff;color:#e1e8f0;padding:6px 8px;border-radius:4px;font-size:11px;outline:none;}
 #mec-send{background:#aa00ff;color:#000;border:none;padding:6px 14px;border-radius:4px;font-weight:bold;cursor:pointer;}
+#mec-mic,#mec-voz{background:#1a1a2e;border:1px solid #aa00ff;color:#aa00ff;padding:6px 10px;border-radius:4px;cursor:pointer;font-size:14px;}
+#mec-mic.grabando{background:#ff1744;border-color:#ff1744;color:#fff;}
+#mec-voz.on{background:#00334d;border-color:#00e676;color:#00e676;}
 /* MAP CONTROLS */
 #map-search{position:absolute;top:10px;left:10px;z-index:1000;display:flex;gap:6px;}
 #map-search input{background:rgba(10,20,32,.92);border:1px solid #00d4ff;color:#e1e8f0;padding:6px 10px;border-radius:4px;font-size:12px;width:240px;outline:none;}
@@ -101,7 +104,7 @@ tr:hover td{background:#0d1a28;}
       <div id="pane-plantas" class="tab-pane active"><table id="tbl-plantas"><thead><tr><th>Planta</th><th>Estado</th><th>Tipo</th><th>Gen MW</th><th>Cap MW</th><th>%</th><th>Temp</th><th>Vib</th></tr></thead><tbody></tbody></table></div>
       <div id="pane-lineas" class="tab-pane"><table id="tbl-lineas"><thead><tr><th>Línea</th><th>Tensión</th><th>Carga%</th><th>Flujo MW</th><th>Corriente</th><th>Temp</th><th>Estado</th></tr></thead><tbody></tbody></table></div>
       <div id="pane-alertas" class="tab-pane"><div id="alertas-feed"></div></div>
-      <div id="pane-mec" class="tab-pane"><div id="mec-panel"><div id="mec-messages"></div><div id="mec-input-bar"><input id="mec-input" placeholder="Pregunta sobre la infraestructura..." /><button id="mec-send" onclick="mecSend()">ENVIAR</button></div></div></div>
+      <div id="pane-mec" class="tab-pane"><div id="mec-panel"><div id="mec-messages"></div><div id="mec-input-bar"><button id="mec-mic" onclick="mecEscuchar()" title="Hablar">🎙️</button><input id="mec-input" placeholder="Pregunta o habla..." /><button id="mec-send" onclick="mecSend()">ENVIAR</button><button id="mec-voz" onclick="mecToggleVoz()" title="Voz de MEC" class="on">🔊</button></div></div></div>
     </div>
   </div>
 </div>
@@ -354,11 +357,56 @@ function mecSend(){
   input.value='';
   mecAppend('Tú',texto,'msg-user');
   fetch('/api/mec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({texto:texto})})
-    .then(r=>r.json()).then(d=>mecAppend('MEC',d.respuesta,'msg-mec'))
+    .then(r=>r.json()).then(d=>{ mecAppend('MEC',d.respuesta,'msg-mec'); mecHablar(d.respuesta); })
     .catch(e=>mecAppend('Sistema','Error: '+e,'msg-sys'));
 }
 document.getElementById('mec-input').addEventListener('keydown',e=>{if(e.key==='Enter')mecSend();});
-mecAppend('MEC','Listo, ingeniero. Tengo vista de toda la infraestructura del Noroeste. Pregúntame lo que necesites.','msg-mec');
+mecAppend('MEC','Listo, ingeniero. Tengo vista de toda la infraestructura del Noroeste. Pregúntame por texto o con el micrófono 🎙️.','msg-mec');
+
+// === VOZ: Reconocimiento (STT) con la API del navegador ===
+var reconocimiento = null;
+var Recon = window.SpeechRecognition || window.webkitSpeechRecognition;
+if(Recon){
+  reconocimiento = new Recon();
+  reconocimiento.lang = 'es-MX';
+  reconocimiento.continuous = false;
+  reconocimiento.interimResults = false;
+  reconocimiento.onresult = function(e){
+    var texto = e.results[0][0].transcript;
+    document.getElementById('mec-input').value = texto;
+    document.getElementById('mec-mic').classList.remove('grabando');
+    mecSend();
+  };
+  reconocimiento.onend = function(){ document.getElementById('mec-mic').classList.remove('grabando'); };
+  reconocimiento.onerror = function(){ document.getElementById('mec-mic').classList.remove('grabando'); };
+}
+function mecEscuchar(){
+  if(!reconocimiento){ mecAppend('Sistema','Tu navegador no soporta reconocimiento de voz (usa Chrome o Edge).','msg-sys'); return; }
+  var btn = document.getElementById('mec-mic');
+  if(btn.classList.contains('grabando')){ reconocimiento.stop(); return; }
+  btn.classList.add('grabando');
+  reconocimiento.start();
+}
+
+// === VOZ: Síntesis (TTS) — MEC habla sus respuestas ===
+var vozActiva = true;
+function mecToggleVoz(){
+  vozActiva = !vozActiva;
+  document.getElementById('mec-voz').classList.toggle('on', vozActiva);
+  if(!vozActiva && window.speechSynthesis) speechSynthesis.cancel();
+}
+function mecHablar(texto){
+  if(!vozActiva || !window.speechSynthesis) return;
+  // Limpiar emojis/símbolos para que no los lea
+  var limpio = texto.replace(/[🚨⚡🔌🗼📍🏭🌊🌀☀️⚛️⚫🔲🔢🏢🏬🎫🎓🏧📦●🔄]/g,'').trim();
+  var u = new SpeechSynthesisUtterance(limpio);
+  u.lang = 'es-MX'; u.rate = 1.05; u.pitch = 1.0;
+  var voces = speechSynthesis.getVoices();
+  var vozEs = voces.find(v=>v.lang.startsWith('es'));
+  if(vozEs) u.voice = vozEs;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+}
 </script>
 </body>
 </html>

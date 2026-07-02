@@ -256,16 +256,77 @@ async def handle_lineas_coords(request):
 
 
 async def handle_mec_chat(request):
-    """Endpoint para el chat MEC."""
+    """Endpoint para el chat MEC. Usa Ollama si está disponible; si no, modo reglas."""
     data = await request.json()
     texto = data.get("texto", "")
-    if not mec_assistant:
-        return web.json_response({"respuesta": "MEC no disponible. Instala Ollama."})
-    # Inyectar contexto
-    ctx = json.dumps(ultimo_estado.get("resumen", {}), ensure_ascii=False)
-    prompt = f"[INFRAESTRUCTURA CFE]\n{ctx}\n\n[PREGUNTA]\n{texto}"
-    respuesta = mec_assistant.handle(prompt)
-    return web.json_response({"respuesta": respuesta})
+
+    # Intentar con el LLM (Ollama) si MEC está disponible
+    if mec_assistant is not None:
+        try:
+            loop = asyncio.get_event_loop()
+            ctx = json.dumps(ultimo_estado.get("resumen", {}), ensure_ascii=False)
+            prompt = f"[INFRAESTRUCTURA CFE]\n{ctx}\n\n[PREGUNTA]\n{texto}"
+            respuesta = await loop.run_in_executor(None, mec_assistant.handle, prompt)
+            # Si el cerebro reportó error de Ollama, caer al modo reglas
+            if respuesta and "[MEC]" in respuesta and ("Error" in respuesta or "cerebro local" in respuesta):
+                respuesta = responder_por_reglas(texto)
+            return web.json_response({"respuesta": respuesta})
+        except Exception as e:
+            print(f"[MEC] Ollama fallo: {e}")
+
+    # Modo reglas (sin Ollama): responde con los datos del sistema
+    return web.json_response({"respuesta": responder_por_reglas(texto)})
+
+
+def responder_por_reglas(texto: str) -> str:
+    """Responde preguntas comunes usando los datos actuales, sin necesitar LLM."""
+    t = texto.lower()
+    r = ultimo_estado.get("resumen", {})
+    plantas = ultimo_estado.get("plantas", [])
+    lineas = ultimo_estado.get("lineas", [])
+
+    fallas = [p for p in plantas if p["estado"] == "Falla"]
+    manto = [p for p in plantas if p["estado"] == "Mantenimiento"]
+    lineas_falla = [l for l in lineas if l["estado"] == "Falla"]
+    sobrecargadas = [l for l in lineas if l["carga"] > 85]
+
+    if any(w in t for w in ["falla", "problema", "riesgo", "alerta", "mal"]):
+        if not fallas and not lineas_falla:
+            return "Todo en orden, ingeniero. No hay plantas ni líneas en falla ahora mismo."
+        msg = ""
+        if fallas:
+            msg += "Plantas en falla: " + ", ".join(p["nombre"] for p in fallas) + ". "
+        if lineas_falla:
+            msg += "Líneas fuera: " + ", ".join(l["nombre"] for l in lineas_falla) + ". "
+        return msg.strip()
+
+    if any(w in t for w in ["genera", "generación", "produc", "mw", "potencia"]):
+        return (f"Generación total: {r.get('generacion_total_mw',0):.0f} MW de "
+                f"{r.get('capacidad_total_mw',0):.0f} MW instalados "
+                f"(factor de carga {r.get('factor_carga_sistema',0):.1f}%). "
+                f"Demanda estimada: {r.get('demanda_estimada_mw',0):.0f} MW.")
+
+    if any(w in t for w in ["sobrecarg", "carga", "línea", "linea", "transmisión"]):
+        if sobrecargadas:
+            return "Líneas con carga elevada: " + ", ".join(
+                f"{l['nombre']} ({l['carga']:.0f}%)" for l in sobrecargadas)
+        return f"Las {r.get('lineas_operando',0)} líneas operando están dentro de rango normal."
+
+    if any(w in t for w in ["mantenimiento", "manto"]):
+        if manto:
+            return "En mantenimiento: " + ", ".join(p["nombre"] for p in manto)
+        return "Ninguna planta está en mantenimiento en este momento."
+
+    if any(w in t for w in ["resumen", "estado", "general", "cómo", "como esta", "situación"]):
+        return (f"Sistema: {r.get('generacion_total_mw',0):.0f} MW generados, "
+                f"{r.get('plantas_operando',0)}/{r.get('plantas_total',0)} plantas operando, "
+                f"{r.get('lineas_operando',0)}/{r.get('lineas_total',0)} líneas activas, "
+                f"frecuencia {r.get('frecuencia_sistema',60):.3f} Hz, "
+                f"{r.get('alertas_activas',0)} alertas activas.")
+
+    return ("Puedo responder sobre: generación, fallas, líneas sobrecargadas, "
+            "mantenimiento o un resumen del sistema. Para respuestas más completas, "
+            "instala Ollama (ollama.com) y descarga el modelo qwen2.5:3b-instruct.")
 
 
 async def handle_estado(request):
