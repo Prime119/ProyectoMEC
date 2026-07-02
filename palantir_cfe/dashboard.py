@@ -329,7 +329,7 @@ class PalantirCFE(QMainWindow):
 
         # Derecha: Tabs (Plantas, Líneas, Alertas, MEC)
         right_widget = QWidget()
-        right_widget.setMaximumWidth(600)
+        right_widget.setMaximumWidth(760)
         right_lay = QVBoxLayout(right_widget)
         right_lay.setContentsMargins(4, 4, 4, 4)
         right_lay.setSpacing(4)
@@ -339,10 +339,11 @@ class PalantirCFE(QMainWindow):
         self.tabs.addTab(self._build_tab_lineas(), "🔌 LÍNEAS")
         self.tabs.addTab(self._build_tab_alertas(), "🚨 ALERTAS")
         self.tabs.addTab(self._build_tab_mec(), "🤖 MEC")
+        self.tabs.addTab(self._build_tab_satelite(), "🛰️ SATÉLITE")
         right_lay.addWidget(self.tabs)
         body_splitter.addWidget(right_widget)
 
-        body_splitter.setSizes([1000, 500])
+        body_splitter.setSizes([950, 650])
         main_lay.addWidget(body_splitter, 1)
 
     def _build_topbar(self):
@@ -514,6 +515,14 @@ class PalantirCFE(QMainWindow):
         self._mec_msg("MEC", "Listo, ingeniero. Tengo vista completa de la infraestructura del Noroeste. "
                       "Pregúntame sobre plantas, líneas, alertas, o pide un resumen del sistema.")
         return w
+
+    def _build_tab_satelite(self):
+        """Tab con el visor satelital y detección IA de infraestructura."""
+        from .visor_satelital import VisorSatelital
+        # Permitir cargar un modelo ONNX vía variable de entorno
+        modelo = os.environ.get("PALANTIR_MODELO_ONNX")
+        self.visor_sat = VisorSatelital(modelo_onnx=modelo)
+        return self.visor_sat
 
 
     # === UPDATE LOOP ===

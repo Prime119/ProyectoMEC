@@ -21,3 +21,13 @@ psutil>=5.9            # detección de hardware (RAM/CPU)
 faster-whisper>=1.0    # oído / STT offline (transcripción de voz a texto)
 sounddevice>=0.4       # captura y reproducción de audio
 piper-tts>=1.2         # voz / TTS offline (text-to-speech en español)
+
+
+# --- Palantir CFE: Visión Satelital + Detección IA ---
+pillow>=10.0           # composición y manejo de imágenes satelitales
+# httpx ya listado arriba — también se usa para descargar teselas satelitales
+
+# --- Detección IA (opcional — para modelo entrenado propio) ---
+# Descomenta si vas a usar un modelo YOLOv8/ONNX entrenado:
+# onnxruntime>=1.16    # inferencia del modelo (usa onnxruntime-gpu si tienes CUDA)
+# ultralytics>=8.0     # solo si quieres entrenar/exportar tu propio modelo YOLOv8

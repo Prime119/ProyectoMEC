@@ -180,3 +180,9 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 Reportes/
+
+
+# Palantir CFE — cache de teselas satelitales y modelos
+palantir_cfe/cache_tiles/
+*.onnx
+mec_memory.db
