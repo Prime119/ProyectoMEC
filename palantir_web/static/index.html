@@ -110,9 +110,17 @@ tr:hover td{background:#0d1a28;}
 
 
 // === MAPA LEAFLET (OSCURO ESTILO OSINT) ===
-var map = L.map('map',{center:[28.5,-111],zoom:6,zoomControl:true});
+var map = L.map('map',{
+  center:[28.0,-110],
+  zoom:6,
+  minZoom:6,          // no dejar alejar más que la vista regional
+  maxZoom:18,
+  zoomControl:true,
+  maxBounds:[[19.0,-119.0],[34.5,-102.0]],  // limitar paneo a la región Noroeste
+  maxBoundsViscosity:0.9
+});
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
-  attribution:'CARTO',subdomains:'abcd',maxZoom:19
+  attribution:'CARTO',subdomains:'abcd',maxZoom:18
 }).addTo(map);
 
 var markers = {};  // id -> L.circleMarker
@@ -122,7 +130,7 @@ var polylines = {}; // id -> L.polyline
 fetch('/api/lineas').then(r=>r.json()).then(lineas=>{
   lineas.forEach(l=>{
     var color = l.es_400?'#00e676':'#00d4ff';
-    var pl = L.polyline(l.coords,{color:color,weight:l.es_400?3:2,opacity:0.7});
+    var pl = L.polyline(l.coords,{color:color,weight:l.es_400?2.5:1.5,opacity:0.5});
     pl.bindPopup('<b>'+l.nombre+'</b><br>'+l.tension);
     pl.addTo(map);
     polylines[l.id] = pl;
@@ -142,18 +150,19 @@ document.getElementById('leyenda').innerHTML = `
   <span class="dot" style="background:#00e676"></span>Línea 400kV
 `;
 
-// === WEBSOCKET: DATOS EN TIEMPO REAL ===
-var ws = new WebSocket('ws://'+location.host+'/ws');
-ws.onmessage = function(e){
-  var data = JSON.parse(e.data);
-  actualizarKPIs(data.resumen);
-  actualizarMapa(data.plantas);
-  actualizarLineas(data.lineas);
-  actualizarTabla(data.plantas);
-  actualizarTablaLineas(data.lineas);
-  actualizarAlertas(data.plantas, data.lineas);
-};
-ws.onclose = function(){ setTimeout(()=>{ ws=new WebSocket('ws://'+location.host+'/ws'); ws.onmessage=arguments.callee; },3000); };
+// === POLLING: DATOS EN TIEMPO REAL (cada 2 seg) ===
+function pedirEstado(){
+  fetch('/api/estado').then(r=>r.json()).then(data=>{
+    actualizarKPIs(data.resumen);
+    actualizarMapa(data.plantas);
+    actualizarLineas(data.lineas);
+    actualizarTabla(data.plantas);
+    actualizarTablaLineas(data.lineas);
+    actualizarAlertas(data.plantas, data.lineas);
+  }).catch(e=>console.error('Error al pedir estado:',e));
+}
+pedirEstado();                 // primera carga inmediata
+setInterval(pedirEstado, 2000); // refrescar cada 2 segundos
 
 function actualizarKPIs(r){
   if(!r) return;

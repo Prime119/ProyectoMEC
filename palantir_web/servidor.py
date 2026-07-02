@@ -191,10 +191,17 @@ async def handle_mec_chat(request):
     return web.json_response({"respuesta": respuesta})
 
 
+async def handle_estado(request):
+    """Avanza el simulador y devuelve el estado actual (polling en tiempo real)."""
+    tick_simulador()
+    return web.json_response(ultimo_estado)
+
+
 # === APP ===
 async def on_startup(app):
-    asyncio.create_task(broadcast_loop())
-    # Abrir navegador después de 1 segundo
+    # Primer tick para tener datos listos de inmediato
+    tick_simulador()
+    # Abrir navegador después de 1.5 segundos
     loop = asyncio.get_event_loop()
     loop.call_later(1.5, lambda: webbrowser.open("http://localhost:8080"))
 
@@ -204,6 +211,7 @@ def main():
     app.on_startup.append(on_startup)
     app.router.add_get("/", handle_index)
     app.router.add_get("/ws", ws_handler)
+    app.router.add_get("/api/estado", handle_estado)
     app.router.add_get("/api/lineas", handle_lineas_coords)
     app.router.add_post("/api/mec", handle_mec_chat)
     app.router.add_get("/static/{name}", handle_static)
