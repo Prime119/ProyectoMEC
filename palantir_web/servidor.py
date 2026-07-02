@@ -168,6 +168,22 @@ TORRES = generar_torres()
 print(f"🗼 {len(TORRES)} torres generadas a lo largo de las líneas")
 
 
+# === INTERCONEXIONES CFE que cruzan a EE.UU. (WECC/CAISO) ===
+# Líneas reales de CFE Baja California que se interconectan con California.
+INTERCONEXIONES = [
+    {"nombre": "Interconexión La Rosita (Mexicali) – Imperial Valley, CA",
+     "coords": [[32.5928, -115.4267], [32.710, -115.573]], "tension": "230 kV"},
+    {"nombre": "Interconexión Cerro Prieto – Imperial Valley, CA",
+     "coords": [[32.4142, -115.2342], [32.710, -115.573]], "tension": "230 kV"},
+    {"nombre": "Interconexión Tijuana – Miguel (San Diego), CA",
+     "coords": [[32.5300, -116.9500], [32.660, -117.020]], "tension": "230 kV"},
+]
+
+
+async def handle_interconexiones(request):
+    return web.json_response(INTERCONEXIONES)
+
+
 async def handle_torres(request):
     return web.json_response(TORRES)
 
@@ -352,6 +368,7 @@ def main():
     app.router.add_get("/api/estado", handle_estado)
     app.router.add_get("/api/lineas", handle_lineas_coords)
     app.router.add_get("/api/torres", handle_torres)
+    app.router.add_get("/api/interconexiones", handle_interconexiones)
     app.router.add_get("/api/osm", handle_osm_region)
     app.router.add_get("/api/osm/torres", handle_osm_torres)
     app.router.add_post("/api/mec", handle_mec_chat)
