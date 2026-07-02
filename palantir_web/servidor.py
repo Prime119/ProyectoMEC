@@ -130,6 +130,48 @@ def get_lineas_coords():
 LINEAS_COORDS = get_lineas_coords()
 
 
+# === GENERACIÓN DE TORRES A LO LARGO DE LAS LÍNEAS ===
+def _haversine_km(lat1, lon1, lat2, lon2):
+    import math
+    R = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = (math.sin(dlat / 2) ** 2 +
+         math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2)
+    return R * 2 * math.atan2(a ** 0.5, (1 - a) ** 0.5)
+
+
+def generar_torres(spacing_km: float = 7.0):
+    """
+    Genera torres de transmisión distribuidas a lo largo de cada línea.
+    En la realidad las torres van a intervalos regulares; estas son posiciones
+    representativas (la ubicación exacta de cada torre la dará la IA satelital).
+    """
+    torres = []
+    for l in LINEAS_COORDS:
+        (lat1, lon1), (lat2, lon2) = l["coords"]
+        dist = _haversine_km(lat1, lon1, lat2, lon2)
+        n = max(1, int(dist / spacing_km))
+        clase = "torre_grande" if l["es_400"] else "torre_mediana"
+        tension = "400 kV" if l["es_400"] else "230 kV"
+        for i in range(1, n):
+            t = i / n
+            torres.append({
+                "lat": round(lat1 + (lat2 - lat1) * t, 5),
+                "lon": round(lon1 + (lon2 - lon1) * t, 5),
+                "clase": clase, "tension": tension, "linea": l["nombre"],
+            })
+    return torres
+
+
+TORRES = generar_torres()
+print(f"🗼 {len(TORRES)} torres generadas a lo largo de las líneas")
+
+
+async def handle_torres(request):
+    return web.json_response(TORRES)
+
+
 # === WEBSOCKET: envía estado cada 2 seg ===
 ws_clients: set = set()
 
@@ -217,11 +259,12 @@ def main():
     app.router.add_get("/ws", ws_handler)
     app.router.add_get("/api/estado", handle_estado)
     app.router.add_get("/api/lineas", handle_lineas_coords)
+    app.router.add_get("/api/torres", handle_torres)
     app.router.add_post("/api/mec", handle_mec_chat)
     app.router.add_get("/static/{name}", handle_static)
 
     print("=" * 60)
-    print("  🌐 PALANTIR CFE — Versión Web")
+    print("  🦅 FALCON CFE — Versión Web")
     print("  Abriendo en http://localhost:8080")
     print("  Presiona Ctrl+C para detener")
     print("=" * 60)

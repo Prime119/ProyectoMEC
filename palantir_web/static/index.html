@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>PALANTIR CFE — Infraestructura Eléctrica Noroeste</title>
+<title>FALCON CFE — Infraestructura Eléctrica Noroeste</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -63,7 +63,7 @@ tr:hover td{background:#0d1a28;}
 <body>
 <!-- TOPBAR -->
 <div id="topbar">
-  <span class="logo">PALANTIR</span>
+  <span class="logo">FALCON</span>
   <span class="sub">/ CFE NOROESTE — Infraestructura Eléctrica en Tiempo Real</span>
   <div class="right">
     <span class="freq" id="freq">60.000 Hz</span>
@@ -137,6 +137,29 @@ fetch('/api/lineas').then(r=>r.json()).then(lineas=>{
   });
 });
 
+// Cargar torres de transmisión (capa que aparece al acercar)
+var capaTorres = L.layerGroup();
+fetch('/api/torres').then(r=>r.json()).then(torres=>{
+  torres.forEach(t=>{
+    var col = t.clase==='torre_grande'?'#5a8ab0':'#4a6a8a';
+    var mk = L.circleMarker([t.lat,t.lon],{
+      radius:2.5, color:col, weight:1, fillColor:col, fillOpacity:0.8
+    });
+    mk.bindPopup('🗼 Torre '+t.tension+'<br><span style="color:#8899aa">'+t.linea+'</span>');
+    capaTorres.addLayer(mk);
+  });
+  actualizarVisibilidadTorres();
+});
+// Mostrar torres solo cuando se hace zoom (para no saturar la vista regional)
+function actualizarVisibilidadTorres(){
+  if(map.getZoom() >= 8){
+    if(!map.hasLayer(capaTorres)) map.addLayer(capaTorres);
+  } else {
+    if(map.hasLayer(capaTorres)) map.removeLayer(capaTorres);
+  }
+}
+map.on('zoomend', actualizarVisibilidadTorres);
+
 // Leyenda
 document.getElementById('leyenda').innerHTML = `
   <b>INFRAESTRUCTURA CFE</b><br>
@@ -147,7 +170,8 @@ document.getElementById('leyenda').innerHTML = `
   <span class="dot" style="background:#00e5ff"></span>Eólica<br>
   <span class="dot" style="background:#2979ff"></span>Hidroeléctrica<br>
   <span class="dot" style="background:#00d4ff"></span>Subestación<br>
-  <span class="dot" style="background:#00e676"></span>Línea 400kV
+  <span class="dot" style="background:#00e676"></span>Línea 400kV<br>
+  <span class="dot" style="background:#5a8ab0"></span>Torres (zoom +)
 `;
 
 // === POLLING: DATOS EN TIEMPO REAL (cada 2 seg) ===
