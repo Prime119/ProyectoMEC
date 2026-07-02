@@ -31,12 +31,14 @@ from sklearn.preprocessing import MinMaxScaler
 import warnings
 warnings.filterwarnings('ignore')
 
-# MEC ASSISTANT: Asistente cognitivo industrial (basado en Astra)
+# MEC ASSISTANT: Asistente cognitivo industrial (JARVIS + Optimus + Caine)
 try:
-    from mec_assistant import MECAssistant
+    from mec_assistant import MECAssistant, VoiceIO, VoiceConfig
     MEC_AVAILABLE = True
 except ImportError:
     MEC_AVAILABLE = False
+    VoiceIO = None
+    VoiceConfig = None
     print("⚠️ mec_assistant no disponible. El chat IA estará deshabilitado.")
 
 pg.setConfigOption('background', '#0B0F19')
@@ -647,15 +649,29 @@ class ConsolaCFE(QMainWindow):
         self.timer = QTimer(); self.timer.timeout.connect(self._loop_fast); self.timer.start(16)
         self.timer_slow = QTimer(); self.timer_slow.timeout.connect(self._loop_slow); self.timer_slow.start(1000)
 
-        # MEC ASSISTANT: Inicializar asistente cognitivo
+        # MEC ASSISTANT: Inicializar asistente cognitivo (JARVIS + Optimus + Caine)
         self.mec_assistant = None
+        self.mec_voice = None
+        self._mec_listening = False
         if MEC_AVAILABLE:
             try:
                 self.mec_assistant = MECAssistant.boot()
                 print(f"🤖 Asistente MEC iniciado (tier: {self.mec_assistant.config.hardware.tier})")
-                self._mec_append_msg("MEC", "Soy MEC, tu asistente de monitoreo industrial. "
-                                     "Puedo analizar el estado del motor, responder preguntas técnicas "
-                                     "y alertarte sobre anomalías. Escríbeme aquí abajo.")
+                # Inicializar voz
+                try:
+                    voice_cfg = VoiceConfig()
+                    self.mec_voice = VoiceIO(voice_cfg)
+                    stt_status = "✅" if self.mec_voice.stt_available else "❌"
+                    tts_status = "✅" if self.mec_voice.tts_available else "❌"
+                    print(f"🎙️ Voz MEC: STT={stt_status} TTS={tts_status}")
+                except Exception as e:
+                    print(f"⚠️ Voz MEC no disponible: {e}")
+                    self.mec_voice = None
+                self._mec_append_msg("MEC",
+                    "Buenos días, ingeniero. Soy MEC — tu copiloto de monitoreo industrial. "
+                    "Conozco cada norma, cada armónico y cada vibración sospechosa de tu motor. "
+                    "Pregúntame lo que quieras, o presiona ⚡ para un diagnóstico rápido. "
+                    "Ah, y si algo se pone feo... seré el primero en avisarte.")
             except Exception as e:
                 print(f"⚠️ Error al iniciar MEC Assistant: {e}")
                 self._mec_append_msg("SISTEMA", f"Error al iniciar asistente: {e}")
@@ -1030,18 +1046,20 @@ class ConsolaCFE(QMainWindow):
         return w
 
     def _build_mec_chat_panel(self):
-        """Panel de chat con el asistente MEC (basado en Astra, 1/3 de capacidad)."""
+        """Panel de chat con el asistente MEC (JARVIS + Optimus + Caine)."""
         w = QWidget(); w.setStyleSheet(f"background:{C_PANEL}; border:1px solid {C_PURPLE}; border-radius:4px;")
-        w.setFixedHeight(220)
+        w.setFixedHeight(240)
         lay = QVBoxLayout(w); lay.setContentsMargins(10,8,10,8); lay.setSpacing(4)
 
         # Header del chat
         header_lay = QHBoxLayout(); header_lay.setSpacing(8)
-        lbl_title = QLabel("ASISTENTE MEC — CHAT INTELIGENTE")
+        lbl_title = QLabel("MEC — ASISTENTE INDUSTRIAL INTELIGENTE")
         lbl_title.setStyleSheet(f"color:{C_PURPLE}; font-size:11px; font-weight:bold; letter-spacing:0.5px; border:none;")
         self.lbl_mec_status = QLabel("● LISTO")
         self.lbl_mec_status.setStyleSheet(f"color:{C_GOOD}; font-size:9px; font-weight:bold; border:none;")
-        btn_analyze = QPushButton("⚡ ANÁLISIS RÁPIDO")
+        self.lbl_mec_caine = QLabel("")
+        self.lbl_mec_caine.setStyleSheet(f"color:{C_NEUTRAL}; font-size:9px; border:none;")
+        btn_analyze = QPushButton("⚡ DIAGNÓSTICO")
         btn_analyze.setStyleSheet(f"""
             QPushButton {{ background:#1a0030; border:1px solid {C_PURPLE}; color:{C_PURPLE}; 
             font-size:9px; font-weight:bold; padding:3px 10px; border-radius:3px; }}
@@ -1056,6 +1074,7 @@ class ConsolaCFE(QMainWindow):
         """)
         btn_clear.clicked.connect(self._mec_clear_chat)
         header_lay.addWidget(lbl_title); header_lay.addStretch()
+        header_lay.addWidget(self.lbl_mec_caine)
         header_lay.addWidget(self.lbl_mec_status); header_lay.addWidget(btn_analyze); header_lay.addWidget(btn_clear)
         lay.addLayout(header_lay)
 
@@ -1070,10 +1089,23 @@ class ConsolaCFE(QMainWindow):
         """)
         lay.addWidget(self.txt_mec_chat, 1)
 
-        # Barra de entrada
+        # Barra de entrada con botón de voz
         input_lay = QHBoxLayout(); input_lay.setSpacing(4)
+        
+        # Botón de micrófono
+        self.btn_mec_mic = QPushButton("🎙️")
+        self.btn_mec_mic.setFixedSize(36, 36)
+        self.btn_mec_mic.setStyleSheet(f"""
+            QPushButton {{ background:#1a1a2e; border:1px solid {C_ACCENT}; color:{C_ACCENT}; 
+            font-size:16px; border-radius:18px; }}
+            QPushButton:hover {{ background:{C_ACCENT}; color:#000; }}
+            QPushButton:pressed {{ background:#D4A010; }}
+        """)
+        self.btn_mec_mic.setToolTip("Mantén presionado para hablar (Push-to-Talk)")
+        self.btn_mec_mic.clicked.connect(self._mec_toggle_listen)
+        
         self.input_mec = QLineEdit()
-        self.input_mec.setPlaceholderText("Pregunta algo sobre el motor... (Ej: '¿por qué la vibración está alta?')")
+        self.input_mec.setPlaceholderText("Habla con MEC... (Ej: '¿por qué sube la vibración?', '¿estamos dentro de norma?')")
         self.input_mec.setStyleSheet(f"""
             QLineEdit {{
                 background:#0d0d1a; border:1px solid {C_PURPLE}; color:{C_WHITE};
@@ -1090,7 +1122,24 @@ class ConsolaCFE(QMainWindow):
             QPushButton:hover {{ background:#C084FC; }}
         """)
         btn_send.clicked.connect(self._mec_send_message)
-        input_lay.addWidget(self.input_mec, 1); input_lay.addWidget(btn_send)
+        
+        # Toggle de voz (hablar respuestas)
+        self.btn_mec_voice_toggle = QPushButton("🔊")
+        self.btn_mec_voice_toggle.setFixedSize(36, 36)
+        self.btn_mec_voice_toggle.setCheckable(True)
+        self.btn_mec_voice_toggle.setChecked(True)
+        self.btn_mec_voice_toggle.setStyleSheet(f"""
+            QPushButton {{ background:#1a1a2e; border:1px solid {C_GOOD}; color:{C_GOOD}; 
+            font-size:14px; border-radius:18px; }}
+            QPushButton:checked {{ background:#003820; border:1px solid {C_GOOD}; }}
+            QPushButton:hover {{ background:#002a18; }}
+        """)
+        self.btn_mec_voice_toggle.setToolTip("Activar/desactivar voz de MEC")
+        
+        input_lay.addWidget(self.btn_mec_mic)
+        input_lay.addWidget(self.input_mec, 1)
+        input_lay.addWidget(btn_send)
+        input_lay.addWidget(self.btn_mec_voice_toggle)
         lay.addLayout(input_lay)
         return w
 
@@ -1105,6 +1154,9 @@ class ConsolaCFE(QMainWindow):
         elif sender == "TÚ":
             color = C_MAIN
             prefix = "👤 Tú"
+        elif sender == "CAINE":
+            color = C_ORANGE
+            prefix = "🔄 Caine"
         else:
             color = C_NEUTRAL
             prefix = f"⚙️ {sender}"
@@ -1135,16 +1187,77 @@ class ConsolaCFE(QMainWindow):
 
         # Enviar en hilo separado para no bloquear la UI
         def on_response(response):
-            # Usar QTimer.singleShot para volver al hilo principal
             QTimer.singleShot(0, lambda: self._mec_on_response(response))
 
         self.mec_assistant.handle_async(text, on_response)
 
     def _mec_on_response(self, response: str):
         """Callback cuando el asistente MEC responde (en hilo principal)."""
-        self._mec_append_msg("MEC", response)
+        # Detectar si hubo reinicio Caine
+        if response.startswith("🔄"):
+            parts = response.split("\n\n", 1)
+            self._mec_append_msg("CAINE", parts[0].replace("🔄 ", ""))
+            if len(parts) > 1:
+                self._mec_append_msg("MEC", parts[1])
+                self._mec_speak(parts[1])
+            self._update_caine_indicator()
+        else:
+            self._mec_append_msg("MEC", response)
+            self._mec_speak(response)
+
         self.lbl_mec_status.setText("● LISTO")
         self.lbl_mec_status.setStyleSheet(f"color:{C_GOOD}; font-size:9px; font-weight:bold; border:none;")
+        self._update_caine_indicator()
+
+    def _mec_speak(self, text: str):
+        """Reproduce la respuesta de MEC por voz (si está habilitado)."""
+        if (self.mec_voice and self.mec_voice.tts_available
+                and hasattr(self, 'btn_mec_voice_toggle')
+                and self.btn_mec_voice_toggle.isChecked()):
+            # Limpiar el texto para TTS (quitar emojis y marcas)
+            clean = text.replace("🔄", "").replace("⚠️", "").replace("🚫", "")
+            clean = clean.replace("⚡", "").replace("✅", "").replace("❌", "")
+            self.mec_voice.speak(clean)
+
+    def _mec_toggle_listen(self):
+        """Activa/desactiva la escucha por micrófono."""
+        if not self.mec_voice or not self.mec_voice.stt_available:
+            self._mec_append_msg("SISTEMA",
+                "Voz no disponible. Instala faster-whisper y sounddevice para usar el micrófono.")
+            return
+
+        if self._mec_listening:
+            return  # Ya está escuchando
+
+        self._mec_listening = True
+        self.btn_mec_mic.setStyleSheet(f"""
+            QPushButton {{ background:{C_CRIT}; border:2px solid {C_CRIT}; color:#FFF; 
+            font-size:16px; border-radius:18px; }}
+        """)
+        self.lbl_mec_status.setText("● ESCUCHANDO...")
+        self.lbl_mec_status.setStyleSheet(f"color:{C_CRIT}; font-size:9px; font-weight:bold; border:none;")
+
+        def on_transcription(text):
+            QTimer.singleShot(0, lambda: self._mec_on_transcription(text))
+
+        self.mec_voice.listen_async(on_transcription)
+
+    def _mec_on_transcription(self, text: str):
+        """Callback cuando el STT termina de transcribir."""
+        self._mec_listening = False
+        self.btn_mec_mic.setStyleSheet(f"""
+            QPushButton {{ background:#1a1a2e; border:1px solid {C_ACCENT}; color:{C_ACCENT}; 
+            font-size:16px; border-radius:18px; }}
+            QPushButton:hover {{ background:{C_ACCENT}; color:#000; }}
+        """)
+
+        if text.strip():
+            self.input_mec.setText(text)
+            self._mec_send_message()
+        else:
+            self.lbl_mec_status.setText("● LISTO")
+            self.lbl_mec_status.setStyleSheet(f"color:{C_GOOD}; font-size:9px; font-weight:bold; border:none;")
+            self._mec_append_msg("SISTEMA", "No capté nada. Intenta de nuevo más cerca del micrófono.")
 
     def _mec_quick_analysis(self):
         """Pide al asistente MEC un análisis rápido del estado actual."""
@@ -1152,7 +1265,7 @@ class ConsolaCFE(QMainWindow):
             self._mec_append_msg("SISTEMA", "Asistente no disponible.")
             return
 
-        self._mec_append_msg("TÚ", "[Análisis rápido del estado actual del motor]")
+        self._mec_append_msg("TÚ", "[Diagnóstico rápido del motor]")
         self.lbl_mec_status.setText("● ANALIZANDO...")
         self.lbl_mec_status.setStyleSheet(f"color:{C_ORANGE}; font-size:9px; font-weight:bold; border:none;")
 
@@ -1165,9 +1278,23 @@ class ConsolaCFE(QMainWindow):
         """Limpia el historial del chat."""
         if hasattr(self, 'txt_mec_chat'):
             self.txt_mec_chat.clear()
-            self._mec_append_msg("MEC", "Chat limpiado. ¿En qué puedo ayudarte?")
+            self._mec_append_msg("MEC", "Pizarra limpia. ¿Qué necesitas, ingeniero?")
         if self.mec_assistant:
             self.mec_assistant.history.clear()
+
+    def _update_caine_indicator(self):
+        """Actualiza el indicador de estado Caine en el header del chat."""
+        if not self.mec_assistant or not hasattr(self, 'lbl_mec_caine'):
+            return
+        cs = self.mec_assistant.personality.caine
+        if cs.total_resets > 0:
+            self.lbl_mec_caine.setText(f"🔄 Resets: {cs.total_resets}")
+            self.lbl_mec_caine.setStyleSheet(f"color:{C_ORANGE}; font-size:9px; border:none;")
+        elif cs.stress_counter >= 2 or cs.confusion_counter >= 3:
+            self.lbl_mec_caine.setText(f"⚡ Estrés: {cs.stress_counter}/{cs.confusion_counter}")
+            self.lbl_mec_caine.setStyleSheet(f"color:{C_ACCENT}; font-size:9px; border:none;")
+        else:
+            self.lbl_mec_caine.setText("")
 
     def _lbl(self, text, color=C_TEXT_M, size=11):
         l = QLabel(text.upper()); l.setStyleSheet(f"color:{color}; font-size:{size}px; font-weight:bold; letter-spacing:0.5px; border:none;"); return l

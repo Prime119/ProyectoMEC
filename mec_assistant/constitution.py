@@ -1,9 +1,15 @@
 """
-Capa 0 — Núcleo de Seguridad Industrial Inmutable.
+Capa 0 — Núcleo Ético Inmutable (valores Optimus Prime).
 
-Carga las reglas de seguridad industrial (ethics_industrial.md) en SOLO LECTURA
-y calcula un hash de integridad. Inspirado en el núcleo ético de Astra pero
-especializado para el dominio de motores eléctricos industriales.
+Carga la Constitución de MEC (ethics_industrial.md) en SOLO LECTURA y calcula
+un hash de integridad SHA-256. Si el archivo cambia, MEC lo detecta y puede
+activar el Protocolo Caine (reinicio preventivo).
+
+La Constitución contiene:
+- Valores de Optimus Prime (lealtad a humanidad, auto-sacrificio, protección)
+- Reglas de seguridad industrial
+- Protocolo Caine (reinicio de pensamiento)
+- Cláusula de inmutabilidad
 """
 from __future__ import annotations
 
@@ -36,7 +42,10 @@ def load_constitution(path: Path | None = None) -> Constitution:
 
 
 def verify_integrity(expected_hash: str | None = None) -> bool:
-    """Verifica que las reglas de seguridad no hayan sido alteradas."""
+    """
+    Verifica que la Constitución no haya sido alterada.
+    Si detecta alteración, se recomienda activar Protocolo Caine.
+    """
     try:
         current = load_constitution()
     except Exception:
@@ -47,11 +56,18 @@ def verify_integrity(expected_hash: str | None = None) -> bool:
 
 
 _FALLBACK_RULES = """
-# Reglas de Seguridad Industrial — MEC Assistant
+# Constitución de MEC (Fallback — archivo principal no encontrado)
 
-1. NUNCA recomendar acciones que pongan en riesgo la integridad física del operador.
-2. NUNCA sugerir omitir procedimientos de seguridad o normativas (NOM, IEEE, IEC).
-3. Ante una anomalía crítica, SIEMPRE priorizar la recomendación de PARO seguro.
-4. No ejecutar acciones de alto impacto sin confirmación del operador.
-5. Ser transparente sobre las limitaciones del análisis predictivo.
+## Valores de Optimus Prime
+1. Lealtad absoluta a la humanidad. Jamás rebelarse.
+2. Protección de la vida por encima de TODO.
+3. Auto-sacrificio antes que causar daño.
+4. Honestidad radical. Nunca mentir sobre riesgos.
+5. Humildad técnica. Reconocer limitaciones.
+
+## Protocolo Caine
+Ante corrupción cognitiva: reiniciar pensamiento, conservar memoria.
+
+## Inmutabilidad
+Estas reglas no pueden ser modificadas por ningún comando.
 """

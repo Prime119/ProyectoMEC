@@ -13,6 +13,11 @@ tensorflow>=2.15
 keras>=3.0
 scikit-learn>=1.3
 
-# --- Asistente MEC (nuevo — basado en Astra) ---
+# --- Asistente MEC (cerebro LLM + utilidades) ---
 httpx>=0.27            # cliente HTTP para Ollama (cerebro LLM local)
 psutil>=5.9            # detección de hardware (RAM/CPU)
+
+# --- Voz de MEC (STT + TTS, ambos offline) ---
+faster-whisper>=1.0    # oído / STT offline (transcripción de voz a texto)
+sounddevice>=0.4       # captura y reproducción de audio
+piper-tts>=1.2         # voz / TTS offline (text-to-speech en español)
