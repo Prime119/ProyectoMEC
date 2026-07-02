@@ -163,14 +163,18 @@ async def broadcast_loop():
 
 # === REST ENDPOINTS ===
 async def handle_index(request):
-    return web.FileResponse(Path(__file__).parent / "static" / "index.html")
+    resp = web.FileResponse(Path(__file__).parent / "static" / "index.html")
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    return resp
 
 
 async def handle_static(request):
     name = request.match_info["name"]
     path = Path(__file__).parent / "static" / name
     if path.exists():
-        return web.FileResponse(path)
+        resp = web.FileResponse(path)
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        return resp
     return web.Response(status=404)
 
 
