@@ -74,9 +74,23 @@ pip install ultralytics
 python entrenamiento/entrenar.py --modelo yolov8m.pt --epochs 100 --imgsz 640
 ```
 Al terminar exporta a ONNX automáticamente. Luego conéctalo al sistema:
+
+**Windows (CMD):**
+```cmd
+set PALANTIR_MODELO_ONNX=runs\detect\cfe_satelital\weights\best.onnx
+python falcon.py
+```
+
+**Windows (PowerShell):**
+```powershell
+$env:PALANTIR_MODELO_ONNX="runs\detect\cfe_satelital\weights\best.onnx"
+python falcon.py
+```
+
+**Linux / Mac:**
 ```bash
 export PALANTIR_MODELO_ONNX=runs/detect/cfe_satelital/weights/best.onnx
-python falcon.py        # o: python -m palantir_cfe
+python falcon.py
 ```
 
 ## 🔁 Ciclo de mejora continua
