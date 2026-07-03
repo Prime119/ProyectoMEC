@@ -123,6 +123,27 @@ justo el objetivo (postes, medidores, oficinas, almacenes en todo el territorio)
 | `exportar_onnx.py` | Convierte un `.pt` entrenado a ONNX |
 | `dataset.yaml` | Configuración del dataset (autogenerada) |
 
+## ☁️ Entrenar en Google Colab (GPU gratis) — RECOMENDADO
+
+Si no tienes GPU en tu PC, usa el notebook `FALCON_Colab.ipynb` para entrenar en la
+nube con la GPU gratuita de Google:
+
+1. Ve a [colab.research.google.com](https://colab.research.google.com)
+2. **Archivo → Subir notebook** → sube `entrenamiento/FALCON_Colab.ipynb`
+   (o **Archivo → Abrir → GitHub** y pega la URL del repo)
+3. **Entorno de ejecución → Cambiar tipo** → Acelerador **GPU (T4)** → Guardar
+4. Corre las celdas en orden (▶). El notebook:
+   - Clona el repo e instala todo
+   - Prepara hasta **2000 imágenes** auto-etiquetadas
+   - Entrena YOLOv8m con GPU (~1-2 h)
+   - Te **descarga el `cfe_satelital.onnx`** listo para conectar
+
+5. En tu PC, conecta el modelo descargado:
+   ```cmd
+   set PALANTIR_MODELO_ONNX=C:\ruta\a\cfe_satelital.onnx
+   python falcon.py
+   ```
+
 ## ⚠️ Expectativas honestas
 
 - El auto-etiquetado te da un **primer modelo funcional rápido**, pero su calidad
