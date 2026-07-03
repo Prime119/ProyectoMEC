@@ -133,20 +133,37 @@ class ClienteSatelital:
         d.mkdir(parents=True, exist_ok=True)
         return d / f"{y}.jpg"
 
-    def _descargar_tesela(self, x: int, y: int, z: int) -> Optional[bytes]:
-        """Descarga una tesela (con cache). Devuelve los bytes de la imagen."""
+    def _descargar_tesela(self, x: int, y: int, z: int, reintentos: int = 3) -> Optional[bytes]:
+        """
+        Descarga una tesela (con cache), con reintentos y espera creciente.
+        Si el proveedor actual falla, prueba con los demás proveedores como respaldo.
+        Así una imagen no queda incompleta por un tropiezo puntual del servidor.
+        """
         ruta = self._ruta_cache(x, y, z)
         if ruta.exists():
             return ruta.read_bytes()
         try:
             import httpx
-            headers = {"User-Agent": "PalantirCFE/1.0 (infraestructura CFE)"}
-            r = httpx.get(self._url_tesela(x, y, z), headers=headers, timeout=15.0)
-            if r.status_code == 200:
-                ruta.write_bytes(r.content)
-                return r.content
-        except Exception as e:
-            print(f"[Satélite] Error descargando tesela {z}/{x}/{y}: {e}")
+        except ImportError:
+            return None
+        import time as _t
+        headers = {"User-Agent": "FALCON-CFE/1.0 (infraestructura CFE)"}
+        # Orden de proveedores: primero el elegido, luego los demás como respaldo
+        proveedores = [self.proveedor["url"]] + [
+            p["url"] for k, p in PROVEEDORES.items() if k != self.proveedor_id
+        ]
+        for intento in range(reintentos):
+            for plantilla in proveedores:
+                try:
+                    url = plantilla.format(x=x, y=y, z=z)
+                    r = httpx.get(url, headers=headers, timeout=15.0 + intento * 10)
+                    if r.status_code == 200 and r.content:
+                        ruta.write_bytes(r.content)
+                        return r.content
+                except Exception:
+                    pass
+            _t.sleep(1 + intento)  # espera creciente antes de reintentar
+        print(f"[Satélite] No se pudo descargar la tesela {z}/{x}/{y} tras {reintentos} intentos")
         return None
 
     def obtener_area(self, lon_min: float, lat_min: float,
