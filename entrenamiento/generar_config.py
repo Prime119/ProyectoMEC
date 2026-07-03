@@ -9,9 +9,11 @@ nueva al catálogo (como los postes), solo vuelves a correr este script.
 
 Uso:
     python entrenamiento/generar_config.py
+    python entrenamiento/generar_config.py --ruta /content/drive/MyDrive/falcon_cfe/datos
 """
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -48,10 +50,14 @@ def generar_dataset_yaml(ruta_dataset: str = "./datos") -> str:
 
 
 def main():
-    contenido = generar_dataset_yaml()
+    ap = argparse.ArgumentParser(description="Genera dataset.yaml para YOLO")
+    ap.add_argument("--ruta", default="./datos",
+                    help="Ruta raíz del dataset (usa la de Drive si entrenas en Colab)")
+    args = ap.parse_args()
+    contenido = generar_dataset_yaml(args.ruta)
     salida = Path(__file__).resolve().parent / "dataset.yaml"
     salida.write_text(contenido, encoding="utf-8")
-    print(f"✅ dataset.yaml generado con {NUM_CLASES} clases en: {salida}")
+    print(f"✅ dataset.yaml generado con {NUM_CLASES} clases (ruta={args.ruta}) en: {salida}")
     print("\nClases:")
     for i, cid in enumerate(CLASES_ORDENADAS):
         print(f"  {i:2d}  {cid:20s}  {CATALOGO[cid].nombre}")
