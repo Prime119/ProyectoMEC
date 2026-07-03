@@ -31,60 +31,63 @@ Para detección de objetos en imágenes satelitales, la mejor opción práctica 
   **Muy recomendado** para activos chicos en imágenes grandes.
 - **DOTA / DIOR pretrained:** datasets de teledetección; puedes hacer transfer learning.
 
-## 📋 Flujo completo (5 pasos)
+## ⭐ El truco clave: AUTO-ETIQUETADO desde OpenStreetMap
 
-### Paso 1 — Generar la configuración del dataset
+Etiquetar miles de imágenes a mano es lo más caro de un proyecto de visión. Aquí lo
+evitamos: **ya tenemos las coordenadas reales** de la infraestructura en OSM y en la
+base de datos de CFE. El script `preparar_dataset.py` descarga la imagen satelital de
+cada zona y **genera las etiquetas YOLO automáticamente** proyectando esas coordenadas
+sobre la imagen. Esto se llama *supervisión débil* y te da un primer dataset funcional
+en minutos, sin dibujar una sola caja.
+
+## 📋 Flujo completo (4 pasos)
+
+### Paso 1 — Generar dataset auto-etiquetado (OSM + satélite)
+```bash
+pip install pillow httpx
+python entrenamiento/preparar_dataset.py --zoom 18 --radio 200 --max-imagenes 400
+```
+Descarga imágenes de 10 ciudades del Noroeste y crea automáticamente:
+```
+datos/
+├── images/{train,val,test}/   imágenes satelitales
+└── labels/{train,val,test}/   etiquetas YOLO (clase cx cy w h)
+```
+Cada etiqueta sale de proyectar la lat/lon real del activo sobre la imagen.
+
+### Paso 2 — Generar la configuración del dataset
 ```bash
 python entrenamiento/generar_config.py
 ```
 Crea `dataset.yaml` con las 24 clases (sincronizado con el catálogo).
 
-### Paso 2 — Descargar imágenes satelitales base
-```bash
-pip install pillow httpx
-python entrenamiento/descargar_imagenes.py --zoom 18 --radio 400
-```
-Descarga recortes de las ubicaciones conocidas de CFE a `datos/raw/`.
-Cada imagen trae su archivo `.txt` con la georreferencia (para reconvertir cajas
-a coordenadas después).
+### Paso 3 — (Opcional pero recomendado) Revisar etiquetas
+Las etiquetas automáticas son **aproximadas** (dependen de la precisión de OSM y del
+tamaño estimado por clase). Para subir la calidad, abre `datos/` en
+[Roboflow](https://roboflow.com), [CVAT](https://cvat.ai) o LabelImg y **corrige/afina**
+las cajas. Con revisar unos cientos ya mejora bastante. Puedes entrenar sin este paso
+para un primer modelo.
 
-### Paso 3 — Etiquetar (bounding boxes)
-Sube las imágenes a una herramienta de etiquetado y dibuja las cajas con las 24
-clases. Herramientas recomendadas:
-- **[Roboflow](https://roboflow.com)** — la más fácil, exporta directo a formato YOLO
-- **[CVAT](https://cvat.ai)** — potente, open source
-- **LabelImg** — sencillo, local
-
-Exporta en **formato YOLO** y organiza así:
-```
-datos/
-├── images/
-│   ├── train/   (70% de las imágenes)
-│   ├── val/     (20%)
-│   └── test/    (10%)
-└── labels/
-    ├── train/   (un .txt por imagen: clase cx cy w h normalizados)
-    ├── val/
-    └── test/
-```
-
-> 💡 **Consejo:** empieza con las clases más fáciles y numerosas (subestaciones,
-> torres grandes, plantas solares, aerogeneradores). Necesitas ~100-300 ejemplos
-> por clase para resultados decentes; más para las clases difíciles (medidores, cajeros).
-
-### Paso 4 — Entrenar
+### Paso 4 — Entrenar y conectar
 ```bash
 pip install ultralytics
 python entrenamiento/entrenar.py --modelo yolov8m.pt --epochs 100 --imgsz 640
 ```
-Al terminar, exporta automáticamente a ONNX. Usa `--device cpu` si no tienes GPU.
-
-### Paso 5 — Conectar al dashboard
+Al terminar exporta a ONNX automáticamente. Luego conéctalo al sistema:
 ```bash
 export PALANTIR_MODELO_ONNX=runs/detect/cfe_satelital/weights/best.onnx
-python -m palantir_cfe
+python falcon.py        # o: python -m palantir_cfe
 ```
-Abre la pestaña 🛰️ SATÉLITE — ahora usa tu modelo real.
+
+## 🔁 Ciclo de mejora continua
+
+1. Entrena un primer modelo con las etiquetas automáticas de OSM.
+2. Corre el modelo sobre zonas donde OSM **no** tiene datos → detecta activos nuevos.
+3. Revisa/corrige esas detecciones y agrégalas al dataset.
+4. Reentrena. Cada vuelta el modelo detecta mejor lo que OSM no tenía.
+
+Así el modelo termina cubriendo lo que ni OSM ni la base de datos tenían — que era
+justo el objetivo (postes, medidores, oficinas, almacenes en todo el territorio).
 
 ## 🛰️ Consejos para imágenes satelitales
 
@@ -99,8 +102,21 @@ Abre la pestaña 🛰️ SATÉLITE — ahora usa tu modelo real.
 
 | Archivo | Función |
 |---------|---------|
+| **`preparar_dataset.py`** | **Auto-etiqueta el dataset desde OSM + satélite (paso 1)** |
 | `generar_config.py` | Genera `dataset.yaml` desde el catálogo (24 clases) |
-| `descargar_imagenes.py` | Descarga recortes satelitales de ubicaciones CFE |
+| `descargar_imagenes.py` | (Alternativa) descarga recortes sin etiquetar |
 | `entrenar.py` | Entrena YOLOv8/v11 y exporta a ONNX |
 | `exportar_onnx.py` | Convierte un `.pt` entrenado a ONNX |
 | `dataset.yaml` | Configuración del dataset (autogenerada) |
+
+## ⚠️ Expectativas honestas
+
+- El auto-etiquetado te da un **primer modelo funcional rápido**, pero su calidad
+  depende de qué tan bien esté mapeado OSM y de que el tamaño estimado por clase
+  sea correcto. No esperes precisión perfecta en la primera vuelta.
+- Las clases con muchos ejemplos en OSM (subestaciones, torres, aerogeneradores,
+  plantas) saldrán bien. Las que OSM casi no tiene (medidores, cajeros, oficinas,
+  almacenes) necesitarán etiquetado manual o el ciclo de mejora continua.
+- Necesitas **GPU** para entrenar en tiempo razonable (con `--device cpu` funciona
+  pero es lento). Google Colab gratis sirve para empezar.
+- Requiere **internet** (imágenes satelitales de Esri + datos de Overpass/OSM).
