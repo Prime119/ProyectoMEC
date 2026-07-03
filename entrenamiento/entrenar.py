@@ -41,6 +41,29 @@ def entrenar(modelo: str, epochs: int, imgsz: int, batch: int, nombre: str,
         print(f"❌ No existe {DATASET}. Ejecuta primero: python entrenamiento/generar_config.py")
         return
 
+    # Detectar GPU y avisar con claridad si no hay (en vez del error críptico de CUDA)
+    try:
+        import torch
+        gpu_ok = torch.cuda.is_available()
+    except Exception:
+        gpu_ok = False
+    if device in ("0", "auto", "cuda", "gpu") and not gpu_ok:
+        print("=" * 64)
+        print("⚠️  NO se detectó GPU (torch.cuda.is_available() = False).")
+        print("   El entrenamiento en CPU es demasiado lento; se cancela.")
+        print("")
+        print("   👉 En Google Colab:")
+        print("      1. Menú 'Entorno de ejecución' → 'Cambiar tipo de entorno'")
+        print("      2. Acelerador por hardware → GPU (T4) → Guardar")
+        print("      3. Reconecta y vuelve a correr las celdas (1, 2, 3, 5, 6)")
+        print("")
+        print("   Tu dataset en Drive NO se pierde. Verifica la GPU con: !nvidia-smi")
+        print("   (Si de verdad quieres entrenar en CPU, usa --device cpu)")
+        print("=" * 64)
+        return
+    if device == "auto":
+        device = "0" if gpu_ok else "cpu"
+
     # Reanudar un entrenamiento interrumpido (ej. si Colab se desconectó)
     if resume and project:
         last = Path(project) / nombre / "weights" / "last.pt"
