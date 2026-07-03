@@ -112,9 +112,13 @@ def _voltaje(tags: dict) -> int:
 
 
 
-def recolectar_activos(bbox) -> list[dict]:
+def recolectar_activos(bbox, region=None, detalle=True) -> list[dict]:
     """
     Reúne activos {lat, lon, clase} de OSM y de la base de datos dentro de un bbox.
+
+    - region: resultado ya cargado de osm.obtener_infraestructura_region() para
+      NO volver a consultar OSM en cada llamada (clave para que sea rápido).
+    - detalle: si True, hace UNA consulta de torres/postes para todo el bbox.
     """
     s, w, n, e = bbox
     activos = []
@@ -127,24 +131,27 @@ def recolectar_activos(bbox) -> list[dict]:
         if s <= sub.lat <= n and w <= sub.lon <= e:
             activos.append({"lat": sub.lat, "lon": sub.lon, "clase": "subestacion"})
 
-    # 2) OSM: subestaciones/plantas/generadores (región) + torres/postes (detalle)
-    try:
-        from palantir_web import osm
-        region = osm.obtener_infraestructura_region()
-        for sub in region.get("subestaciones", []):
-            if s <= sub["lat"] <= n and w <= sub["lon"] <= e:
-                activos.append({"lat": sub["lat"], "lon": sub["lon"], "clase": "subestacion"})
-        for g in region.get("generadores", []):
-            if s <= g["lat"] <= n and w <= g["lon"] <= e:
-                cl = "eolica" if "wind" in (g.get("fuente", "").lower()) else "solar"
-                activos.append({"lat": g["lat"], "lon": g["lon"], "clase": cl})
-        detalle = osm.obtener_torres_bbox(s, w, n, e)
-        for pt in detalle.get("puntos", []):
-            cl = _clase_osm({"power": pt.get("tipo", "tower")})
-            if cl:
-                activos.append({"lat": pt["lat"], "lon": pt["lon"], "clase": cl})
-    except Exception as ex:
-        print(f"  [OSM] no disponible para esta zona: {ex}")
+    # 2) OSM región (subestaciones + generadores) — ya cargada, solo filtramos
+    region = region or {}
+    for sub in region.get("subestaciones", []):
+        if s <= sub["lat"] <= n and w <= sub["lon"] <= e:
+            activos.append({"lat": sub["lat"], "lon": sub["lon"], "clase": "subestacion"})
+    for g in region.get("generadores", []):
+        if s <= g["lat"] <= n and w <= g["lon"] <= e:
+            cl = "eolica" if "wind" in (g.get("fuente", "").lower()) else "solar"
+            activos.append({"lat": g["lat"], "lon": g["lon"], "clase": cl})
+
+    # 3) OSM detalle (torres/postes/transformadores) — UNA consulta por zona
+    if detalle:
+        try:
+            from palantir_web import osm
+            det = osm.obtener_torres_bbox(s, w, n, e)
+            for pt in det.get("puntos", []):
+                cl = _clase_osm({"power": pt.get("tipo", "tower")})
+                if cl:
+                    activos.append({"lat": pt["lat"], "lon": pt["lon"], "clase": cl})
+        except Exception as ex:
+            print(f"  [OSM] detalle no disponible: {ex}")
 
     return activos
 
@@ -174,29 +181,43 @@ def generar_dataset(salida: Path, zoom: int, max_imagenes: int,
                 "labels/train", "labels/val", "labels/test"]:
         (salida / sub).mkdir(parents=True, exist_ok=True)
 
+    # Cargar la infraestructura de OSM UNA SOLA VEZ (cacheada en disco)
+    region = {}
+    try:
+        from palantir_web import osm
+        print("Cargando infraestructura de OpenStreetMap (una vez, puede tardar)...")
+        region = osm.obtener_infraestructura_region()
+        print(f"  OSM región: {len(region.get('subestaciones', []))} subestaciones, "
+              f"{len(region.get('generadores', []))} generadores")
+    except Exception as ex:
+        print(f"  [OSM] región no disponible: {ex}")
+
     escenas = []  # (nombre, area, etiquetas[])
     grado = radio_m / 111320.0  # paso de cuadrícula (aprox)
 
     for zona, bbox in ZONAS.items():
+        if len(escenas) >= max_imagenes:
+            break
         print(f"\n== Zona: {zona} ==")
-        activos = recolectar_activos(bbox)
+        # UNA consulta de detalle por zona; luego todo se filtra en memoria
+        activos = recolectar_activos(bbox, region=region, detalle=True)
         print(f"  {len(activos)} activos recolectados")
         if not activos:
             continue
         s, w, n, e = bbox
-        # Cuadrícula sobre la zona
         lat = s
         while lat < n and len(escenas) < max_imagenes:
             lon = w
             while lon < e and len(escenas) < max_imagenes:
                 cen_lat, cen_lon = lat + grado, lon + grado
-                # Activos cerca del centro de esta celda
                 cercanos = [a for a in activos
                             if abs(a["lat"] - cen_lat) < grado and abs(a["lon"] - cen_lon) < grado]
                 if cercanos:
-                    esc = _crear_escena(cliente, cen_lon, cen_lat, zoom, radio_m, zona, len(escenas))
+                    esc = _crear_escena(cliente, cen_lon, cen_lat, zoom, radio_m,
+                                        zona, len(escenas), activos)
                     if esc:
                         escenas.append(esc)
+                        print(f"  imagen {len(escenas)}/{max_imagenes} — {len(esc[2])} etiquetas")
                 lon += grado * 2
             lat += grado * 2
 
@@ -204,18 +225,21 @@ def generar_dataset(salida: Path, zoom: int, max_imagenes: int,
     _guardar_escenas(escenas, salida, split)
 
 
-def _crear_escena(cliente, lon, lat, zoom, radio_m, zona, idx):
-    """Descarga una imagen y genera sus etiquetas YOLO."""
+def _crear_escena(cliente, lon, lat, zoom, radio_m, zona, idx, activos):
+    """
+    Descarga una imagen y genera sus etiquetas YOLO.
+    Filtra la lista de activos YA recolectada (sin consultar OSM de nuevo).
+    """
     area = cliente.area_alrededor(lon, lat, radio_m=radio_m, zoom=zoom)
     if area.imagen is None:
         return None
     mpp = area.metros_por_pixel()
-    # Buscar TODOS los activos dentro de esta imagen (no solo el central)
-    s2, w2 = area.lat_min, area.lon_min
-    n2, e2 = area.lat_max, area.lon_max
-    activos = recolectar_activos((s2, w2, n2, e2))
     etiquetas = []
     for a in activos:
+        # Solo los activos que caen dentro de esta imagen
+        if not (area.lat_min <= a["lat"] <= area.lat_max and
+                area.lon_min <= a["lon"] <= area.lon_max):
+            continue
         idx_clase = CLASE_A_INDICE.get(a["clase"])
         if idx_clase is None:
             continue
