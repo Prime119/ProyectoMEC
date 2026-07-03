@@ -8,11 +8,11 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{
-  --bg:#070b14; --bg2:#0b1220; --panel:#0e1626; --panel2:#111c30;
-  --border:#1c2b42; --border2:#263a58;
-  --text:#7d93b0; --text-h:#e8eef7; --muted:#5a6f8f;
-  --cyan:#22d3ee; --green:#22e08a; --amber:#ffc24b; --red:#ff4d6d; --purple:#b17bff; --orange:#ff9d3c;
-  --mono:'JetBrains Mono','Consolas','SF Mono',monospace;
+  --bg:#10151c; --bg2:#151c26; --panel:#1a222d; --panel2:#1f2833;
+  --border:#28323f; --border2:#36434f;
+  --text:#93a1b0; --text-h:#dbe2ea; --muted:#68788a;
+  --cyan:#5b8fb0; --green:#5a9e78; --amber:#c2a24e; --red:#c15f5f; --purple:#897eab; --orange:#bd854f;
+  --mono:'Consolas','SF Mono','JetBrains Mono',monospace;
 }
 body{background:var(--bg);color:var(--text);font-family:'Segoe UI','Inter',system-ui,sans-serif;overflow:hidden;height:100vh;font-size:13px;}
 ::-webkit-scrollbar{width:8px;height:8px;}
@@ -21,11 +21,11 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI','Inter',syste
 ::-webkit-scrollbar-thumb:hover{background:#34506f;}
 /* TOPBAR */
 #topbar{height:50px;background:linear-gradient(90deg,#0a1220,#0e1830 60%,#0a1220);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px;box-shadow:0 2px 12px rgba(0,0,0,.4);}
-#topbar .logo{color:var(--cyan);font-size:20px;font-weight:800;letter-spacing:3px;text-shadow:0 0 16px rgba(34,211,238,.5);}
+#topbar .logo{color:var(--text-h);font-size:19px;font-weight:700;letter-spacing:3px;}
 #topbar .sub{color:var(--muted);font-size:11px;letter-spacing:.5px;border-left:1px solid var(--border2);padding-left:16px;}
 #topbar .right{margin-left:auto;display:flex;gap:22px;align-items:center;}
 .freq{color:var(--green);font-weight:700;font-size:14px;font-family:var(--mono);display:flex;align-items:center;gap:6px;}
-.freq::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:latido 2s infinite;}
+.freq::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--green);animation:latido 2.5s infinite;}
 @keyframes latido{0%,100%{opacity:1;}50%{opacity:.4;}}
 .clock{color:var(--text-h);font-family:var(--mono);font-size:13px;letter-spacing:.5px;}
 /* LAYOUT */
@@ -36,7 +36,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI','Inter',syste
 /* KPIs */
 #kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:14px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,#0c1424,#0a111e);}
 .kpi{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;position:relative;overflow:hidden;transition:.2s;}
-.kpi::before{content:'';position:absolute;top:0;left:0;width:100%;height:2px;background:var(--cyan);opacity:.7;}
+.kpi::before{content:'';position:absolute;top:0;left:0;width:100%;height:2px;background:var(--border2);}
 .kpi:hover{border-color:var(--border2);transform:translateY(-1px);}
 .kpi .label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:600;}
 .kpi .value{font-size:22px;font-weight:700;font-family:var(--mono);color:var(--green);margin-top:2px;line-height:1.1;}
@@ -78,7 +78,7 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
 #mec-input-bar{display:flex;gap:6px;}
 #mec-input{flex:1;background:var(--panel);border:1px solid var(--border2);color:var(--text-h);padding:10px 12px;border-radius:8px;font-size:12px;outline:none;transition:.15s;}
 #mec-input:focus{border-color:var(--purple);box-shadow:0 0 0 3px rgba(177,123,255,.15);}
-#mec-send{background:linear-gradient(135deg,#b17bff,#8b5cf6);color:#fff;border:none;padding:10px 18px;border-radius:8px;font-weight:700;cursor:pointer;font-size:11px;letter-spacing:.5px;transition:.15s;}
+#mec-send{background:var(--purple);color:#fff;border:none;padding:10px 18px;border-radius:8px;font-weight:700;cursor:pointer;font-size:11px;letter-spacing:.5px;transition:.15s;}
 #mec-send:hover{filter:brightness(1.15);}
 #mec-mic,#mec-voz{background:var(--panel);border:1px solid var(--border2);color:var(--purple);padding:10px 12px;border-radius:8px;cursor:pointer;font-size:15px;transition:.15s;}
 #mec-mic:hover,#mec-voz:hover{border-color:var(--purple);}
@@ -88,11 +88,11 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
 #map-search{position:absolute;top:14px;left:14px;z-index:1000;display:flex;gap:8px;}
 #map-search input{background:rgba(14,22,38,.95);border:1px solid var(--border2);color:var(--text-h);padding:10px 14px;border-radius:8px;font-size:13px;width:260px;outline:none;backdrop-filter:blur(8px);transition:.15s;}
 #map-search input:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(34,211,238,.15);}
-#map-search button{background:linear-gradient(135deg,#22d3ee,#0ea5c4);color:#04121a;border:none;padding:10px 16px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;transition:.15s;}
+#map-search button{background:var(--cyan);color:#0a1017;border:none;padding:10px 16px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;transition:.15s;}
 #map-search button:hover{filter:brightness(1.12);}
 #leyenda{position:absolute;bottom:20px;left:14px;z-index:1000;background:rgba(14,22,38,.95);border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-size:11px;line-height:1.9;backdrop-filter:blur(8px);box-shadow:0 6px 24px rgba(0,0,0,.5);}
 #leyenda b{color:var(--cyan);letter-spacing:.5px;}
-.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle;box-shadow:0 0 6px currentColor;}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle;}
 .leaflet-container{background:#05080f !important;}
 .leaflet-popup-content-wrapper{background:#0e1626;color:#c3d3e8;border:1px solid var(--border2);border-radius:10px;}
 .leaflet-popup-tip{background:#0e1626;}
@@ -164,16 +164,17 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
 var markers = {};  // id -> L.circleMarker
 var polylines = {}; // id -> L.polyline
 
-// Cargar líneas de transmisión
-fetch('/api/lineas').then(r=>r.json()).then(lineas=>{
-  lineas.forEach(l=>{
-    var color = l.es_400?'#00e676':'#00d4ff';
-    var pl = L.polyline(l.coords,{color:color,weight:l.es_400?2.5:1.5,opacity:0.5});
-    pl.bindPopup('<b>'+l.nombre+'</b><br>'+l.tension);
-    pl.addTo(map);
-    polylines[l.id] = pl;
-  });
-});
+// Paleta profesional apagada (menos neón) para los marcadores del mapa
+var COLORES = {
+  ciclo_combinado:'#bd854f', termoelectrica:'#bd6a5a', solar:'#c2a24e',
+  eolica:'#5f9bad', hidroelectrica:'#5b82ad', geotermica:'#897eab',
+  carbonifera:'#8a6f5a', nucleoelectrica:'#9a7fb0', subestacion:'#5b8fb0',
+  turbogas:'#bd854f'
+};
+var COL_FALLA='#c15f5f', COL_MANTO='#c2a24e';
+
+// (Las líneas simuladas ya no se dibujan en el mapa: se usan las líneas reales
+//  de OpenStreetMap. Sus datos siguen en la pestaña LÍNEAS para el monitoreo.)
 
 // === OPENSTREETMAP: INFRAESTRUCTURA REAL ===
 var capaOSM = L.layerGroup().addTo(map);        // subestaciones + plantas reales
@@ -183,23 +184,29 @@ var capaTorres = L.layerGroup();                // torres/postes (zoom cercano)
 fetch('/api/osm').then(r=>r.json()).then(osm=>{
   // Líneas reales de transmisión
   (osm.lineas||[]).forEach(l=>{
-    L.polyline(l.coords,{color:'#3fa9ff',weight:1.2,opacity:0.45})
-      .bindPopup('<b>'+(l.nombre||'Línea')+'</b><br>'+(l.voltaje?l.voltaje+' V':'')+'<br><span style="color:#6688aa">OpenStreetMap</span>')
+    L.polyline(l.coords,{color:'#4a6a88',weight:1.1,opacity:0.5})
+      .bindPopup('<b>'+(l.nombre||'Línea')+'</b><br>'+(l.voltaje?l.voltaje+' V':'')+'<br><span style="color:#68788a">OpenStreetMap</span>')
       .addTo(capaOSMLineas);
   });
   // Subestaciones reales
   (osm.subestaciones||[]).forEach(s=>{
-    L.circleMarker([s.lat,s.lon],{radius:4,color:'#00d4ff',weight:1.5,fillColor:'#00334d',fillOpacity:0.7})
-      .bindPopup('<b style="color:#00d4ff">⚡ '+(s.nombre||'Subestación')+'</b><br>'+(s.voltaje?s.voltaje+' V<br>':'')+(s.operador?s.operador+'<br>':'')+'<span style="color:#6688aa">OpenStreetMap</span>')
+    L.circleMarker([s.lat,s.lon],{radius:3.5,color:'#5b8fb0',weight:1.3,fillColor:'#213542',fillOpacity:0.75})
+      .bindPopup('<b style="color:#5b8fb0">⚡ '+(s.nombre||'Subestación')+'</b><br>'+(s.voltaje?s.voltaje+' V<br>':'')+(s.operador?s.operador+'<br>':'')+'<span style="color:#68788a">OpenStreetMap</span>')
       .addTo(capaOSM);
   });
   // Plantas reales
   (osm.plantas||[]).forEach(p=>{
-    L.circleMarker([p.lat,p.lon],{radius:6,color:'#ff9100',weight:2,fillColor:'#ff910066',fillOpacity:0.6})
-      .bindPopup('<b style="color:#ff9100">🏭 '+(p.nombre||'Central')+'</b><br>'+(p.fuente?p.fuente+'<br>':'')+'<span style="color:#6688aa">OpenStreetMap</span>')
+    L.circleMarker([p.lat,p.lon],{radius:5,color:'#bd854f',weight:1.5,fillColor:'#bd854f44',fillOpacity:0.5})
+      .bindPopup('<b style="color:#bd854f">🏭 '+(p.nombre||'Central')+'</b><br>'+(p.fuente?p.fuente+'<br>':'')+'<span style="color:#68788a">OpenStreetMap</span>')
       .addTo(capaOSM);
   });
-  console.log('OSM cargado:',(osm.subestaciones||[]).length,'subest,',(osm.plantas||[]).length,'plantas,',(osm.lineas||[]).length,'lineas');
+  // Instalaciones CFE no eléctricas (oficinas, almacenes) etiquetadas en OSM
+  (osm.instalaciones||[]).forEach(f=>{
+    L.circleMarker([f.lat,f.lon],{radius:4,color:'#9aa7b5',weight:1.3,fillColor:'#2a333f',fillOpacity:0.75})
+      .bindPopup('<b style="color:#9aa7b5">🏢 '+(f.nombre||'Instalación CFE')+'</b><br>'+(f.tipo||'')+'<br><span style="color:#68788a">'+(f.operador||'CFE')+' · OpenStreetMap</span>')
+      .addTo(capaOSM);
+  });
+  console.log('OSM cargado:',(osm.subestaciones||[]).length,'subest,',(osm.plantas||[]).length,'plantas,',(osm.lineas||[]).length,'lineas,',(osm.instalaciones||[]).length,'instalaciones');
 }).catch(e=>console.error('Error OSM:',e));
 
 // Torres/postes reales por área visible (solo al acercar)
@@ -217,8 +224,8 @@ function cargarTorresVisibles(){
   var url = `/api/osm/torres?s=${b.getSouth()}&w=${b.getWest()}&n=${b.getNorth()}&e=${b.getEast()}`;
   fetch(url).then(r=>r.json()).then(torres=>{
     torres.forEach(t=>{
-      var col = t.tipo==='tower'?'#5a8ab0':'#7a9a6a';
-      var rad = t.tipo==='tower'?2.5:1.8;
+      var col = t.tipo==='tower'?'#5b7a92':'#6f8a5f';
+      var rad = t.tipo==='tower'?2.3:1.7;
       L.circleMarker([t.lat,t.lon],{radius:rad,color:col,weight:1,fillColor:col,fillOpacity:0.85})
         .bindPopup(t.tipo==='tower'?'🗼 Torre':'📍 Poste')
         .addTo(capaTorres);
@@ -232,13 +239,13 @@ map.on('zoomend', cargarTorresVisibles);
 // Interconexiones CFE que cruzan a EE.UU. (siempre visibles, línea punteada naranja)
 fetch('/api/interconexiones').then(r=>r.json()).then(inter=>{
   inter.forEach(l=>{
-    L.polyline(l.coords,{color:'#ff9100',weight:2.5,opacity:0.85,dashArray:'8,6'})
-      .bindPopup('<b style="color:#ff9100">🔗 '+l.nombre+'</b><br>'+l.tension+'<br><span style="color:#8899aa">Interconexión CFE ↔ EE.UU. (CAISO/WECC)</span>')
+    L.polyline(l.coords,{color:'#bd854f',weight:2,opacity:0.8,dashArray:'7,6'})
+      .bindPopup('<b style="color:#bd854f">🔗 '+l.nombre+'</b><br>'+l.tension+'<br><span style="color:#68788a">Interconexión CFE ↔ EE.UU. (CAISO/WECC)</span>')
       .addTo(map);
     // Marcador en el punto de EE.UU.
     var pUS = l.coords[l.coords.length-1];
-    L.circleMarker(pUS,{radius:4,color:'#ff9100',weight:2,fillColor:'#ff910055',fillOpacity:0.7})
-      .bindPopup('<b style="color:#ff9100">🔗 Punto de interconexión (EE.UU.)</b><br>'+l.nombre)
+    L.circleMarker(pUS,{radius:3.5,color:'#bd854f',weight:1.5,fillColor:'#bd854f44',fillOpacity:0.6})
+      .bindPopup('<b style="color:#bd854f">🔗 Punto de interconexión (EE.UU.)</b><br>'+l.nombre)
       .addTo(map);
   });
 }).catch(e=>console.error('Error interconexiones:',e));
@@ -246,19 +253,18 @@ fetch('/api/interconexiones').then(r=>r.json()).then(inter=>{
 // Leyenda
 document.getElementById('leyenda').innerHTML = `
   <b>FALCON — INFRAESTRUCTURA CFE</b><br>
-  <span style="color:#6688aa;font-size:9px">● Monitoreo en vivo (simulado):</span><br>
-  <span class="dot" style="background:#ff9100"></span>Ciclo Combinado
-  <span class="dot" style="background:#ff5252;margin-left:6px"></span>Termo
-  <span class="dot" style="background:#ffd600;margin-left:6px"></span>Solar<br>
-  <span class="dot" style="background:#00e5ff"></span>Eólica
-  <span class="dot" style="background:#2979ff;margin-left:6px"></span>Hidro
-  <span class="dot" style="background:#aa00ff;margin-left:6px"></span>Geotérmica<br>
-  <span style="color:#6688aa;font-size:9px">● Datos reales (OpenStreetMap):</span><br>
-  <span class="dot" style="background:#00334d;border:1px solid #00d4ff"></span>Subestación
-  <span class="dot" style="background:#5a8ab0;margin-left:6px"></span>Torre/Poste (zoom +)<br>
-  <span class="dot" style="background:#3fa9ff"></span>Línea real
-  <span class="dot" style="background:#00e676;margin-left:6px"></span>Línea 400kV<br>
-  <span class="dot" style="background:#ff9100"></span>Interconexión CFE ↔ EE.UU.
+  <span style="color:#68788a;font-size:9px">Monitoreo en vivo (simulado):</span><br>
+  <span class="dot" style="background:#bd854f"></span>Ciclo Combinado
+  <span class="dot" style="background:#bd6a5a;margin-left:6px"></span>Termo
+  <span class="dot" style="background:#c2a24e;margin-left:6px"></span>Solar<br>
+  <span class="dot" style="background:#5f9bad"></span>Eólica
+  <span class="dot" style="background:#5b82ad;margin-left:6px"></span>Hidro
+  <span class="dot" style="background:#897eab;margin-left:6px"></span>Geotérmica<br>
+  <span style="color:#68788a;font-size:9px">Datos reales (OpenStreetMap):</span><br>
+  <span class="dot" style="background:#213542;border:1px solid #5b8fb0"></span>Subestación
+  <span class="dot" style="background:#5b7a92;margin-left:6px"></span>Torre/Poste (zoom +)<br>
+  <span class="dot" style="background:#4a6a88"></span>Línea real
+  <span class="dot" style="background:#bd854f;margin-left:6px"></span>Interconexión CFE↔EE.UU.
 `;
 
 // === POLLING: DATOS EN TIEMPO REAL (cada 2 seg) ===
@@ -294,10 +300,11 @@ function actualizarKPIs(r){
 
 function actualizarMapa(plantas){
   plantas.forEach(p=>{
-    var color = p.estado==='Falla'?'#ff1744':(p.estado==='Mantenimiento'||p.estado==='Arranque'?'#ffd600':p.color);
-    var radius = 6 + p.factor*8;
+    var base = COLORES[p.clase] || p.color;
+    var color = p.estado==='Falla'?COL_FALLA:(p.estado==='Mantenimiento'||p.estado==='Arranque'?COL_MANTO:base);
+    var radius = 5 + p.factor*6;
     if(!markers[p.id]){
-      var m = L.circleMarker([p.lat,p.lon],{radius:radius,color:color,weight:2,fillColor:color,fillOpacity:0.55});
+      var m = L.circleMarker([p.lat,p.lon],{radius:radius,color:color,weight:1.5,fillColor:color,fillOpacity:0.45});
       m.bindPopup(popupHTML(p));
       m.addTo(map);
       markers[p.id] = m;

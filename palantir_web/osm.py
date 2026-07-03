@@ -83,17 +83,18 @@ def obtener_infraestructura_region(refrescar: bool = False) -> dict:
     s, w, n, e = REGION_BBOX
     bbox = f"{s},{w},{n},{e}"
     query = f"""
-    [out:json][timeout:120];
+    [out:json][timeout:150];
     area["ISO3166-1"="MX"][admin_level=2]->.mx;
     (
       nwr["power"="substation"](area.mx)({bbox});
       nwr["power"="plant"](area.mx)({bbox});
       way["power"="line"](area.mx)({bbox});
+      nwr["operator"~"CFE|Comisi",i](area.mx)({bbox});
     );
     out geom;
     """
     data = _consultar_overpass(query)
-    resultado = {"subestaciones": [], "plantas": [], "lineas": []}
+    resultado = {"subestaciones": [], "plantas": [], "lineas": [], "instalaciones": []}
 
     for el in data.get("elements", []):
         tags = el.get("tags", {})
@@ -120,6 +121,14 @@ def obtener_infraestructura_region(refrescar: bool = False) -> dict:
             elif power == "plant":
                 item["fuente"] = tags.get("plant:source", tags.get("generator:source", ""))
                 resultado["plantas"].append(item)
+            elif not power:
+                # Instalación CFE no eléctrica (oficina, almacén, tienda, edificio)
+                op = tags.get("operator", "")
+                if "cfe" in op.lower() or "comisi" in op.lower():
+                    tipo = (tags.get("office") or tags.get("building") or
+                            tags.get("amenity") or tags.get("shop") or "instalación")
+                    item["tipo"] = tipo
+                    resultado["instalaciones"].append(item)
 
     cache.write_text(json.dumps(resultado, ensure_ascii=False), encoding="utf-8")
     print(f"[OSM] Región: {len(resultado['subestaciones'])} subestaciones, "
