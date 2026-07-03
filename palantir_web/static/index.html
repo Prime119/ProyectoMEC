@@ -200,6 +200,12 @@ fetch('/api/osm').then(r=>r.json()).then(osm=>{
       .bindPopup('<b style="color:#bd854f">🏭 '+(p.nombre||'Central')+'</b><br>'+(p.fuente?p.fuente+'<br>':'')+'<span style="color:#68788a">OpenStreetMap</span>')
       .addTo(capaOSM);
   });
+  // Generadores individuales (aerogeneradores, arreglos solares)
+  (osm.generadores||[]).forEach(g=>{
+    L.circleMarker([g.lat,g.lon],{radius:2.5,color:'#7a9a6a',weight:1,fillColor:'#7a9a6a',fillOpacity:0.7})
+      .bindPopup('<b style="color:#7a9a6a">🌀 Generador</b><br>'+(g.fuente||'')+'<br><span style="color:#68788a">OpenStreetMap</span>')
+      .addTo(capaOSM);
+  });
   // Instalaciones CFE no eléctricas (oficinas, almacenes) etiquetadas en OSM
   (osm.instalaciones||[]).forEach(f=>{
     L.circleMarker([f.lat,f.lon],{radius:4,color:'#9aa7b5',weight:1.3,fillColor:'#2a333f',fillOpacity:0.75})
@@ -209,32 +215,37 @@ fetch('/api/osm').then(r=>r.json()).then(osm=>{
   console.log('OSM cargado:',(osm.subestaciones||[]).length,'subest,',(osm.plantas||[]).length,'plantas,',(osm.lineas||[]).length,'lineas,',(osm.instalaciones||[]).length,'instalaciones');
 }).catch(e=>console.error('Error OSM:',e));
 
-// Torres/postes reales por área visible (solo al acercar)
-var torresCargadas = {};
-function cargarTorresVisibles(){
-  if(map.getZoom() < 12){
+// Detalle por área visible: torres, postes, transformadores y red de distribución
+var detalleCargado = {};
+function cargarDetalleVisible(){
+  if(map.getZoom() < 11){
     if(map.hasLayer(capaTorres)) map.removeLayer(capaTorres);
     return;
   }
   if(!map.hasLayer(capaTorres)) map.addLayer(capaTorres);
   var b = map.getBounds();
   var clave = [b.getSouth().toFixed(1),b.getWest().toFixed(1),b.getNorth().toFixed(1),b.getEast().toFixed(1)].join('_');
-  if(torresCargadas[clave]) return;
-  torresCargadas[clave] = true;
+  if(detalleCargado[clave]) return;
+  detalleCargado[clave] = true;
   var url = `/api/osm/torres?s=${b.getSouth()}&w=${b.getWest()}&n=${b.getNorth()}&e=${b.getEast()}`;
-  fetch(url).then(r=>r.json()).then(torres=>{
-    torres.forEach(t=>{
-      var col = t.tipo==='tower'?'#5b7a92':'#6f8a5f';
-      var rad = t.tipo==='tower'?2.3:1.7;
-      L.circleMarker([t.lat,t.lon],{radius:rad,color:col,weight:1,fillColor:col,fillOpacity:0.85})
-        .bindPopup(t.tipo==='tower'?'🗼 Torre':'📍 Poste')
-        .addTo(capaTorres);
+  fetch(url).then(r=>r.json()).then(d=>{
+    // Líneas de distribución (minor_line) y transmisión del área
+    (d.lineas||[]).forEach(l=>{
+      var col = l.tipo==='line'?'#4a6a88':'#3d5468';
+      capaTorres.addLayer(L.polyline(l.coords,{color:col,weight:1,opacity:0.5}));
     });
-    console.log('Torres/postes OSM cargados:',torres.length);
-  }).catch(e=>console.error('Error torres OSM:',e));
+    // Puntos: torres, postes, transformadores
+    (d.puntos||[]).forEach(t=>{
+      var col = t.tipo==='tower'?'#5b7a92':(t.tipo==='transformer'?'#8f7c6a':'#6f8a5f');
+      var rad = t.tipo==='tower'?2.3:1.6;
+      var etq = t.tipo==='tower'?'🗼 Torre':(t.tipo==='transformer'?'🔲 Transformador':'📍 Poste');
+      capaTorres.addLayer(L.circleMarker([t.lat,t.lon],{radius:rad,color:col,weight:1,fillColor:col,fillOpacity:0.85}).bindPopup(etq));
+    });
+    console.log('Detalle OSM:',(d.puntos||[]).length,'puntos,',(d.lineas||[]).length,'lineas');
+  }).catch(e=>console.error('Error detalle OSM:',e));
 }
-map.on('moveend', cargarTorresVisibles);
-map.on('zoomend', cargarTorresVisibles);
+map.on('moveend', cargarDetalleVisible);
+map.on('zoomend', cargarDetalleVisible);
 
 // Interconexiones CFE que cruzan a EE.UU. (siempre visibles, línea punteada naranja)
 fetch('/api/interconexiones').then(r=>r.json()).then(inter=>{

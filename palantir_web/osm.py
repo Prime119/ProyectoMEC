@@ -71,7 +71,7 @@ def obtener_infraestructura_region(refrescar: bool = False) -> dict:
     Obtiene subestaciones, plantas y líneas de toda la región (cacheado).
     Devuelve {"subestaciones": [...], "plantas": [...], "lineas": [...]}.
     """
-    cache = CACHE_DIR / "region_mx.json"
+    cache = CACHE_DIR / "region_mx2.json"
     if cache.exists() and not refrescar:
         # Cache válido por 30 días
         if time.time() - cache.stat().st_mtime < 30 * 86400:
@@ -83,18 +83,20 @@ def obtener_infraestructura_region(refrescar: bool = False) -> dict:
     s, w, n, e = REGION_BBOX
     bbox = f"{s},{w},{n},{e}"
     query = f"""
-    [out:json][timeout:150];
+    [out:json][timeout:180];
     area["ISO3166-1"="MX"][admin_level=2]->.mx;
     (
       nwr["power"="substation"](area.mx)({bbox});
       nwr["power"="plant"](area.mx)({bbox});
+      nwr["power"="generator"](area.mx)({bbox});
       way["power"="line"](area.mx)({bbox});
       nwr["operator"~"CFE|Comisi",i](area.mx)({bbox});
     );
     out geom;
     """
     data = _consultar_overpass(query)
-    resultado = {"subestaciones": [], "plantas": [], "lineas": [], "instalaciones": []}
+    resultado = {"subestaciones": [], "plantas": [], "lineas": [],
+                 "generadores": [], "instalaciones": []}
 
     for el in data.get("elements", []):
         tags = el.get("tags", {})
@@ -121,6 +123,9 @@ def obtener_infraestructura_region(refrescar: bool = False) -> dict:
             elif power == "plant":
                 item["fuente"] = tags.get("plant:source", tags.get("generator:source", ""))
                 resultado["plantas"].append(item)
+            elif power == "generator":
+                item["fuente"] = tags.get("generator:source", tags.get("generator:method", ""))
+                resultado["generadores"].append(item)
             elif not power:
                 # Instalación CFE no eléctrica (oficina, almacén, tienda, edificio)
                 op = tags.get("operator", "")
@@ -137,10 +142,12 @@ def obtener_infraestructura_region(refrescar: bool = False) -> dict:
 
 
 
-def obtener_torres_bbox(s: float, w: float, n: float, e: float) -> list[dict]:
+def obtener_torres_bbox(s: float, w: float, n: float, e: float) -> dict:
     """
-    Obtiene torres y postes eléctricos dentro de un bounding box (para zoom cercano).
-    Cacheado por zona redondeada para reutilizar consultas.
+    Obtiene el detalle de un área (para zoom cercano):
+    - Puntos: torres, postes y transformadores
+    - Líneas: red de distribución (minor_line)
+    Devuelve {"puntos": [...], "lineas": [...]}. Cacheado por zona.
     """
     # Limitar tamaño del área para no pedir demasiado (máx ~0.5° por lado)
     if (n - s) > 0.6 or (e - w) > 0.6:
@@ -149,7 +156,7 @@ def obtener_torres_bbox(s: float, w: float, n: float, e: float) -> list[dict]:
         w, e = cx - 0.3, cx + 0.3
 
     # Clave de cache redondeada a 0.1°
-    clave = f"torres_mx_{round(s,1)}_{round(w,1)}_{round(n,1)}_{round(e,1)}.json"
+    clave = f"detalle_mx_{round(s,1)}_{round(w,1)}_{round(n,1)}_{round(e,1)}.json"
     cache = CACHE_DIR / clave
     if cache.exists() and time.time() - cache.stat().st_mtime < 7 * 86400:
         try:
@@ -159,22 +166,29 @@ def obtener_torres_bbox(s: float, w: float, n: float, e: float) -> list[dict]:
 
     bbox = f"{s},{w},{n},{e}"
     query = f"""
-    [out:json][timeout:50];
-    area["ISO3166-1"="MX"][admin_level=2]->.mx;
+    [out:json][timeout:60];
     (
-      node["power"="tower"](area.mx)({bbox});
-      node["power"="pole"](area.mx)({bbox});
+      node["power"="tower"]({bbox});
+      node["power"="pole"]({bbox});
+      node["power"="transformer"]({bbox});
+      way["power"="minor_line"]({bbox});
+      way["power"="line"]({bbox});
     );
-    out;
+    out geom;
     """
-    data = _consultar_overpass(query, timeout=55)
-    torres = []
+    data = _consultar_overpass(query, timeout=65)
+    puntos, lineas = [], []
     for el in data.get("elements", []):
         tags = el.get("tags", {})
-        torres.append({
-            "lat": el.get("lat"), "lon": el.get("lon"),
-            "tipo": tags.get("power", "tower"),  # tower | pole
-        })
-    torres = [t for t in torres if t["lat"] and t["lon"]]
-    cache.write_text(json.dumps(torres, ensure_ascii=False), encoding="utf-8")
-    return torres
+        power = tags.get("power")
+        if el.get("type") == "node":
+            if el.get("lat") and el.get("lon"):
+                puntos.append({"lat": el["lat"], "lon": el["lon"], "tipo": power or "tower"})
+        elif el.get("type") == "way" and el.get("geometry"):
+            coords = [[p["lat"], p["lon"]] for p in el["geometry"]]
+            if len(coords) >= 2:
+                lineas.append({"coords": coords, "tipo": power or "minor_line",
+                               "voltaje": tags.get("voltage", "")})
+    resultado = {"puntos": puntos, "lineas": lineas}
+    cache.write_text(json.dumps(resultado, ensure_ascii=False), encoding="utf-8")
+    return resultado
