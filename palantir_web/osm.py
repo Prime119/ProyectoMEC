@@ -28,28 +28,41 @@ REGION_BBOX = (22.0, -118.5, 33.6, -104.5)
 OVERPASS_URLS = [
     "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+    "https://overpass.openstreetmap.ru/api/interpreter",
 ]
 
 CACHE_DIR = Path(__file__).resolve().parent / "cache_osm"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def _consultar_overpass(query: str, timeout: float = 90.0) -> dict:
-    """Ejecuta una consulta Overpass. Prueba varios servidores. Devuelve JSON."""
+def _consultar_overpass(query: str, timeout: float = 90.0, reintentos: int = 2) -> dict:
+    """
+    Ejecuta una consulta Overpass. Prueba varios servidores, con reintentos y
+    espera creciente si hay timeout o saturación. Devuelve JSON (o vacío si todo falla).
+    """
     try:
         import httpx
     except ImportError:
         print("[OSM] httpx no instalado. pip install httpx")
         return {"elements": []}
 
-    for url in OVERPASS_URLS:
-        try:
-            r = httpx.post(url, data={"data": query}, timeout=timeout,
-                           headers={"User-Agent": "FALCON-CFE/1.0"})
-            if r.status_code == 200:
-                return r.json()
-        except Exception as e:
-            print(f"[OSM] Error con {url}: {e}")
+    import time as _t
+    for intento in range(reintentos):
+        for url in OVERPASS_URLS:
+            try:
+                r = httpx.post(url, data={"data": query}, timeout=timeout + intento * 60,
+                               headers={"User-Agent": "FALCON-CFE/1.0"})
+                if r.status_code == 200:
+                    return r.json()
+                # 429/504 = saturado; esperar y probar el siguiente servidor
+                if r.status_code in (429, 504):
+                    _t.sleep(2)
+            except Exception as e:
+                print(f"[OSM] {url} falló (intento {intento+1}): {e}")
+        if intento < reintentos - 1:
+            _t.sleep(5)  # esperar antes de la siguiente ronda
+    print("[OSM] Todos los servidores Overpass fallaron; se omite esta consulta.")
     return {"elements": []}
 
 
