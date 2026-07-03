@@ -53,6 +53,26 @@ ZONAS = {
     "cerro_prieto":(32.36, -115.28, 32.46, -115.18),
 }
 
+
+def _zonas_plantas(margen: float = 0.025) -> dict:
+    """
+    Genera una zona (bbox) alrededor de CADA planta de generación de la base de
+    datos, para que las clases de generación (eólica, hidro, termo, ciclo, solar,
+    nuclear, carbonífera) tengan ejemplos de entrenamiento — no solo las ciudades.
+    """
+    zonas = {}
+    for p in PLANTAS_GENERACION:
+        zonas[f"planta_{p.id}"] = (p.lat - margen, p.lon - margen,
+                                   p.lat + margen, p.lon + margen)
+    return zonas
+
+
+def todas_las_zonas() -> dict:
+    """Combina las zonas de ciudades + las zonas de cada planta de generación."""
+    z = dict(ZONAS)
+    z.update(_zonas_plantas())
+    return z
+
 # Tamaño físico típico (metros) por clase, para estimar la caja en la imagen
 TAMANO_M = {
     "subestacion": 130, "termoelectrica": 300, "ciclo_combinado": 250,
@@ -195,7 +215,14 @@ def generar_dataset(salida: Path, zoom: int, max_imagenes: int,
     escenas = []  # (nombre, area, etiquetas[])
     grado = radio_m / 111320.0  # paso de cuadrícula (aprox)
 
-    for zona, bbox in ZONAS.items():
+    # Procesar PRIMERO las zonas de plantas (clases raras: eólica, hidro, etc.)
+    # y luego las ciudades (clases abundantes: subestaciones, torres).
+    zonas_planta = _zonas_plantas()
+    orden = list(zonas_planta.items()) + list(ZONAS.items())
+    # Tope por zona: evita que una sola ciudad acapare todo el presupuesto (balanceo)
+    max_por_zona = max(15, max_imagenes // 12)
+
+    for zona, bbox in orden:
         if len(escenas) >= max_imagenes:
             break
         print(f"\n== Zona: {zona} ==")
@@ -205,10 +232,11 @@ def generar_dataset(salida: Path, zoom: int, max_imagenes: int,
         if not activos:
             continue
         s, w, n, e = bbox
+        en_zona = 0
         lat = s
-        while lat < n and len(escenas) < max_imagenes:
+        while lat < n and len(escenas) < max_imagenes and en_zona < max_por_zona:
             lon = w
-            while lon < e and len(escenas) < max_imagenes:
+            while lon < e and len(escenas) < max_imagenes and en_zona < max_por_zona:
                 cen_lat, cen_lon = lat + grado, lon + grado
                 cercanos = [a for a in activos
                             if abs(a["lat"] - cen_lat) < grado and abs(a["lon"] - cen_lon) < grado]
@@ -217,6 +245,7 @@ def generar_dataset(salida: Path, zoom: int, max_imagenes: int,
                                         zona, len(escenas), activos)
                     if esc:
                         escenas.append(esc)
+                        en_zona += 1
                         print(f"  imagen {len(escenas)}/{max_imagenes} — {len(esc[2])} etiquetas")
                 lon += grado * 2
             lat += grado * 2

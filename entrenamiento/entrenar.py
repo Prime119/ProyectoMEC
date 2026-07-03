@@ -80,8 +80,10 @@ def main():
     ap = argparse.ArgumentParser(description="Entrena el detector satelital CFE")
     ap.add_argument("--modelo", default="yolov8m.pt", help="Modelo base (yolov8m.pt recomendado)")
     ap.add_argument("--epochs", type=int, default=100)
-    ap.add_argument("--imgsz", type=int, default=640)
-    ap.add_argument("--batch", type=int, default=16)
+    ap.add_argument("--imgsz", type=int, default=960,
+                    help="Resolución. 960 detecta mejor objetos chicos (torres, postes)")
+    ap.add_argument("--batch", type=int, default=-1,
+                    help="-1 = automático (ajusta al tamaño de la GPU y evita quedarse sin memoria)")
     ap.add_argument("--nombre", default="cfe_satelital")
     ap.add_argument("--device", default="0", help="'0' para GPU, 'cpu' para CPU")
     args = ap.parse_args()
