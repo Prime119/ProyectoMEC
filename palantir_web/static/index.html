@@ -95,6 +95,9 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
 #btn-capa{background:var(--panel) !important;color:var(--text-h) !important;border:1px solid var(--border2) !important;}
 /* Satelital oscurecido para mantener la estética oscura */
 .leaflet-tile-sat{filter:brightness(0.55) contrast(1.05) saturate(0.85);}
+/* Marcador de detección de IA: diamante con borde blanco (distinto de OSM) */
+.ia-diamond{width:11px;height:11px;transform:rotate(45deg);border:2px solid #fff;
+  box-shadow:0 0 5px rgba(0,0,0,.7);}
 #ia-status{position:absolute;top:60px;left:14px;z-index:1000;background:rgba(14,22,38,.95);
   border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;
   color:var(--text-h);max-width:420px;display:none;backdrop-filter:blur(6px);}
@@ -313,7 +316,9 @@ document.getElementById('leyenda').innerHTML = `
   <span class="dot" style="background:#213542;border:1px solid #5b8fb0"></span>Subestación
   <span class="dot" style="background:#5b7a92;margin-left:6px"></span>Torre/Poste (zoom +)<br>
   <span class="dot" style="background:#4a6a88"></span>Línea real
-  <span class="dot" style="background:#bd854f;margin-left:6px"></span>Interconexión CFE↔EE.UU.
+  <span class="dot" style="background:#bd854f;margin-left:6px"></span>Interconexión CFE↔EE.UU.<br>
+  <span style="color:#68788a;font-size:9px">Detección de IA (tu modelo):</span><br>
+  <span style="display:inline-block;width:9px;height:9px;background:#5b8fb0;border:2px solid #fff;transform:rotate(45deg);margin:0 8px 0 2px;"></span>◆ Diamante = detectado por IA
 `;
 
 // === POLLING: DATOS EN TIEMPO REAL (cada 2 seg) = "latido" hacia el servidor ===
@@ -521,9 +526,15 @@ function detectarIA(){
         return;
       }
       var dets = d.detecciones||[];
+      capaIA.clearLayers();  // limpia detecciones anteriores
       dets.forEach(t=>{
-        var m = L.circleMarker([t.lat,t.lon],{radius:7, color:t.color, weight:2, fillColor:t.color, fillOpacity:0.35});
-        m.bindPopup(`<b style="color:${t.color}">${t.icono} ${t.nombre}</b><br>Confianza IA: ${(t.conf*100).toFixed(0)}%<br><span style="color:#68788a">${t.lat.toFixed(5)}, ${t.lon.toFixed(5)} · ${t.fuente}</span>`);
+        // Diamante con borde blanco = detección de IA (distinto de los círculos de OSM/DB)
+        var icon = L.divIcon({
+          className:'', iconSize:[16,16], iconAnchor:[8,8],
+          html:`<div class="ia-diamond" style="background:${t.color}"></div>`
+        });
+        var m = L.marker([t.lat,t.lon],{icon:icon});
+        m.bindPopup(`<b style="color:${t.color}">${t.icono} ${t.nombre}</b><br>🤖 Detección IA · Confianza ${(t.conf*100).toFixed(0)}%<br><span style="color:#68788a">${t.lat.toFixed(5)}, ${t.lon.toFixed(5)}</span>`);
         capaIA.addLayer(m);
       });
       if(dets.length>0){
