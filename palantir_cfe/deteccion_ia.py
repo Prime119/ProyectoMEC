@@ -203,28 +203,61 @@ class DetectorONNX(DetectorBase):
             from PIL import Image
 
             img = area.imagen
-            escala_x = img.width / self.tam_entrada
-            escala_y = img.height / self.tam_entrada
-            entrada = img.resize((self.tam_entrada, self.tam_entrada))
-            arr = np.array(entrada, dtype=np.float32) / 255.0
+            S = self.tam_entrada
+            # LETTERBOX: redimensiona preservando proporción + relleno gris (igual
+            # que el entrenamiento de YOLO). Evita deformar la imagen y corregir
+            # así la posición de las detecciones.
+            w0, h0 = img.width, img.height
+            r = min(S / w0, S / h0)
+            nw, nh = int(round(w0 * r)), int(round(h0 * r))
+            dw, dh = (S - nw) // 2, (S - nh) // 2
+            lienzo = Image.new("RGB", (S, S), (114, 114, 114))
+            lienzo.paste(img.resize((nw, nh)), (dw, dh))
+
+            arr = np.array(lienzo, dtype=np.float32) / 255.0
             arr = np.transpose(arr, (2, 0, 1))[np.newaxis, ...]  # NCHW
 
             nombre_in = self._sesion.get_inputs()[0].name
             salidas = self._sesion.run(None, {nombre_in: arr})
 
-            return self._parsear_salida(salidas[0], escala_x, escala_y, area)
+            return self._parsear_salida(salidas[0], r, dw, dh, area)
         except Exception as e:
             print(f"[IA] Error en inferencia: {e}")
             return []
 
-    def _parsear_salida(self, salida, escala_x, escala_y, area) -> list[Deteccion]:
-        """Parsea la salida cruda de YOLO a detecciones georreferenciadas."""
+    @staticmethod
+    def _nms(cajas, iou_thr: float = 0.45):
+        """Non-Maximum Suppression por clase: colapsa cajas duplicadas del mismo objeto."""
         import numpy as np
-        detecciones = []
+        x1, y1, x2, y2 = cajas[:, 0], cajas[:, 1], cajas[:, 2], cajas[:, 3]
+        scores, clases = cajas[:, 4], cajas[:, 5]
+        areas = (x2 - x1) * (y2 - y1)
+        orden = scores.argsort()[::-1]
+        keep = []
+        while orden.size > 0:
+            i = orden[0]
+            keep.append(i)
+            if orden.size == 1:
+                break
+            resto = orden[1:]
+            xx1 = np.maximum(x1[i], x1[resto]); yy1 = np.maximum(y1[i], y1[resto])
+            xx2 = np.minimum(x2[i], x2[resto]); yy2 = np.minimum(y2[i], y2[resto])
+            w = np.maximum(0.0, xx2 - xx1); h = np.maximum(0.0, yy2 - yy1)
+            inter = w * h
+            iou = inter / (areas[i] + areas[resto] - inter + 1e-9)
+            # Suprimir solo cajas MUY solapadas de la MISMA clase
+            supr = (iou > iou_thr) & (clases[resto] == clases[i])
+            orden = resto[~supr]
+        return keep
+
+    def _parsear_salida(self, salida, r, dw, dh, area) -> list[Deteccion]:
+        """Parsea la salida cruda de YOLO -> deshace letterbox -> NMS -> georreferencia."""
+        import numpy as np
         pred = np.squeeze(salida)
         if pred.ndim == 2 and pred.shape[0] < pred.shape[1]:
             pred = pred.T  # (num_boxes, 4+num_clases)
 
+        cajas = []  # [x1, y1, x2, y2, conf, clase_idx] en pixeles del mosaico
         for fila in pred:
             cx, cy, w, h = fila[:4]
             scores = fila[4:4 + NUM_CLASES]
@@ -232,22 +265,34 @@ class DetectorONNX(DetectorBase):
             conf = float(scores[clase_idx])
             if conf < self.umbral:
                 continue
-            clase_id = INDICE_A_CLASE.get(clase_idx)
+            # Esquinas en el espacio de entrada del modelo (con letterbox)
+            x1i, y1i = cx - w / 2, cy - h / 2
+            x2i, y2i = cx + w / 2, cy + h / 2
+            # Deshacer letterbox -> coords reales del mosaico
+            x1 = (x1i - dw) / r; y1 = (y1i - dh) / r
+            x2 = (x2i - dw) / r; y2 = (y2i - dh) / r
+            cajas.append([x1, y1, x2, y2, conf, clase_idx])
+
+        if not cajas:
+            return []
+        cajas = np.array(cajas, dtype=np.float32)
+        keep = self._nms(cajas, iou_thr=0.45)
+
+        detecciones = []
+        mpp = area.metros_por_pixel()
+        for i in keep:
+            x1, y1, x2, y2, conf, clase_idx = cajas[i]
+            clase_id = INDICE_A_CLASE.get(int(clase_idx))
             if not clase_id:
                 continue
-            # Escalar bbox a coords del mosaico
-            x1 = (cx - w / 2) * escala_x
-            y1 = (cy - h / 2) * escala_y
-            x2 = (cx + w / 2) * escala_x
-            y2 = (cy + h / 2) * escala_y
-            px_c, py_c = (x1 + x2) / 2, (y1 + y2) / 2
-            lon, lat = area.pixel_a_lonlat(px_c, py_c)
-            tam_m = max(w * escala_x, h * escala_y) * area.metros_por_pixel()
+            px_c, py_c = (x1 + x2) / 2.0, (y1 + y2) / 2.0
+            lon, lat = area.pixel_a_lonlat(float(px_c), float(py_c))
+            tam_m = max(float(x2 - x1), float(y2 - y1)) * mpp
             detecciones.append(Deteccion(
                 clase_id=clase_id,
                 nombre_clase=get_clase(clase_id).nombre,
-                confianza=conf, lon=lon, lat=lat,
-                bbox_px=(x1, y1, x2, y2),
+                confianza=float(conf), lon=lon, lat=lat,
+                bbox_px=(float(x1), float(y1), float(x2), float(y2)),
                 tamaño_estimado_m=tam_m, fuente="ia",
             ))
         return detecciones
