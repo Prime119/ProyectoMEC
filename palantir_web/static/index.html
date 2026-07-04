@@ -92,6 +92,9 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
 #map-search button:hover{filter:brightness(1.12);}
 #btn-ia{background:var(--purple) !important;color:#fff !important;}
 #btn-ia.cargando{opacity:.6;cursor:wait;}
+#btn-capa{background:var(--panel) !important;color:var(--text-h) !important;border:1px solid var(--border2) !important;}
+/* Satelital oscurecido para mantener la estética oscura */
+.leaflet-tile-sat{filter:brightness(0.55) contrast(1.05) saturate(0.85);}
 #ia-status{position:absolute;top:60px;left:14px;z-index:1000;background:rgba(14,22,38,.95);
   border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;
   color:var(--text-h);max-width:420px;display:none;backdrop-filter:blur(6px);}
@@ -138,6 +141,7 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
       <input id="search-input" placeholder="LOCALIZAR activo CFE..." />
       <button onclick="buscar()">🔍 LOCALIZAR</button>
       <button id="btn-ia" onclick="detectarIA()" title="Detectar infraestructura con IA en el centro del mapa">🛰️ DETECTAR IA</button>
+      <button id="btn-capa" onclick="cambiarCapa()" title="Cambiar entre mapa oscuro y satelital">🗺️ SATÉLITE</button>
     </div>
     <div id="ia-status"></div>
     <div id="leyenda"></div>
@@ -175,14 +179,25 @@ var map = L.map('map',{
   center:[28.0,-110],
   zoom:6,
   minZoom:6,          // no dejar alejar más que la vista regional
-  maxZoom:18,
-  zoomControl:true,
+  maxZoom:21,         // permite acercarse mucho más (para separar puntos pegados)
+  zoomControl:false,  // lo agregamos manualmente a la derecha (abajo)
   maxBounds:[[13.0,-126.0],[38.5,-95.0]],  // permite mover hacia la frontera/EEUU
   maxBoundsViscosity:0.4
 });
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
-  attribution:'CARTO',subdomains:'abcd',maxZoom:18
-}).addTo(map);
+L.control.zoom({position:'bottomright'}).addTo(map);
+
+// Capas base: oscuro (por defecto) y satelital
+var capaOscuro = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+  attribution:'CARTO', subdomains:'abcd', maxZoom:20, maxNativeZoom:20
+});
+var capaSatelital = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{
+  attribution:'Esri', maxZoom:21, maxNativeZoom:19
+});
+// Etiquetas (nombres de calles/ciudades) para superponer sobre el satelital oscurecido
+var capaEtiquetas = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',{
+  attribution:'', subdomains:'abcd', maxZoom:20, maxNativeZoom:20
+});
+capaOscuro.addTo(map);
 
 var markers = {};  // id -> L.circleMarker
 var polylines = {}; // id -> L.polyline
@@ -447,6 +462,35 @@ function buscar(){
   }
 }
 document.getElementById('search-input').addEventListener('keydown',e=>{if(e.key==='Enter')buscar();});
+
+// === CAMBIAR CAPA: oscuro <-> satelital (oscurecido) ===
+var modoSatelital = false;
+function cambiarCapa(){
+  var btn = document.getElementById('btn-capa');
+  if(!modoSatelital){
+    map.removeLayer(capaOscuro);
+    capaSatelital.addTo(map);
+    capaEtiquetas.addTo(map);
+    // Oscurecer las teselas satelitales para mantener el estilo oscuro
+    setTimeout(()=>document.querySelectorAll('.leaflet-tile-container img').forEach(i=>{
+      if(i.src.indexOf('World_Imagery')>=0) i.classList.add('leaflet-tile-sat');
+    }),100);
+    btn.textContent='🌑 OSCURO';
+    modoSatelital = true;
+  } else {
+    map.removeLayer(capaSatelital);
+    map.removeLayer(capaEtiquetas);
+    capaOscuro.addTo(map);
+    btn.textContent='🗺️ SATÉLITE';
+    modoSatelital = false;
+  }
+}
+// Al cargar teselas nuevas en modo satelital, oscurecerlas también
+map.on('tileloadstart', function(e){
+  if(modoSatelital && e.tile && e.tile.src && e.tile.src.indexOf('World_Imagery')>=0){
+    e.tile.classList.add('leaflet-tile-sat');
+  }
+});
 
 // === DETECCIÓN CON IA (modelo entrenado) ===
 var capaIA = L.layerGroup().addTo(map);
