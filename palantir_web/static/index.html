@@ -92,6 +92,10 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
 #map-search button:hover{filter:brightness(1.12);}
 #btn-ia{background:var(--purple) !important;color:#fff !important;}
 #btn-ia.cargando{opacity:.6;cursor:wait;}
+#ia-status{position:absolute;top:60px;left:14px;z-index:1000;background:rgba(14,22,38,.95);
+  border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;
+  color:var(--text-h);max-width:420px;display:none;backdrop-filter:blur(6px);}
+#ia-status.show{display:block;}
 #leyenda{position:absolute;bottom:20px;left:14px;z-index:1000;background:rgba(14,22,38,.95);border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-size:11px;line-height:1.9;backdrop-filter:blur(8px);box-shadow:0 6px 24px rgba(0,0,0,.5);}
 #leyenda b{color:var(--cyan);letter-spacing:.5px;}
 .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle;}
@@ -120,6 +124,7 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
       <button onclick="buscar()">🔍 LOCALIZAR</button>
       <button id="btn-ia" onclick="detectarIA()" title="Detectar infraestructura con IA en el centro del mapa">🛰️ DETECTAR IA</button>
     </div>
+    <div id="ia-status"></div>
     <div id="leyenda"></div>
   </div>
   <!-- RIGHT PANEL -->
@@ -417,29 +422,38 @@ document.getElementById('search-input').addEventListener('keydown',e=>{if(e.key=
 
 // === DETECCIÓN CON IA (modelo entrenado) ===
 var capaIA = L.layerGroup().addTo(map);
+function iaStatus(html, color){
+  var el = document.getElementById('ia-status');
+  el.innerHTML = html;
+  el.style.borderColor = color || '#36434f';
+  el.classList.add('show');
+}
 function detectarIA(){
   var btn = document.getElementById('btn-ia');
   var c = map.getCenter();
   btn.classList.add('cargando'); btn.textContent='🛰️ ANALIZANDO...';
+  iaStatus('🛰️ Analizando el centro del mapa con la IA...', '#897eab');
   fetch(`/api/detectar?lat=${c.lat}&lon=${c.lng}`)
     .then(r=>r.json()).then(d=>{
       btn.classList.remove('cargando'); btn.textContent='🛰️ DETECTAR IA';
-      if(d.error){ alert('IA: '+d.error+'\\n\\nAsegúrate de haber iniciado con el modelo:\\nset PALANTIR_MODELO_ONNX=...\\npython falcon.py'); return; }
+      if(d.error){
+        iaStatus('⚠️ IA no disponible: '+d.error+'<br><span style="color:#93a1b0">Inicia con: <b>set PALANTIR_MODELO_ONNX=...</b> y luego <b>python falcon.py</b>, e instala <b>onnxruntime</b>.</span>', '#c15f5f');
+        return;
+      }
       var dets = d.detecciones||[];
-      // Dibujar cada detección como un marcador con forma de diamante
       dets.forEach(t=>{
-        var m = L.circleMarker([t.lat,t.lon],{
-          radius:7, color:t.color, weight:2, fillColor:t.color, fillOpacity:0.35
-        });
-        m.bindPopup(`<b style="color:${t.color}">${t.icono} ${t.nombre}</b><br>`+
-          `Confianza IA: ${(t.conf*100).toFixed(0)}%<br>`+
-          `<span style="color:#68788a">${t.lat.toFixed(5)}, ${t.lon.toFixed(5)} · ${t.fuente}</span>`);
+        var m = L.circleMarker([t.lat,t.lon],{radius:7, color:t.color, weight:2, fillColor:t.color, fillOpacity:0.35});
+        m.bindPopup(`<b style="color:${t.color}">${t.icono} ${t.nombre}</b><br>Confianza IA: ${(t.conf*100).toFixed(0)}%<br><span style="color:#68788a">${t.lat.toFixed(5)}, ${t.lon.toFixed(5)} · ${t.fuente}</span>`);
         capaIA.addLayer(m);
       });
+      if(dets.length>0){
+        iaStatus(`✅ Modo <b>${d.modo}</b> — <b>${dets.length}</b> detecciones dibujadas en el mapa.`, '#5a9e78');
+      } else {
+        iaStatus(`Modo <b>${d.modo}</b> — 0 detecciones aquí.<br><span style="color:#93a1b0">Acércate a una <b>subestación</b> o <b>planta</b> (marcadores cian) y vuelve a dar DETECTAR IA. Si el modo dice "SOLO CONOCIDOS", el modelo .onnx no se cargó.</span>`, '#c2a24e');
+      }
       console.log('IA ('+d.modo+'):',dets.length,'detecciones');
-      if(dets.length===0) alert('La IA no detectó nada en esta zona. Acércate a una subestación o planta y vuelve a intentar.');
     })
-    .catch(e=>{ btn.classList.remove('cargando'); btn.textContent='🛰️ DETECTAR IA'; console.error('Error IA:',e); });
+    .catch(e=>{ btn.classList.remove('cargando'); btn.textContent='🛰️ DETECTAR IA'; iaStatus('❌ Error al llamar la IA: '+e, '#c15f5f'); });
 }
 
 // === MEC CHAT ===
