@@ -157,7 +157,7 @@ class DetectorONNX(DetectorBase):
     formato estándar de YOLO: [x, y, w, h, conf, clase...].
     """
 
-    def __init__(self, modelo_path: str, umbral_confianza: float = 0.35,
+    def __init__(self, modelo_path: str, umbral_confianza: float = 0.20,
                  tam_entrada: int = 640):
         self.modelo_path = modelo_path
         self.umbral = umbral_confianza
@@ -276,7 +276,7 @@ class DetectorONNX(DetectorBase):
         if not cajas:
             return []
         cajas = np.array(cajas, dtype=np.float32)
-        keep = self._nms(cajas, iou_thr=0.45)
+        keep = self._nms(cajas, iou_thr=0.85)
 
         detecciones = []
         mpp = area.metros_por_pixel()
