@@ -42,6 +42,19 @@ try:
 except Exception as e:
     print(f"⚠️ MEC no disponible: {e}")
 
+# Detector de IA satelital (opcional) — usa el modelo ONNX si PALANTIR_MODELO_ONNX está definido
+motor_ia = None
+cliente_sat = None
+try:
+    from palantir_cfe.deteccion_ia import MotorDeteccion
+    from palantir_cfe.satelite import ClienteSatelital
+    _modelo = os.environ.get("PALANTIR_MODELO_ONNX")
+    motor_ia = MotorDeteccion(modelo_onnx=_modelo, usar_simulado=False)
+    cliente_sat = ClienteSatelital(proveedor="esri")
+    print(f"🛰️ IA satelital: {motor_ia.modo}")
+except Exception as e:
+    print(f"⚠️ IA satelital no disponible: {e}")
+
 
 # === SIMULADOR ===
 simulador = SimuladorTelemetria()
@@ -351,6 +364,40 @@ async def handle_estado(request):
     return web.json_response(ultimo_estado)
 
 
+async def handle_detectar(request):
+    """
+    Detecta infraestructura con el modelo de IA sobre el área visible.
+    Recibe el centro (lat, lon) y descarga una imagen satelital de ~500m para analizar.
+    """
+    if motor_ia is None or cliente_sat is None:
+        return web.json_response({"error": "IA no disponible", "detecciones": []})
+    try:
+        lat = float(request.query.get("lat"))
+        lon = float(request.query.get("lon"))
+    except (TypeError, ValueError):
+        return web.json_response({"error": "faltan lat/lon", "detecciones": []})
+
+    loop = asyncio.get_event_loop()
+
+    def _run():
+        area = cliente_sat.area_alrededor(lon, lat, radio_m=500, zoom=18)
+        if area.imagen is None:
+            return []
+        dets = motor_ia.analizar(area)
+        return [{
+            "clase": d.clase_id, "nombre": d.nombre_clase, "conf": round(d.confianza, 2),
+            "lat": d.lat, "lon": d.lon, "color": d.color, "icono": d.icono,
+            "fuente": d.fuente,
+        } for d in dets]
+
+    try:
+        dets = await loop.run_in_executor(None, _run)
+    except Exception as ex:
+        print(f"[IA] Error al detectar: {ex}")
+        return web.json_response({"error": str(ex), "detecciones": []})
+    return web.json_response({"modo": motor_ia.modo, "detecciones": dets})
+
+
 # === APP ===
 async def on_startup(app):
     # Primer tick para tener datos listos de inmediato
@@ -366,6 +413,7 @@ def main():
     app.router.add_get("/", handle_index)
     app.router.add_get("/ws", ws_handler)
     app.router.add_get("/api/estado", handle_estado)
+    app.router.add_get("/api/detectar", handle_detectar)
     app.router.add_get("/api/lineas", handle_lineas_coords)
     app.router.add_get("/api/torres", handle_torres)
     app.router.add_get("/api/interconexiones", handle_interconexiones)

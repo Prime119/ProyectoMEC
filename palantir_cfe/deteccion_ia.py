@@ -176,8 +176,16 @@ class DetectorONNX(DetectorBase):
             if ort.get_device() == "GPU":
                 providers.insert(0, "CUDAExecutionProvider")
             self._sesion = ort.InferenceSession(self.modelo_path, providers=providers)
+            # Auto-detectar el tamaño de entrada del modelo (ej. 640 o 960)
+            try:
+                shape = self._sesion.get_inputs()[0].shape  # [1,3,H,W]
+                h = shape[2]
+                if isinstance(h, int) and h > 0:
+                    self.tam_entrada = h
+            except Exception:
+                pass
             self._disponible = True
-            print(f"[IA] Modelo ONNX cargado: {self.modelo_path}")
+            print(f"[IA] Modelo ONNX cargado ({self.tam_entrada}px): {self.modelo_path}")
         except ImportError:
             print("[IA] onnxruntime no instalado. pip install onnxruntime")
         except Exception as e:
