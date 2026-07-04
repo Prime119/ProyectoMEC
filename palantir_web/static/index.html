@@ -462,8 +462,16 @@ function detectarIA(){
   btn.classList.add('cargando'); btn.textContent='🛰️ ANALIZANDO...';
   iaStatus('🛰️ Analizando el centro del mapa con la IA...', '#897eab');
   fetch(`/api/detectar?lat=${c.lat}&lon=${c.lng}`)
-    .then(r=>r.json()).then(d=>{
+    .then(r=>r.text()).then(txt=>{
       btn.classList.remove('cargando'); btn.textContent='🛰️ DETECTAR IA';
+      var d;
+      try { d = JSON.parse(txt); }
+      catch(err){
+        iaStatus('⚠️ Respuesta no válida del servidor:<br><code style="color:#c2a24e">'+
+          txt.slice(0,150).replace(/</g,'&lt;')+'</code>', '#c15f5f');
+        console.error('Respuesta cruda de /api/detectar:', txt);
+        return;
+      }
       if(d.error){
         iaStatus('⚠️ IA no disponible: '+d.error+'<br><span style="color:#93a1b0">Inicia con: <b>set PALANTIR_MODELO_ONNX=...</b> y luego <b>python falcon.py</b>, e instala <b>onnxruntime</b>.</span>', '#c15f5f');
         return;

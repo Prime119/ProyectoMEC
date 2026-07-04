@@ -406,18 +406,30 @@ async def handle_detectar(request):
         if area.imagen is None:
             return []
         dets = motor_ia.analizar(area)
-        return [{
-            "clase": d.clase_id, "nombre": d.nombre_clase, "conf": round(d.confianza, 2),
-            "lat": d.lat, "lon": d.lon, "color": d.color, "icono": d.icono,
-            "fuente": d.fuente,
-        } for d in dets]
+        salida = []
+        for d in dets:
+            try:
+                salida.append({
+                    "clase": str(d.clase_id), "nombre": str(d.nombre_clase),
+                    "conf": round(float(d.confianza), 2),
+                    "lat": float(d.lat), "lon": float(d.lon),
+                    "color": str(d.color), "icono": str(d.icono),
+                    "fuente": str(d.fuente),
+                })
+            except Exception:
+                continue  # ignora una detección con valores inválidos
+        return salida
 
     try:
         dets = await loop.run_in_executor(None, _run)
     except Exception as ex:
         print(f"[IA] Error al detectar: {ex}")
         return web.json_response({"error": str(ex), "detecciones": []})
-    return web.json_response({"modo": motor_ia.modo, "detecciones": dets})
+    # dumps seguro: nunca emite NaN/Infinity (JSON inválido para el navegador)
+    return web.json_response(
+        {"modo": motor_ia.modo, "detecciones": dets},
+        dumps=lambda o: json.dumps(o, ensure_ascii=False, allow_nan=False),
+    )
 
 
 # === APP ===
