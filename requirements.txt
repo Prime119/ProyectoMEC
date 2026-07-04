@@ -45,3 +45,8 @@ PyQt6-WebEngine>=6.5   # navegador embebido para el mapa Leaflet estilo OSINT
 
 # --- Palantir CFE: Versión Web (recomendada — se abre en el navegador) ---
 aiohttp>=3.9           # servidor web async + WebSocket para datos en tiempo real
+
+
+# --- Detección IA en FALCON web (para usar tu modelo entrenado) ---
+onnxruntime>=1.16      # inferencia del modelo .onnx entrenado
+# pillow ya listado arriba (imágenes satelitales)
