@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import signal
 import sys
 import threading
 import time
@@ -358,10 +359,31 @@ def responder_por_reglas(texto: str) -> str:
             "instala Ollama (ollama.com) y descarga el modelo qwen2.5:3b-instruct.")
 
 
+# Control de vida: la página manda un "latido" cada 2s vía /api/estado.
+# Si deja de llegar por >15s, asumimos que se cerró la pestaña y apagamos el servidor.
+_ultima_actividad = 0.0
+_hubo_actividad = False
+SEGUNDOS_SIN_PAGINA = 15
+
+
 async def handle_estado(request):
-    """Avanza el simulador y devuelve el estado actual (polling en tiempo real)."""
+    """Avanza el simulador y devuelve el estado actual (polling = latido de la página)."""
+    global _ultima_actividad, _hubo_actividad
+    _ultima_actividad = time.time()
+    _hubo_actividad = True
     tick_simulador()
     return web.json_response(ultimo_estado)
+
+
+async def vigilar_pagina(app):
+    """Si la página deja de mandar latidos (se cerró), detiene el servidor."""
+    global _ultima_actividad, _hubo_actividad
+    while True:
+        await asyncio.sleep(5)
+        if _hubo_actividad and (time.time() - _ultima_actividad) > SEGUNDOS_SIN_PAGINA:
+            print("\n🌐 La página se cerró (sin latidos). Deteniendo el servidor...")
+            os.kill(os.getpid(), signal.SIGINT)  # detiene run_app limpiamente
+            return
 
 
 async def handle_detectar(request):
@@ -402,6 +424,8 @@ async def handle_detectar(request):
 async def on_startup(app):
     # Primer tick para tener datos listos de inmediato
     tick_simulador()
+    # Vigilar si la página se cierra (para apagar el servidor solo)
+    asyncio.create_task(vigilar_pagina(app))
     # Abrir navegador después de 1.5 segundos
     loop = asyncio.get_event_loop()
     loop.call_later(1.5, lambda: webbrowser.open("http://localhost:8080"))

@@ -102,9 +102,24 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
 .leaflet-container{background:#05080f !important;}
 .leaflet-popup-content-wrapper{background:#0e1626;color:#c3d3e8;border:1px solid var(--border2);border-radius:10px;}
 .leaflet-popup-tip{background:#0e1626;}
+/* OVERLAY servidor detenido */
+#server-down{position:fixed;inset:0;z-index:9999;background:rgba(5,8,14,.92);
+  display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+#server-down.show{display:flex;}
+.sd-box{background:var(--panel);border:1px solid var(--red);border-radius:14px;
+  padding:32px 40px;text-align:center;max-width:440px;}
+.sd-title{color:var(--red);font-size:22px;font-weight:800;margin-bottom:12px;}
+.sd-msg{color:var(--text-h);font-size:14px;line-height:1.6;}
 </style>
 </head>
 <body>
+<!-- OVERLAY: servidor detenido -->
+<div id="server-down">
+  <div class="sd-box">
+    <div class="sd-title">🛑 Servidor detenido</div>
+    <div class="sd-msg">FALCON dejó de ejecutarse (Ctrl+C en la terminal).<br>Ya puedes cerrar esta pestaña.</div>
+  </div>
+</div>
 <!-- TOPBAR -->
 <div id="topbar">
   <span class="logo">FALCON</span>
@@ -286,19 +301,32 @@ document.getElementById('leyenda').innerHTML = `
   <span class="dot" style="background:#bd854f;margin-left:6px"></span>Interconexión CFE↔EE.UU.
 `;
 
-// === POLLING: DATOS EN TIEMPO REAL (cada 2 seg) ===
+// === POLLING: DATOS EN TIEMPO REAL (cada 2 seg) = "latido" hacia el servidor ===
+var fallosSeguidos = 0;
 function pedirEstado(){
   fetch('/api/estado').then(r=>r.json()).then(data=>{
+    fallosSeguidos = 0;
     actualizarKPIs(data.resumen);
     actualizarMapa(data.plantas);
     actualizarLineas(data.lineas);
     actualizarTabla(data.plantas);
     actualizarTablaLineas(data.lineas);
     actualizarAlertas(data.plantas, data.lineas);
-  }).catch(e=>console.error('Error al pedir estado:',e));
+  }).catch(e=>{
+    // Si el servidor se detuvo (Ctrl+C), tras varios fallos mostramos aviso
+    fallosSeguidos++;
+    if(fallosSeguidos >= 3) servidorDetenido();
+  });
 }
 pedirEstado();                 // primera carga inmediata
-setInterval(pedirEstado, 2000); // refrescar cada 2 segundos
+setInterval(pedirEstado, 2000); // refrescar cada 2 segundos (mantiene vivo el servidor)
+
+function servidorDetenido(){
+  var ov = document.getElementById('server-down');
+  if(ov.classList.contains('show')) return;
+  ov.classList.add('show');
+  try { window.close(); } catch(e){}  // funciona si la abrió el script
+}
 
 function actualizarKPIs(r){
   if(!r) return;
