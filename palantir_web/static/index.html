@@ -94,8 +94,10 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
 #btn-ia.cargando{opacity:.6;cursor:wait;}
 #btn-capa{background:var(--panel) !important;color:var(--text-h) !important;border:1px solid var(--border2) !important;}
 #btn-cfe-unused{display:none;}
-/* Marcador de instalación CFE (cuadrado verde) */
+/* Marcador de instalación CFE de OSM (cuadrado verde chico) */
 .cfe-marker{width:10px;height:10px;border:2px solid #5a9e78;background:#1a2a22;}
+/* Marcador de instalación CFE manual/Google Maps (cuadrado verde más grande y sólido) */
+.cfe-marker-manual{width:12px;height:12px;border:2px solid #6aad8a;background:#2a4a3a;border-radius:2px;}
 /* Satelital oscurecido para mantener la estética oscura */
 .leaflet-tile-sat{filter:brightness(0.55) contrast(1.05) saturate(0.85);}
 /* Marcador de detección de IA: diamante con borde blanco (distinto de OSM) */
@@ -470,6 +472,22 @@ function buscar(){
   }
 }
 document.getElementById('search-input').addEventListener('keydown',e=>{if(e.key==='Enter')buscar();});
+
+// === INSTALACIONES CFE MANUALES (de Google Maps, archivo CSV) ===
+// Se cargan al iniciar — solo cambian cuando editas datos/instalaciones_cfe.csv y reinicias
+var capaCFEManual = L.layerGroup().addTo(map);
+fetch('/api/cfe/manual').then(r=>r.json()).then(items=>{
+  items.forEach(i=>{
+    var icon = L.divIcon({className:'',iconSize:[16,16],iconAnchor:[8,8],
+      html:'<div class="cfe-marker-manual"></div>'});
+    var m = L.marker([i.lat,i.lon],{icon:icon});
+    m.bindPopup('<b style="color:#6aad8a">🏢 '+i.nombre+'</b><br>Tipo: <b>'+i.tipo+'</b>'+
+      (i.ciudad?'<br>Ciudad: '+i.ciudad:'')+
+      '<br><span style="color:#68788a">Fuente: Google Maps (manual)</span>');
+    capaCFEManual.addLayer(m);
+  });
+  if(items.length>0) console.log('Instalaciones CFE (manual/Google Maps):',items.length);
+}).catch(e=>console.error('Error cargando CSV CFE:',e));
 
 // === INSTALACIONES CFE (oficinas, almacenes, centros) — cargan automáticamente al acercar ===
 var capaCFE = L.layerGroup();  // oficinas/centros/almacenes CFE (visible zoom 13+)

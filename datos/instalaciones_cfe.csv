@@ -1,0 +1,25 @@
+lat,lon,nombre,tipo,ciudad
+# =================================================================
+# INSTALACIONES CFE — Obtenidas manualmente de Google Maps
+# =================================================================
+# Cómo agregar más:
+#   1. Abre Google Maps → busca "CFE" en la ciudad que quieras
+#   2. Clic derecho en cada punto → "Copiar coordenadas" (ej: 29.0728,-110.9600)
+#   3. Agrega una línea aquí abajo con: lat,lon,nombre,tipo,ciudad
+#   4. Guarda el archivo y reinicia FALCON (python falcon.py)
+#
+# Tipos válidos: oficina, centro_atencion, almacen, cajero, centro_capacitacion,
+#                oficina_central, oficina_regional, subestacion
+# =================================================================
+#
+# --- EJEMPLOS (reemplaza con los reales de Google Maps) ---
+29.0728,-110.9600,CFE Oficina Hermosillo Centro,oficina,Hermosillo
+29.0889,-110.9614,CFE Centro de Atención Hermosillo,centro_atencion,Hermosillo
+32.6245,-115.4523,CFE Oficina Mexicali Centro,oficina,Mexicali
+32.5149,-117.0382,CFE Oficina Tijuana,oficina,Tijuana
+31.6904,-106.4245,CFE Centro Atención Cd. Juárez,centro_atencion,Cd. Juárez
+28.6353,-106.0889,CFE Oficina Chihuahua,oficina,Chihuahua
+24.7994,-107.3938,CFE Centro Atención Culiacán,centro_atencion,Culiacán
+25.7872,-108.9856,CFE Oficina Los Mochis,oficina,Los Mochis
+23.2417,-106.4100,CFE Oficina Mazatlán,oficina,Mazatlán
+24.1426,-110.3128,CFE Oficina La Paz,oficina,La Paz

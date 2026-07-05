@@ -252,6 +252,40 @@ async def handle_buscar_cfe(request):
     return web.json_response(resultados)
 
 
+def _cargar_csv_manual() -> list[dict]:
+    """Lee el archivo CSV de instalaciones manuales (de Google Maps)."""
+    csv_path = RAIZ / "datos" / "instalaciones_cfe.csv"
+    if not csv_path.exists():
+        return []
+    items = []
+    try:
+        for linea in csv_path.read_text(encoding="utf-8").splitlines():
+            linea = linea.strip()
+            if not linea or linea.startswith("#"):
+                continue
+            partes = linea.split(",", 4)
+            if len(partes) >= 4:
+                try:
+                    items.append({
+                        "lat": float(partes[0]),
+                        "lon": float(partes[1]),
+                        "nombre": partes[2].strip(),
+                        "tipo": partes[3].strip(),
+                        "ciudad": partes[4].strip() if len(partes) > 4 else "",
+                        "fuente": "google_maps_manual",
+                    })
+                except ValueError:
+                    continue
+    except Exception as ex:
+        print(f"[CSV] Error: {ex}")
+    return items
+
+
+async def handle_cfe_manual(request):
+    """Devuelve las instalaciones CFE del archivo CSV (agregadas manualmente desde Google Maps)."""
+    return web.json_response(_cargar_csv_manual())
+
+
 # === WEBSOCKET: envía estado cada 2 seg ===
 ws_clients: set = set()
 
@@ -475,6 +509,7 @@ def main():
     app.router.add_get("/api/osm", handle_osm_region)
     app.router.add_get("/api/osm/torres", handle_osm_torres)
     app.router.add_get("/api/cfe/buscar", handle_buscar_cfe)
+    app.router.add_get("/api/cfe/manual", handle_cfe_manual)
     app.router.add_post("/api/mec", handle_mec_chat)
     app.router.add_get("/static/{name}", handle_static)
 
