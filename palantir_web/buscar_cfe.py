@@ -69,32 +69,40 @@ def buscar_instalaciones_cfe(s: float, w: float, n: float, e: float) -> list[dic
     except Exception as ex:
         print(f"[Buscar CFE] Overpass error: {ex}")
 
-    # 2. Nominatim: búsqueda por texto (como Google Maps)
+    # 2. Nominatim: búsqueda por texto (como Google Maps) — más términos para más resultados
     try:
         import httpx
-        for q in ["CFE oficina", "CFE subestacion", "CFE centro atencion"]:
+        terminos = [
+            "CFE", "Comision Federal de Electricidad",
+            "CFE oficina", "CFE centro de atencion", "CFE sucursal",
+            "subestacion electrica", "central electrica",
+        ]
+        for q in terminos:
             url = "https://nominatim.openstreetmap.org/search"
             params = {
                 "q": q, "format": "json", "limit": 50, "countrycodes": "mx",
                 "viewbox": f"{w},{n},{e},{s}", "bounded": 1,
             }
-            r = httpx.get(url, params=params, timeout=15,
-                          headers={"User-Agent": "FALCON-CFE/1.0"})
-            if r.status_code == 200:
-                for item in r.json():
-                    lat2 = float(item.get("lat", 0))
-                    lon2 = float(item.get("lon", 0))
-                    if lat2 and lon2:
-                        # Evitar duplicados cercanos
-                        if not any(abs(r2["lat"] - lat2) < 0.001 and abs(r2["lon"] - lon2) < 0.001
-                                   for r2 in resultados):
-                            resultados.append({
-                                "lat": lat2, "lon": lon2,
-                                "nombre": item.get("display_name", "CFE")[:80],
-                                "tipo": _clasificar_por_nombre(item.get("display_name", "")),
-                                "direccion": "",
-                                "fuente": "nominatim",
-                            })
+            try:
+                r = httpx.get(url, params=params, timeout=15,
+                              headers={"User-Agent": "FALCON-CFE/1.0"})
+                if r.status_code == 200:
+                    for item in r.json():
+                        lat2 = float(item.get("lat", 0))
+                        lon2 = float(item.get("lon", 0))
+                        if lat2 and lon2:
+                            # Evitar duplicados cercanos
+                            if not any(abs(r2["lat"] - lat2) < 0.0005 and abs(r2["lon"] - lon2) < 0.0005
+                                       for r2 in resultados):
+                                resultados.append({
+                                    "lat": lat2, "lon": lon2,
+                                    "nombre": item.get("display_name", "CFE")[:80],
+                                    "tipo": _clasificar_por_nombre(item.get("display_name", "")),
+                                    "direccion": "",
+                                    "fuente": "nominatim",
+                                })
+            except Exception:
+                pass
             time.sleep(1.1)  # Nominatim pide 1 req/seg
     except Exception as ex:
         print(f"[Buscar CFE] Nominatim error: {ex}")
