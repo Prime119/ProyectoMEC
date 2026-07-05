@@ -416,7 +416,7 @@ def responder_por_reglas(texto: str) -> str:
 # Si deja de llegar por >15s, asumimos que se cerró la pestaña y apagamos el servidor.
 _ultima_actividad = 0.0
 _hubo_actividad = False
-SEGUNDOS_SIN_PAGINA = 15
+SEGUNDOS_SIN_PAGINA = 120
 
 
 async def handle_estado(request):
