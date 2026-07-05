@@ -93,6 +93,9 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
 #btn-ia{background:var(--purple) !important;color:#fff !important;}
 #btn-ia.cargando{opacity:.6;cursor:wait;}
 #btn-capa{background:var(--panel) !important;color:var(--text-h) !important;border:1px solid var(--border2) !important;}
+#btn-cfe{background:#1a2a22 !important;color:#5a9e78 !important;border:1px solid #3a5a4a !important;}
+/* Marcador de instalación CFE (cuadrado verde) */
+.cfe-marker{width:10px;height:10px;border:2px solid #5a9e78;background:#1a2a22;}
 /* Satelital oscurecido para mantener la estética oscura */
 .leaflet-tile-sat{filter:brightness(0.55) contrast(1.05) saturate(0.85);}
 /* Marcador de detección de IA: diamante con borde blanco (distinto de OSM) */
@@ -144,6 +147,7 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
       <input id="search-input" placeholder="LOCALIZAR activo CFE..." />
       <button onclick="buscar()">🔍 LOCALIZAR</button>
       <button id="btn-ia" onclick="detectarIA()" title="Detectar infraestructura con IA en el centro del mapa">🛰️ DETECTAR IA</button>
+      <button id="btn-cfe" onclick="buscarCFE()" title="Buscar oficinas, almacenes y centros de CFE en el área visible">🏢 BUSCAR CFE</button>
       <button id="btn-capa" onclick="cambiarCapa()" title="Cambiar entre mapa oscuro y satelital">🗺️ SATÉLITE</button>
     </div>
     <div id="ia-status"></div>
@@ -467,6 +471,31 @@ function buscar(){
   }
 }
 document.getElementById('search-input').addEventListener('keydown',e=>{if(e.key==='Enter')buscar();});
+
+// === CAMBIAR CAPA: oscuro <-> satelital (oscurecido) ===
+var capaCFE = L.layerGroup().addTo(map);  // oficinas/centros/almacenes CFE
+var cfeBuscado = {};
+
+function buscarCFE(){
+  var b = map.getBounds();
+  var clave = [b.getSouth().toFixed(2),b.getWest().toFixed(2),b.getNorth().toFixed(2),b.getEast().toFixed(2)].join('_');
+  if(cfeBuscado[clave]) return;
+  cfeBuscado[clave] = true;
+  iaStatus('🏢 Buscando oficinas, almacenes y centros de CFE...', '#5a9e78');
+  fetch(`/api/cfe/buscar?s=${b.getSouth()}&w=${b.getWest()}&n=${b.getNorth()}&e=${b.getEast()}`)
+    .then(r=>r.json()).then(items=>{
+      items.forEach(i=>{
+        var icon = L.divIcon({className:'',iconSize:[14,14],iconAnchor:[7,7],
+          html:'<div class="cfe-marker"></div>'});
+        var m = L.marker([i.lat,i.lon],{icon:icon});
+        m.bindPopup('<b style="color:#5a9e78">🏢 '+i.nombre+'</b><br>Tipo: '+i.tipo+
+          (i.direccion?'<br>'+i.direccion:'')+
+          '<br><span style="color:#68788a">Fuente: '+i.fuente+'</span>');
+        capaCFE.addLayer(m);
+      });
+      iaStatus('🏢 <b>'+items.length+'</b> instalaciones CFE encontradas (oficinas, almacenes, centros).', '#5a9e78');
+    }).catch(e=>iaStatus('Error buscando CFE: '+e,'#c15f5f'));
+}
 
 // === CAMBIAR CAPA: oscuro <-> satelital (oscurecido) ===
 var modoSatelital = false;

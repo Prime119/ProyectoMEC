@@ -233,6 +233,25 @@ async def handle_osm_torres(request):
     return web.json_response(torres)
 
 
+async def handle_buscar_cfe(request):
+    """Busca TODAS las instalaciones CFE (oficinas, almacenes, centros, etc.) en el área visible."""
+    from palantir_web.buscar_cfe import buscar_instalaciones_cfe
+    try:
+        s = float(request.query.get("s"))
+        w = float(request.query.get("w"))
+        n = float(request.query.get("n"))
+        e = float(request.query.get("e"))
+    except (TypeError, ValueError):
+        return web.json_response([])
+    loop = asyncio.get_event_loop()
+    try:
+        resultados = await loop.run_in_executor(None, buscar_instalaciones_cfe, s, w, n, e)
+    except Exception as ex:
+        print(f"[CFE] Error buscar: {ex}")
+        resultados = []
+    return web.json_response(resultados)
+
+
 # === WEBSOCKET: envía estado cada 2 seg ===
 ws_clients: set = set()
 
@@ -455,6 +474,7 @@ def main():
     app.router.add_get("/api/interconexiones", handle_interconexiones)
     app.router.add_get("/api/osm", handle_osm_region)
     app.router.add_get("/api/osm/torres", handle_osm_torres)
+    app.router.add_get("/api/cfe/buscar", handle_buscar_cfe)
     app.router.add_post("/api/mec", handle_mec_chat)
     app.router.add_get("/static/{name}", handle_static)
 
