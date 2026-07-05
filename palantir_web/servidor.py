@@ -412,11 +412,11 @@ def responder_por_reglas(texto: str) -> str:
             "instala Ollama (ollama.com) y descarga el modelo qwen2.5:3b-instruct.")
 
 
-# Control de vida: la página manda un "latido" cada 2s vía /api/estado.
-# Si deja de llegar por >15s, asumimos que se cerró la pestaña y apagamos el servidor.
+# Control de vida: DESACTIVADO (causaba cierres inesperados al cargar lento)
+# El usuario cierra el servidor manualmente con Ctrl+C.
 _ultima_actividad = 0.0
 _hubo_actividad = False
-SEGUNDOS_SIN_PAGINA = 120
+SEGUNDOS_SIN_PAGINA = 9999  # efectivamente desactivado
 
 
 async def handle_estado(request):
@@ -429,14 +429,9 @@ async def handle_estado(request):
 
 
 async def vigilar_pagina(app):
-    """Si la página deja de mandar latidos (se cerró), detiene el servidor."""
-    global _ultima_actividad, _hubo_actividad
+    """Desactivado: ya no se auto-apaga."""
     while True:
-        await asyncio.sleep(5)
-        if _hubo_actividad and (time.time() - _ultima_actividad) > SEGUNDOS_SIN_PAGINA:
-            print("\n🌐 La página se cerró (sin latidos). Deteniendo el servidor...")
-            os.kill(os.getpid(), signal.SIGINT)  # detiene run_app limpiamente
-            return
+        await asyncio.sleep(9999)
 
 
 async def handle_detectar(request):

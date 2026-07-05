@@ -27,9 +27,9 @@ REGION_BBOX = (22.0, -118.5, 33.6, -104.5)
 
 OVERPASS_URLS = [
     "https://overpass-api.de/api/interpreter",
-    "https://overpass.kumi.systems/api/interpreter",
     "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
     "https://overpass.openstreetmap.ru/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
 ]
 
 CACHE_DIR = Path(__file__).resolve().parent / "cache_osm"
