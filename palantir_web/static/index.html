@@ -223,9 +223,21 @@ var COL_FALLA='#c15f5f', COL_MANTO='#c2a24e';
 //  de OpenStreetMap. Sus datos siguen en la pestaña LÍNEAS para el monitoreo.)
 
 // === OPENSTREETMAP: INFRAESTRUCTURA REAL ===
-var capaOSM = L.layerGroup().addTo(map);        // subestaciones + plantas reales
-var capaOSMLineas = L.layerGroup().addTo(map);  // líneas reales
-var capaTorres = L.layerGroup();                // torres/postes (zoom cercano)
+var capaOSM = L.layerGroup();               // subestaciones + plantas reales (zoom>=8)
+var capaOSMLineas = L.layerGroup();          // líneas reales (zoom>=8)
+var capaTorres = L.layerGroup();             // torres/postes (zoom>=11)
+
+function actualizarCapasOSM(){
+  var z = map.getZoom();
+  if(z >= 8){
+    if(!map.hasLayer(capaOSM)) map.addLayer(capaOSM);
+    if(!map.hasLayer(capaOSMLineas)) map.addLayer(capaOSMLineas);
+  } else {
+    if(map.hasLayer(capaOSM)) map.removeLayer(capaOSM);
+    if(map.hasLayer(capaOSMLineas)) map.removeLayer(capaOSMLineas);
+  }
+}
+map.on('zoomend', actualizarCapasOSM);
 
 fetch('/api/osm').then(r=>r.json()).then(osm=>{
   // Líneas reales de transmisión
@@ -474,20 +486,33 @@ function buscar(){
 document.getElementById('search-input').addEventListener('keydown',e=>{if(e.key==='Enter')buscar();});
 
 // === INSTALACIONES CFE MANUALES (de Google Maps, archivo CSV) ===
-// Se cargan al iniciar — solo cambian cuando editas datos/instalaciones_cfe.csv y reinicias
-var capaCFEManual = L.layerGroup().addTo(map);
-fetch('/api/cfe/manual').then(r=>r.json()).then(items=>{
-  items.forEach(i=>{
-    var icon = L.divIcon({className:'',iconSize:[16,16],iconAnchor:[8,8],
-      html:'<div class="cfe-marker-manual"></div>'});
-    var m = L.marker([i.lat,i.lon],{icon:icon});
-    m.bindPopup('<b style="color:#6aad8a">🏢 '+i.nombre+'</b><br>Tipo: <b>'+i.tipo+'</b>'+
-      (i.ciudad?'<br>Ciudad: '+i.ciudad:'')+
-      '<br><span style="color:#68788a">Fuente: Google Maps (manual)</span>');
-    capaCFEManual.addLayer(m);
-  });
-  if(items.length>0) console.log('Instalaciones CFE (manual/Google Maps):',items.length);
-}).catch(e=>console.error('Error cargando CSV CFE:',e));
+// Solo visibles al acercar (zoom >= 10) para no sobrecargar la vista alejada
+var capaCFEManual = L.layerGroup();  // NO se agrega al mapa hasta zoom 10
+var cfeManualCargado = false;
+
+function cargarCFEManual(){
+  if(map.getZoom() < 10){
+    if(map.hasLayer(capaCFEManual)) map.removeLayer(capaCFEManual);
+    return;
+  }
+  if(!map.hasLayer(capaCFEManual)) map.addLayer(capaCFEManual);
+  if(cfeManualCargado) return;
+  cfeManualCargado = true;
+  fetch('/api/cfe/manual').then(r=>r.json()).then(items=>{
+    items.forEach(i=>{
+      var icon = L.divIcon({className:'',iconSize:[12,12],iconAnchor:[6,6],
+        html:'<div class="cfe-marker-manual"></div>'});
+      var m = L.marker([i.lat,i.lon],{icon:icon});
+      m.bindPopup('<b style="color:#6aad8a">🏢 '+i.nombre+'</b><br>Tipo: <b>'+i.tipo+'</b>'+
+        (i.ciudad?'<br>Ciudad: '+i.ciudad:'')+
+        '<br><span style="color:#68788a">Fuente: Google Maps (manual)</span>');
+      capaCFEManual.addLayer(m);
+    });
+    if(items.length>0) console.log('Instalaciones CFE (CSV):',items.length);
+  }).catch(e=>console.error('Error CSV CFE:',e));
+}
+map.on('zoomend', cargarCFEManual);
+cargarCFEManual();
 
 // === INSTALACIONES CFE (oficinas, almacenes, centros) — cargan automáticamente al acercar ===
 var capaCFE = L.layerGroup();  // oficinas/centros/almacenes CFE (visible zoom 13+)
