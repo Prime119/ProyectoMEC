@@ -98,6 +98,12 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
 .cfe-marker{width:10px;height:10px;border:2px solid #5a9e78;background:#1a2a22;}
 /* Marcador de instalación CFE manual/Google Maps (cuadrado verde más grande y sólido) */
 .cfe-marker-manual{width:12px;height:12px;border:2px solid #6aad8a;background:#2a4a3a;border-radius:2px;}
+/* Cluster de instalaciones CFE (número agrupado) */
+.cfe-cluster{width:28px;height:28px;background:rgba(42,74,58,.9);border:2px solid #6aad8a;
+  border-radius:50%;color:#aef0c8;font-size:11px;font-weight:700;display:flex;
+  align-items:center;justify-content:center;font-family:var(--mono);}
+.marker-cluster{background:transparent !important;}
+.marker-cluster div{background:transparent !important;}
 /* Satelital oscurecido para mantener la estética oscura */
 .leaflet-tile-sat{filter:brightness(0.55) contrast(1.05) saturate(0.85);}
 /* Marcador de detección de IA: diamante con borde blanco (distinto de OSM) */
@@ -179,6 +185,8 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
   </div>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
 <script>
 
 
@@ -190,7 +198,9 @@ var map = L.map('map',{
   maxZoom:21,         // permite acercarse mucho más (para separar puntos pegados)
   zoomControl:false,  // lo agregamos manualmente a la derecha (abajo)
   maxBounds:[[13.0,-126.0],[38.5,-95.0]],  // permite mover hacia la frontera/EEUU
-  maxBoundsViscosity:0.4
+  maxBoundsViscosity:0.4,
+  preferCanvas:true,   // RENDIMIENTO: dibuja marcadores en Canvas, no DOM (10x más rápido)
+  renderer: L.canvas({padding:0.5})
 });
 L.control.zoom({position:'bottomright'}).addTo(map);
 
@@ -498,7 +508,14 @@ document.getElementById('search-input').addEventListener('keydown',e=>{if(e.key=
 
 // === INSTALACIONES CFE MANUALES (de Google Maps, archivo CSV) ===
 // Solo visibles al acercar (zoom >= 10) para no sobrecargar la vista alejada
-var capaCFEManual = L.layerGroup();  // NO se agrega al mapa hasta zoom 10
+var capaCFEManual = L.markerClusterGroup({
+  maxClusterRadius:50, disableClusteringAtZoom:14,
+  spiderfyOnMaxZoom:true, showCoverageOnHover:false,
+  iconCreateFunction:function(cluster){
+    var n=cluster.getChildCount();
+    return L.divIcon({html:'<div class="cfe-cluster">'+n+'</div>',className:'',iconSize:[28,28]});
+  }
+});
 var cfeManualCargado = false;
 
 function cargarCFEManual(){
