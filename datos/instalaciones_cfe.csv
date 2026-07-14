@@ -1,25 +1,487 @@
 lat,lon,nombre,tipo,ciudad
-# =================================================================
-# INSTALACIONES CFE — Obtenidas manualmente de Google Maps
-# =================================================================
-# Cómo agregar más:
-#   1. Abre Google Maps → busca "CFE" en la ciudad que quieras
-#   2. Clic derecho en cada punto → "Copiar coordenadas" (ej: 29.0728,-110.9600)
-#   3. Agrega una línea aquí abajo con: lat,lon,nombre,tipo,ciudad
-#   4. Guarda el archivo y reinicia FALCON (python falcon.py)
-#
-# Tipos válidos: oficina, centro_atencion, almacen, cajero, centro_capacitacion,
-#                oficina_central, oficina_regional, subestacion
-# =================================================================
-#
-# --- EJEMPLOS (reemplaza con los reales de Google Maps) ---
-29.0728,-110.9600,CFE Oficina Hermosillo Centro,oficina,Hermosillo
-29.0889,-110.9614,CFE Centro de Atención Hermosillo,centro_atencion,Hermosillo
-32.6245,-115.4523,CFE Oficina Mexicali Centro,oficina,Mexicali
-32.5149,-117.0382,CFE Oficina Tijuana,oficina,Tijuana
-31.6904,-106.4245,CFE Centro Atención Cd. Juárez,centro_atencion,Cd. Juárez
-28.6353,-106.0889,CFE Oficina Chihuahua,oficina,Chihuahua
-24.7994,-107.3938,CFE Centro Atención Culiacán,centro_atencion,Culiacán
-25.7872,-108.9856,CFE Oficina Los Mochis,oficina,Los Mochis
-23.2417,-106.4100,CFE Oficina Mazatlán,oficina,Mazatlán
-24.1426,-110.3128,CFE Oficina La Paz,oficina,La Paz
+32.52978050476368,-117.11878502095281,CFE Costa Azul,centro_atencion,Tijuana
+32.518997359423864,-117.06147668666928,Comision Federal de Electricidad,centro_atencion,Tijuana
+32.51614237311815,-117.05306763696018,CFE Subestacion Guerrero,subestacion,Tijuana
+32.529017666422405,-117.01536763626368,CFE Zona Tula,oficina,Tijuana
+32.52804908647138,-117.01404143125578,CFE Matico,cajero,Tijuana
+32.5284810216846,-117.0138576999333,Subestacion Rio,subestacion,Tijuana
+32.5283453354552,-116.95075035096156,CFE Matico,cajero,Tijuana
+32.5138777387867,-116.88213702677801,CFE Atencion al cliente,centro_atencion,Tijuana
+32.51576929607695,-116.88393219823901,CFE Transmision,subestacion,Tijuana
+32.491266297054096,-116.945469973436,CFE Matico,cajero,Tijuana
+32.49241980465505,-116.94555949621754,CFE Centro de Servicio La Mesa,oficina,Tijuana
+32.49196077421101,-116.94559409924568,CFE Agencia La Mesa,centro_atencion,Tijuana
+32.49146398426684,-116.9449256415912,Subestacion La Mesa,subestacion,Tijuana
+32.49961999313958,-116.89057610682381,CFE Matico,cajero,Tijuana
+32.48728384051293,-116.84122084254469,Subestacion Francisco Villa,subestacion,Tijuana
+32.455116533352395,-117.05814066276518,Almacen CFE,almacen,Tijuana
+32.46470835546139,-116.93011441086244,CFE Autopago,cajero,Tijuana
+32.464476191396166,-116.93045160212422,CFE Servicio al Cliente,centro_atencion,Tijuana
+32.45600083780452,-116.87915940579778,Subestacion La Encantada,subestacion,Tijuana
+32.445301457084064,-116.87829390851341,Subestacion Metropoli,subestacion,Tijuana
+32.37198171539366,-117.06513984877085,Centro de Cobros CFE,centro_atencion,Tijuana
+32.36995081898777,-117.06355266272332,CFE Gerencia Regional de Transmision,oficina,Tijuana
+32.36853845924336,-117.06843785159376,Central Termoelectrica Presidente Juarez,termoelectrica,Tijuana
+32.36832503044075,-117.06603262621888,Subestacion Presidente Juarez,subestacion,Tijuana
+32.368137313376096,-117.06322268284514,Almacen Zona de Transmision Costa,almacen,Tijuana
+32.368840795781615,-117.0631786258151,Almacen Rosarito,almacen,Tijuana
+32.511632878656755,-117.09563887780854,Subestacion Cardenas,subestacion,Tijuana
+32.54946944408098,-116.9163343451754,Subestacion Frontera,subestacion,Tijuana
+32.52424065674748,-116.74892929611491,Subestacion La Herradura,subestacion,Tijuana
+32.47151145301921,-116.92547466084844,Subestacion Seminario,subestacion,Tijuana
+32.46022432113581,-117.02130304408868,Subestacion Tecolote,subestacion,Tijuana
+32.446980941948226,-116.98446529015555,Subestacion Panamericana Potencia,subestacion,Tijuana
+32.42712636071488,-116.94109581167359,Subestacion Duraznos,subestacion,Tijuana
+32.44701606241444,-116.83766254493992,Subestacion Los Nogales,subestacion,Tijuana
+32.451259994744284,-116.8313886925976,Subestacion Tijuana,subestacion,Tijuana
+32.472589240441565,-116.7837523924052,Subestacion Florido,subestacion,Tijuana
+32.44585878563454,-116.99190309012725,Subestacion Panamericana,subestacion,Tijuana
+32.66493488495715,-115.48949845443472,Edificio Administrativo CFE,oficina,Mexicali
+32.65589117337684,-115.50370950299094,CFE,centro_atencion,Mexicali
+32.6590132826393,-115.47939409756357,CFE Matico,cajero,Mexicali
+32.66137710653581,-115.45311341154138,CFE,centro_atencion,Mexicali
+32.6597740243,-115.43733948823076,CFE Cuauhtemoc,centro_atencion,Mexicali
+32.659520198721786,-115.43724649649998,Subestacion Aeropuerto I,subestacion,Mexicali
+32.647391396261156,-115.54129642525426,Subestacion Cachanilla,subestacion,Mexicali
+32.645290386935734,-115.4760847780806,CFE Centro,oficina,Mexicali
+32.64517411562058,-115.47752115359393,Subestacion Centro,subestacion,Mexicali
+32.624501644190296,-115.5043048670377,CFE Villafontana,centro_atencion,Mexicali
+32.62555390062111,-115.44492690059381,CFE Oficina Divisional,oficina,Mexicali
+32.62524304599166,-115.44688886134881,Subestacion Divisional,subestacion,Mexicali
+32.624566570498175,-115.41817769410129,CFE Cardenas,centro_atencion,Mexicali
+32.6246524129716,-115.41733548046847,CFE Auto Pago,cajero,Mexicali
+32.613561154367375,-115.38454123083791,CFE Matico,cajero,Mexicali
+32.6064871521348,-115.46561413323506,CFE Centro de Atencion Regional,centro_atencion,Mexicali
+32.60558920046107,-115.46121570903382,Subgerencia Regional de Generacion BC,oficina,Mexicali
+32.60575066422032,-115.45705663354632,CFE Zona Transmision,oficina,Mexicali
+32.605125049444595,-115.45893546200034,Subestacion Mexicali II,subestacion,Mexicali
+32.60393746084528,-115.47590195809919,CFE Matico,cajero,Mexicali
+32.58619080906602,-115.60317206762862,CFE Almacen Progreso,almacen,Mexicali
+32.598384740576265,-115.37130227750892,Subestacion Tecnologico,subestacion,Mexicali
+32.58926902956592,-115.39349765743212,CFE Palaco,centro_atencion,Mexicali
+32.58931450240616,-115.39343372186191,CFE Matico,cajero,Mexicali
+32.580078969554854,-115.33351376194157,Subestacion Gonzalez Ortega,subestacion,Mexicali
+32.55778784828916,-115.3660002142623,Subestacion Valle de Puebla,subestacion,Mexicali
+32.5335644060186,-115.511842954023,Subestacion Cucapah,subestacion,Mexicali
+32.64016512941359,-115.45439805643616,Subestacion Nacozari,subestacion,Mexicali
+32.634618288411296,-115.41821859669602,Subestacion SkyWorks,subestacion,Mexicali
+32.662545149051695,-115.42863284950289,Subestacion Aeropuerto II,subestacion,Mexicali
+32.59696319460522,-115.67667387901105,Subestacion La Rosita,subestacion,Mexicali
+32.63943530785841,-115.39829553447206,Subestacion Cetys,subestacion,Mexicali
+32.65428110593808,-115.35725196000533,Subestacion Mexicali Oriente,subestacion,Mexicali
+32.588141589900566,-115.42162330817844,Subestacion Sanchez Taboada,subestacion,Mexicali
+32.60148346357393,-115.4851665341133,Subestacion Xochimilco,subestacion,Lazaro Cardenas
+32.45238126184674,-115.06840151579276,Subestacion CFE,subestacion,Ejido Quintana Roo
+31.87939605337989,-116.61519209444738,Subestacion Ensenada,subestacion,Ensenada
+31.875541408772957,-116.62009633687755,CFE Superintendencia,oficina,Ensenada
+31.87551746714245,-116.62012453012308,CFE Matico,cajero,Ensenada
+31.87435578011983,-116.56035545081383,Subestacion de Transmision,subestacion,Ensenada
+31.853092415934128,-116.59260328743322,Subestacion El Gallo,subestacion,Ensenada
+31.81364198499626,-116.59586199625537,CFE Matico,cajero,Ensenada
+31.775667426332387,-116.58681799181629,CFE Central Turbo Gas CTG Cipres,turbo_gas,Ensenada
+31.776691588491648,-116.58559530814506,Subestacion Cipres,subestacion,Ensenada
+32.57107238146043,-116.635899203251,CFE Moderna,centro_atencion,Tecate
+32.571092501920155,-116.63555336498676,Subestacion La Moderna,subestacion,Tecate
+32.57379560521391,-116.6092206084697,CFE Transmision,oficina,Tecate
+32.52143470330006,-116.6931358706036,Subestacion El Bajio,subestacion,Tecate
+32.419739975017485,-115.26019926054116,CFE Generacion IV,oficina,Cerro Prieto
+32.41327560332849,-115.25243327432219,CFE Geotermica,geotermica,Cerro Prieto
+32.412372644839635,-115.24502592593448,Central Geotermica Cerro Prieto 3,geotermica,Cerro Prieto
+32.402840211709375,-115.21675079552061,Campo Geotermico Cerro Prieto I,geotermica,Cerro Prieto
+32.3993726715713,-115.23777430173014,Central Geotermica Cerro Prieto I,subestacion,Cerro Prieto
+32.39172607941443,-115.22611983320024,Central Geotermica Cerro Prieto II,subestacion,Cerro Prieto
+32.400359167055875,-115.20084488040047,Campo Geotermico Cerro Prieto II,geotermica,Cerro Prieto
+32.551579217433755,-115.07613069935479,CFE Ejido Monterrey,centro_atencion,Ejido Monterrey
+32.634839912593606,-114.8538868182374,CFE Cuervos,centro_atencion,Ciudad Morelos
+32.6351543493332,-114.85396781672532,Subestacion Cuervos,subestacion,Ciudad Morelos
+32.285294710134146,-115.10261246904564,Centro de Atencion CFE,centro_atencion,Guadalupe Victoria
+32.29381564736832,-115.11688007101989,Subestacion Victoria Potencia,subestacion,Guadalupe Victoria
+32.50165904187659,-114.83753261168565,Subestacion Ruiz Cortinez,subestacion,San Luis Rio Colorado
+24.223392019966006,-110.30967452069487,Central Termoelectrica Punta Prieta,termoelectrica,La Paz
+24.19872439887086,-110.25563301525749,Central de Combustion Interna V,termoelectrica,La Paz
+24.15589788806627,-110.31340286698637,CFE DA02A1,centro_atencion,La Paz
+24.15542372132165,-110.31292492172477,CFE Matico,cajero,La Paz
+24.155942902792706,-110.31397601986195,CFE Col. Centro,oficina,La Paz
+24.134483475417905,-110.31317105955664,CFE Zona de Transmision Sur,oficina,La Paz
+24.123636783966617,-110.31251495302895,CFE Matico,cajero,La Paz
+24.11720040447793,-110.33697908052433,CFE Matico,cajero,La Paz
+24.104768994239624,-110.3389186266911,Subestacion de Transmision La Paz,subestacion,La Paz
+24.046998268480575,-110.29367796976665,Subestacion La Paz,subestacion,La Paz
+24.036285339758564,-110.33598276897473,Almacen Zona de Transmision Sur,almacen,La Paz
+24.034898729399593,-110.32729571302224,Almacen Sat Sur Olas Altas,almacen,La Paz
+24.22668541898433,-110.29416787344437,Subestacion Erendira,subestacion,La Paz
+24.085922714084585,-110.34176439188542,Subestacion Bledales,subestacion,La Paz
+24.133861855986105,-110.31297288100971,Subestacion Transmision Sur,subestacion,La Paz
+26.001599277330218,-111.33966485438894,CFE,centro_atencion,Comondu
+25.960553858892773,-111.36873008902693,Subestacion Loreto,subestacion,Comondu
+25.4225575818849,-111.8545331881645,Subestacion Santo Domingo,subestacion,Comondu
+25.198068123551778,-111.75047897662868,Subestacion Insurgentes,subestacion,Comondu
+23.115591845323827,-109.73114848436511,Subestacion Monte Real,subestacion,Los Cabos
+23.064708239931917,-109.7039481373899,Gerencia de Transmision Regional,oficina,Los Cabos
+23.06423121409535,-109.70473449455778,Subestacion San Jose del Cabo,subestacion,Los Cabos
+23.063516902539767,-109.70459991793852,CFE San Jose del Cabo,oficina,Los Cabos
+23.064260144162628,-109.70565925935911,Almacen CFE Los Cabos,almacen,Los Cabos
+23.064291876886443,-109.70622148365756,CFE San Jose del Cabo,centro_atencion,Los Cabos
+23.063531840805908,-109.70458892172607,CFE Distribucion San Jose del Cabo,oficina,Los Cabos
+23.020193685794563,-109.8179744000722,Subestacion El Palmar,subestacion,Los Cabos
+23.011813260658492,-109.7260792894765,Subestacion Palmilla,subestacion,Los Cabos
+22.97323321233643,-110.0211911313462,CFE Central Turbo Gas Los Cabos,turbo_gas,Los Cabos
+22.97241759256905,-110.02046146186322,Subestacion CGT Los Cabos,subestacion,Los Cabos
+22.980427401407976,-109.77488772789205,Subestacion Cabo Real,subestacion,Los Cabos
+22.916771557743775,-109.96332115048476,Subestacion Cabo Falso,subestacion,Los Cabos
+22.90381676267181,-109.92067806736797,Subestacion Cabo San Lucas Dos,subestacion,Los Cabos
+22.901415341931266,-109.9289486162328,CFE Agencia La Joya,centro_atencion,Los Cabos
+22.90352040789297,-109.88472395061058,Subestacion Cabo Bello,subestacion,Los Cabos
+22.878836698461186,-109.91378344894613,CFE Oficinas El Pedregal,oficina,Los Cabos
+22.878409180683416,-109.91530778572718,CFE Distribucion Pedregal,oficina,Los Cabos
+22.878265112720868,-109.91425782755434,CFE Pedregal,oficina,Los Cabos
+
+29.181226268208064,-111.00058083693051,Subestacion Pueblito,subestacion,Hermosillo
+29.200595799057115,-111.00349646910166,Subestacion Hermosillo Lomas,subestacion,Hermosillo
+29.15573277145434,-110.97969211866847,Subestacion Tecnologico,subestacion,Hermosillo
+29.136251879859618,-110.95968085476471,Subestacion Colinas,subestacion,Hermosillo
+29.11352869821697,-110.9724199686181,Gerencia Regional de Transmision Noroeste,oficina,Hermosillo
+29.11387550548495,-110.9726297263891,CFE Auto Pago,cajero,Hermosillo
+29.11284208283443,-110.97191483046683,Subestacion Hermosillo II,subestacion,Hermosillo
+29.096135150870253,-110.99290554592152,CFE Ley Sahuaro,centro_atencion,Hermosillo
+29.09593726106869,-110.9930937383391,CFE Matico Ley Sahuaro,cajero,Hermosillo
+29.091442347420156,-110.95330487543487,Universidad Tecnologica CFE,centro_capacitacion,Hermosillo
+29.0911456036651,-110.95344553951251,Centro de Atencion CFE,centro_atencion,Hermosillo
+29.091138154022985,-110.95319973233515,CFE Auto Cobro,cajero,Hermosillo
+29.090796760611624,-110.95308778035105,CFE Gerencia Noroeste,oficina,Hermosillo
+29.089854526480735,-110.95321457596346,CFE CRPNO Generacion,oficina,Hermosillo
+29.090202643575704,-110.95328533630715,CFE Suministrador de Servicios Basicos,oficina,Hermosillo
+29.089989351846068,-110.95299431662971,Subgerencia de Produccion Termoelectrica Norpacifico,oficina,Hermosillo
+29.089756722721713,-110.95408619750691,Sindicato CFE,oficina,Hermosillo
+29.086099507482377,-110.95499667815426,Subestacion Villas del Pitic,subestacion,Hermosillo
+29.080681133679775,-111.02302677590318,CFE Zona Transmision,oficina,Hermosillo
+29.080694032415494,-111.02611072364994,Subestacion IV Luis Donaldo Colosio,subestacion,Hermosillo
+29.080923108505957,-111.02415483195816,Subestacion IV Luis Donaldo Colosio,subestacion,Hermosillo
+29.081251816203388,-110.99929614556018,CFE Zona Distribucion Hermosillo,oficina,Hermosillo
+29.082115888395172,-110.99658402008993,Subestacion Los Portales,subestacion,Hermosillo
+29.070484243839495,-110.97255505868738,CFE Centro de Atencion Regional Noroeste,centro_atencion,Hermosillo
+29.069779421880824,-110.97187588178278,CFE Centro de Atencion,centro_atencion,Hermosillo
+29.03340545585262,-110.94413817528073,CFE Matico,cajero,Hermosillo
+29.186484880294056,-111.00174091117555,Subestacion Parque Industrial Hermosillo Norte,subestacion,Hermosillo
+29.176885592038918,-110.88614939454972,Subestacion San Pedro,subestacion,Hermosillo
+29.145720072381604,-111.00419827152534,Subestacion Ladrilleras,subestacion,Hermosillo
+29.0975754781652,-111.09175382524145,Subestacion Bagotes,subestacion,Hermosillo
+29.065229253757387,-111.0913150430025,Subestacion Cuadra Las Quintas,subestacion,Hermosillo
+29.0590184272913,-110.95521443292486,Subestacion I Villa de Seris,subestacion,Hermosillo
+29.052271705053652,-110.94182120020001,Subestacion El Cereso,subestacion,Hermosillo
+29.030621720145273,-110.91927732778234,Subestacion Hermosillo VIII,subestacion,Hermosillo
+29.009757024384328,-110.95392473423092,Subestacion RGU Hermosillo,subestacion,Hermosillo
+29.03386891840832,-110.83407620175069,Subestacion Hermosillo V,subestacion,Hermosillo
+29.0345199048512,-110.83503356975932,CFE Ciclo Combinado,ciclo_combinado,Hermosillo
+29.063612878715283,-110.96086920033943,Subestacion Vado del Rio,subestacion,Hermosillo
+28.929800919305062,-110.95087524917224,Subestacion Seri,subestacion,Hermosillo
+29.11296231614093,-110.97117357900832,Centro Nacional de Control de Energia,oficina,Hermosillo
+29.422894159876936,-110.39615469792159,Subestacion Ures,subestacion,Ures
+29.423249933804644,-110.39568774149096,CFE Distribucion Noroeste,oficina,Ures
+30.629091360843265,-110.97569167040989,CFE Magdalena de Kino,oficina,Magdalena de Kino
+30.62489234422442,-110.95300023206775,Subestacion Luis Donaldo Colosio,subestacion,Magdalena de Kino
+30.54675796564476,-111.11980564933197,CFE,oficina,Santa Ana
+30.52542987986145,-111.13118122159548,Subestacion Santa Ana,subestacion,Santa Ana
+30.79488786732406,-110.84279243872042,Subestacion Imuris,subestacion,Imuris
+30.700813604996977,-111.82894861888309,Subestacion Altar,subestacion,Altar
+30.58642778688877,-111.43426469622379,Subestacion La Sangre,subestacion,Pueblo Nuevo
+30.365729279214484,-111.0985232598498,Subestacion Estacion Llano,subestacion,Estacion Llano
+30.171131377073255,-111.09582927558623,Subestacion Benjamin Hill,subestacion,Santa Ana
+27.990354590377805,-110.89555823379587,Subestacion Cereso Bco. 2,subestacion,Guaymas
+27.947669820129164,-110.9328875324264,Subestacion Unidad Guaymas,subestacion,Guaymas
+27.94648855743518,-110.93175970815874,CFE Centro de Atencion,centro_atencion,Guaymas
+27.93764955207598,-110.87472328524849,Subestacion Colinas de Fatima,subestacion,Guaymas
+27.936768169863186,-110.86284587555332,Central de Generacion Termoelectrica Guaymas,termoelectrica,Guaymas
+27.93752379115875,-110.8637445558049,Subestacion Planta Guaymas Dos,subestacion,Guaymas
+27.922288124774415,-110.89564607181953,CFE Zona Centro,oficina,Guaymas
+27.877378267671727,-110.91275898290978,Subestacion CFE,subestacion,Guaymas
+28.14430196945023,-110.69047474929329,Subestacion Sta Maria de Guaymas,subestacion,Guaymas
+28.095383871700395,-110.68934663412813,Subestacion Jose Maria Morelos y Pavon,subestacion,Guaymas
+28.334472736728003,-111.32130513514176,Subestacion El Sonorense,subestacion,Guaymas
+28.82927872733607,-111.91835857738837,Subestacion CFE Kino,subestacion,Bahia de Kino
+28.930170450993053,-111.71375501621593,Subestacion Uno,subestacion,Bahia de Kino
+28.840708233821875,-111.47527509527626,Subestacion PP,subestacion,Bahia de Kino
+27.962900221586146,-110.80468014506877,CFE Agencia Empalme,cajero,Guaymas
+27.952437601870724,-110.79693680168226,Subestacion Empalme,subestacion,Guaymas
+28.01584147831062,-110.71013736396236,Subestacion La Palma,subestacion,Guaymas
+27.997563142663292,-110.71368638975679,Subestacion San Fernando de Guaymas,subestacion,Guaymas
+27.926241941775334,-110.78276874294512,Central Ciclo Combinado Empalme II,ciclo_combinado,Guaymas
+27.926299790182696,-110.78035885720944,Central Ciclo Combinado Empalme I,ciclo_combinado,Guaymas
+27.560759972865792,-109.94818185403601,Subestacion Parque Industrial del Sol,subestacion,Esperanza
+27.516621628987757,-110.07407834899217,Subestacion Bacum,subestacion,Cajeme
+27.52014577528751,-110.02755549662338,Subestacion Providencia,subestacion,Campo Veintiocho
+27.52456300138786,-109.9261769555393,CFE Transmision Zona Sonora Sur,oficina,Ciudad Obregon
+27.523910805908013,-109.92497936124528,Subestacion de Ciudad Obregon Uno,subestacion,Ciudad Obregon
+27.494269097312483,-109.93247809181544,CFE Vicente Guerrero,centro_atencion,Ciudad Obregon
+27.492799337062177,-109.9463909863468,CFE Matico,cajero,Ciudad Obregon
+27.489878657531765,-109.97441093570465,Central Turbo Gas Obregon,turbo_gas,Ciudad Obregon
+27.489144267139004,-109.97435688046228,Subestacion Ciudad Obregon II,subestacion,Ciudad Obregon
+27.491350844563485,-109.90141877157045,Subestacion Banderas,subestacion,Ciudad Obregon
+27.482001539422832,-109.91181106756943,CFE Zona Obregon,centro_atencion,Ciudad Obregon
+27.48002467944896,-109.91912025506188,Subestacion Parque Industrial,subestacion,Ciudad Obregon
+27.479239398035823,-109.9281435145518,CFE Matico,cajero,Ciudad Obregon
+27.46506854228553,-110.17492774969992,Subestacion Progreso,subestacion,Pueblo Nuevo
+27.467799071298668,-109.9065426106685,Subestacion Ciudad Obregon III,subestacion,Ciudad Obregon
+27.457333775539418,-109.95503513032257,Subestacion Cajeme,subestacion,Ciudad Obregon
+27.428857182195053,-109.93410508186749,Subestacion Ciudad Obregon IV,subestacion,Ciudad Obregon
+27.35465740598849,-110.03582755273487,CFE,oficina,Pueblo Yaqui
+27.561847094293896,-109.95510187027189,Subestacion Esperanza,subestacion,Esperanza
+27.515429500631836,-109.9525062112533,Subestacion Nainari,subestacion,Ciudad Obregon
+27.408948337449612,-110.03485039977497,Subestacion Valle del Yaqui,subestacion,Benito Juarez
+27.356072945141715,-109.89143277647013,Subestacion Tobarito,subestacion,Marte R. Gomez
+27.263301132402024,-109.93329224643058,Subestacion Valle del Yaqui Dos,subestacion,Quetchehueca
+27.246158694733555,-110.11758006371646,Subestacion La Atanasia,subestacion,Bloque 625
+27.119694103304518,-109.76970072941323,Subestacion Villa Juarez Bco.1,subestacion,Alfonso Canes
+27.12820482962394,-109.84227792541564,CFE,centro_atencion,Villa Juarez
+27.074714168197588,-109.44801164843119,CFE Auto Pago,cajero,Navojoa
+27.07377177136379,-109.42336129317138,CFE Matico,cajero,Navojoa
+27.048240370198787,-109.43935622898987,CFE,oficina,Navojoa
+27.02486542616428,-108.9368853468219,CFE,centro_atencion,Alamos
+27.02424758562894,-109.6259369171837,Subestacion San Pedro Nuevo,subestacion,San Pedro Nuevo
+27.113816139854197,-109.4652026150485,Subestacion Navojoa Norte,subestacion,Navojoa
+27.102712544600276,-109.15471286900423,Subestacion Mina Cobre del Mayo,subestacion,Tres Marias
+27.03201493931329,-108.95517347278832,Subestacion Alamos,subestacion,Alamos
+26.864151946887908,-109.37822962319026,Subestacion Francisco I. Madero,subestacion,Francisco I. Madero
+26.725417900628216,-109.2882611483865,Subestacion Masiaca,subestacion,Jopopaco
+31.309926491499844,-109.55836908945498,CFE Oficinas de Pago,centro_atencion,Agua Prieta
+31.30919941042763,-109.5595650318087,Subestacion Ejidal,subestacion,Agua Prieta
+31.26381882238859,-109.59332543104733,Subestacion Agua Prieta Dos,subestacion,Agua Prieta
+31.26107630971742,-109.58976113240686,CFE Espejis,oficina,Agua Prieta
+31.31143588491131,-110.96023099771307,Subestacion Nogales Norte,subestacion,Nogales
+31.311614022612122,-110.94336208854823,CFE Ruiz Cortinez,centro_atencion,Nogales
+31.31187411370813,-110.94343719040039,CFE Zona Nogales,oficina,Nogales
+31.292740227152066,-110.93891080282516,CFE Centro de Atencion Virtual,centro_atencion,Nogales
+31.28559020560602,-110.94302247727629,Subestacion Nogales Sur,subestacion,Nogales
+31.27695831327005,-110.93569402027958,Subestacion San Carlos,subestacion,Nogales
+31.26033608290512,-110.97003194124518,Subestacion Nuevo Nogales II,subestacion,Nogales
+31.257602694032244,-110.97103625755996,Subestacion Nuevo Nogales,subestacion,Nogales
+31.162487574455945,-110.97132360704867,Subestacion Nogales Aeropuerto,subestacion,Nogales
+29.90696841752838,-112.69296202974061,Central de Generacion Termoelectrica Puerto Libertad,termoelectrica,Puerto Libertad
+29.95603281495198,-112.65371999128811,Subestacion Puerto Libertad,subestacion,Puerto Libertad
+31.345092168259526,-113.58783212564897,Subestacion La Cholla,subestacion,Puerto Penasco
+31.33150103164506,-113.50824262252937,Subestacion Oriente,subestacion,Puerto Penasco
+31.31121518632247,-113.52095093026567,Subestacion Puerto Penasco,subestacion,Puerto Penasco
+31.32860255485428,-113.36958422858632,Subestacion Playa Encanto,subestacion,Puerto Penasco
+31.306517105787318,-113.27058570847532,Subestacion Fotovoltaica Puerto Penasco,subestacion,Puerto Penasco
+31.30767853095207,-113.27065797476119,CFE Fotovoltaica PP,solar,Puerto Penasco
+31.31757706283033,-113.2811378079986,Parque Fotovoltaico,solar,Puerto Penasco
+31.31594952855689,-113.26097575313342,Parque Fotovoltaico II,solar,Puerto Penasco
+31.312567806194366,-113.53970627423007,CFE,centro_atencion,Puerto Penasco
+31.308985093330218,-113.29543853745528,Subestacion La Pinta,subestacion,Playa Miramar
+31.863035052328847,-112.86818673415699,Subestacion Sonoyta Norte,subestacion,Sonoyta
+31.656021886570898,-112.4140252122115,Subestacion La Nariz,subestacion,La Nariz
+31.866446538643316,-112.85205613619941,CFE Sonoyta,centro_atencion,Sonoyta
+32.3962768954712,-114.88951399104569,Subestacion Grullitas,subestacion,El Bordo
+32.29280682471959,-114.97065205937521,Subestacion La Bolsa,subestacion,Bonfil
+32.48578855146144,-114.78542648256322,Subestacion CFE,subestacion,San Luis Rio Colorado
+32.47915689170154,-114.77821290789474,Subestacion Hidalgo,subestacion,San Luis Rio Colorado
+32.46607624532409,-114.81831975848701,Subestacion Valle,subestacion,San Luis Rio Colorado
+32.461682695537085,-114.77331467209808,Subestacion CFE,subestacion,San Luis Rio Colorado
+32.43198248017215,-114.61484923991824,Subestacion CFE,subestacion,El Pinacate
+32.43587365710233,-114.71137938765757,Subestacion Parque Industrial,subestacion,San Luis Rio Colorado
+32.41384861728579,-114.80554379814764,Subestacion San Luis Rey,subestacion,San Luis Rio Colorado
+32.42057582566045,-114.71488637742816,Subestacion Ciclo Combinado,ciclo_combinado,San Luis Rio Colorado
+32.41960570750801,-114.71281424734492,Central Ciclo Combinado,oficina,San Luis Rio Colorado
+32.41851435851884,-114.71602223936709,Subestacion de Combustion Interna,subestacion,San Luis Rio Colorado
+32.42198957290451,-114.71417050371349,Central de Ciclo Combinado,ciclo_combinado,San Luis Rio Colorado
+32.473875650395335,-114.77510077780012,CFE,oficina,San Luis Rio Colorado
+32.473875650395335,-114.77510077780012,CFE Matico,cajero,San Luis Rio Colorado
+32.44775941489266,-114.76089739130164,CFE Matico,cajero,San Luis Rio Colorado
+32.201346949722826,-114.98883118017079,CFE ING. Luis B. Sanchez,centro_atencion,Las Flores
+30.37521402606256,-109.68549353112634,CFE,oficina,Nacozari
+30.340711038170937,-109.54275159973794,Subestacion Grupo Mexico,subestacion,El Ranchito
+30.326161814418896,-109.56940299327395,Subestacion 4,subestacion,El Ranchito
+
+28.836905002227546,-105.91171065637914,CFE Matico,cajero,Juan Aldama
+28.7507634302815,-106.91010208007782,CFE Distribucion Alvaro Obregon,oficina,Col. Obregon
+28.70891793363739,-106.11291917359299,CFE Revolucion,centro_atencion,Chihuahua
+28.68607234003431,-106.09208437747495,Centro de Control y Distribucion Norte,oficina,Chihuahua
+28.681374429918538,-105.99467517433364,Subestacion CFE,subestacion,Chihuahua
+28.669153747709636,-106.07813373931451,Almacen CFE,almacen,Chihuahua
+28.66642119963018,-106.09042130908078,CFE Division Norte,centro_atencion,Chihuahua
+28.6460154488931,-106.0643480641729,CFE,centro_atencion,Chihuahua
+28.641631252416666,-106.07795296692495,CFE Zona Canal,centro_atencion,Chihuahua
+28.62424873983076,-106.06886100866643,CFE,centro_atencion,Chihuahua
+28.61920727310242,-106.03082033725458,Almacen CFE,almacen,Chihuahua
+28.613008865157706,-105.99631463812025,Subestacion Transmision Avalos,subestacion,Chihuahua
+28.446326890593745,-105.92111013378464,Central Ciclo Combinado Chihuahua II,ciclo_combinado,Chihuahua
+28.44153470616102,-105.91826825192067,Central Ciclo Combinado Norte II,ciclo_combinado,Chihuahua
+28.4477371858983,-105.91801979312037,Subestacion El Encino,subestacion,El Refugio
+28.443275369594943,-105.91426330661477,Subestacion El Encino II,subestacion,El Encino
+28.267939648353085,-105.47959711691428,CFE Matico Meoqui,cajero,Pedro Meoqui
+28.419362992155012,-106.85567891809008,CFE Cuauhtemoc,centro_atencion,Cuauhtemoc
+28.411490752046937,-106.86673012457405,CFE Zona Cuauhtemoc,oficina,Cuauhtemoc
+28.405793272123802,-106.84663702808339,CFE Los Manzanos,centro_atencion,Cuauhtemoc
+28.34278297292399,-106.36848297603939,CFE Matico,cajero,Santa Isabel
+29.167512016193935,-107.04631317045504,Subestacion Distribucion Menonita,subestacion,Campo Cincuenta y Uno
+29.0364826400932,-107.42031542430803,Subestacion Quevedo,subestacion,Namiquipa
+28.9405009113855,-107.51175224603331,Subestacion RCS,subestacion,Namiquipa
+28.655572346845766,-107.03257062010894,Subestacion Distribucion campo 108,subestacion,Campo 108
+28.74232754953355,-106.15524730628549,Subestacion Carolinas,subestacion,Chihuahua
+28.729815412728346,-106.13348816362921,Subestacion CFE,subestacion,Chihuahua
+28.655743201341437,-106.12151018203993,Subestacion Americas,subestacion,Chihuahua
+28.660765833125225,-105.97243396993503,Subestacion Concordia,subestacion,Chihuahua
+28.6401872937613,-105.95055555374985,Subestacion Chuviscar,subestacion,Chihuahua
+28.612859222375537,-105.99633154245778,Subestacion Avalos,subestacion,Chihuahua
+28.599088757393844,-105.81681290335884,Subestacion Mina Santa Eulalia,subestacion,Chihuahua
+28.595719768353487,-106.10420538156674,Subestacion Chihuahua Poniente,subestacion,Chihuahua
+28.585759557990738,-106.16421944548233,Subestacion Division del Noroeste,subestacion,Chihuahua
+28.360757705998903,-106.2638510090485,Subestacion General Trias,subestacion,Chihuahua
+29.195998117030538,-107.4047947746536,CFE,centro_atencion,El Molino
+28.54857433835022,-107.48388929386448,CFE Agencia Guerrero,centro_atencion,Vicente Guerrero
+29.356986383371947,-107.74126816333334,CFE Gomez Farias,centro_atencion,Valentin Gomez Farias
+29.19243111809146,-108.137968011217,CFE,centro_atencion,Madera
+29.192179506607,-108.13798939016952,Subestacion Obrera,subestacion,Madera
+28.569000840861325,-108.49348971881086,Subestacion Yepachi,subestacion,El Nogal
+28.188521787366902,-105.47601951291387,CFE Delicias Sur,centro_atencion,Delicias
+28.18046164626967,-105.45538522753709,CFE,centro_atencion,Delicias
+28.174287908601457,-105.48902533361961,Subestacion Delicias,subestacion,Delicias
+28.90536196699924,-104.66611815510036,Subestacion Nueva Holanda,subestacion,El Chupadero
+28.430434633810147,-104.49409822959649,Subestacion Mestenas,subestacion,La Morita
+27.658243530291802,-105.06408165229493,Subestacion Camargo II,subestacion,Santa Rosalia de Camargo
+27.651781249553956,-105.07517411245998,Granja Solar Rancho El Trece,solar,Santa Rosalia de Camargo
+28.028442301690657,-105.28963063215161,CFE Saucillo,centro_atencion,Saucillo
+27.689846634902437,-105.17324296224456,CFE,centro_atencion,Santa Rosalia de Camargo
+27.332368613324533,-105.1373484248661,Subestacion Bufalo,subestacion,Col. Bufalo
+
+31.740869458448753,-106.49164367540504,CFE Agencia Bellavista,centro_atencion,Juarez
+31.735615542084734,-106.44929831713395,CFE Matico,cajero,Juarez
+31.735757116770074,-106.41108439501505,CFE,centro_atencion,Juarez
+31.725094751826614,-106.46857486012043,CFE Zona Juarez,centro_atencion,Juarez
+31.70736419699745,-106.46356012824373,CFE Distribucion Mirados,oficina,Juarez
+31.706854558226116,-106.465995377989,Subestacion Mirados,subestacion,Juarez
+31.70637591525367,-106.46345249180239,CFE Suministrador de Servicios Basicos,almacen,Juarez
+31.707438852466627,-106.42244323043825,CFE Zona de Transmision Juarez,oficina,Juarez
+31.707947337438494,-106.42209363414771,Subestacion Tecnologico,subestacion,Juarez
+31.69968280300113,-106.39437664433973,Subestacion Parque,subestacion,Juarez
+31.694257122285357,-106.37972962995325,CFE,centro_atencion,Juarez
+31.69411995299491,-106.37982066714454,CFE Matico,cajero,Juarez
+31.672800904111057,-106.47336123916521,CFE,centro_atencion,Juarez
+31.66836787951863,-106.38060302357471,Subestacion Lagos,subestacion,Juarez
+31.660901717866093,-106.3544483086028,CFE Zaragoza,oficina,Juarez
+31.660617797845283,-106.35323352563319,Subestacion Zaragoza,subestacion,Juarez
+31.658137611519095,-106.42661105632018,CFE,oficina,Juarez
+31.654165075024295,-106.44485090773793,Subestacion Industrial,subestacion,Juarez
+31.642319149203,-106.38684602732756,Subestacion Granjero,subestacion,Juarez
+31.64228892054194,-106.36985127438605,CFE,centro_atencion,Juarez
+31.62354668307299,-106.44851847134997,Subestacion Aeropuerto,subestacion,Juarez
+31.62394701175457,-106.4483934045129,CFE Zahina,oficina,Juarez
+31.622014084237975,-106.39628549544325,CFE,centro_atencion,Juarez
+31.767858985761563,-106.6821568285643,Subestacion San Jeronimo,subestacion,Juarez
+31.702383644779772,-106.37312680223586,Subestacion Valle de Juarez,subestacion,Juarez
+31.627008385994447,-106.41743134493053,Subestacion Patria,subestacion,Juarez
+31.605006878502376,-106.40748484715945,Subestacion Torres,subestacion,Juarez
+31.555814252603504,-106.40596687529379,Subestacion Terranova,subestacion,Juarez
+31.476471064054785,-106.47131573923123,Subestacion Norte Cereso,subestacion,Juarez
+31.497261684475376,-106.47157667209531,Subestacion Cereso,subestacion,Juarez
+31.7315296132657,-106.53750939474465,Subestacion Paso del Norte,subestacion,Juarez
+31.62087625307322,-106.36454995549867,Subestacion Parque Oriente,subestacion,Juarez
+31.608521673189486,-106.33935789989933,Subestacion Sauzal,subestacion,Juarez
+31.586435228607755,-106.46302184911285,Subestacion Reforma,subestacion,Juarez
+31.577122003507327,-106.37401873993373,Subestacion Medanos,subestacion,Juarez
+31.550455172653397,-106.34908920362048,Subestacion Oriente XXI,subestacion,Juarez
+30.707982558406584,-107.35913257177488,Subestacion Vado Santa Maria,subestacion,Cerro Blanco
+30.61405114023602,-106.51356232080697,CFE Agencia Villa Ahumado,centro_atencion,Miguel Ahumado
+31.088173788263614,-107.99424559947107,CFE,oficina,Ascencion
+31.070822906660972,-108.0105489056029,Subestacion Ascencion,subestacion,Ascencion
+31.04527832139407,-107.9690145965097,Subestacion Estacion Ascencion,subestacion,Ascencion
+31.346803613188744,-107.99400694243573,Subestacion La Salada,subestacion,Alamos Altos
+30.425163957097116,-107.9145174548693,CFE Zona Nuevo Casas Grandes,centro_atencion,Nuevo Casas Grandes
+29.845285323380438,-107.46683734616181,CFE,oficina,San Buenaventura
+30.10283755588776,-106.32906703816317,Subestacion CFE,subestacion,Chihuahua
+31.31029985137492,-106.49322373153655,Subestacion Samalayuca Sur,subestacion,Juarez
+31.47274688386436,-106.47159468892482,Central Ciclo Combinado III,ciclo_combinado,Juarez
+31.47481063988044,-106.47172356756536,Subestacion Ciclo Combinado III,subestacion,Juarez
+31.331372629208055,-106.48624819358432,Central Ciclo Combinado,ciclo_combinado,Samalayuca
+31.33356516135487,-106.48840516809945,Central Termoelectrica,termoelectrica,Chihuahua
+31.329613068088175,-106.48706358511163,Central Termoelectrica III,termoelectrica,Samalayuca
+
+26.426696011504294,-108.61043323297524,CFE Edificio de Transmision,oficina,Culiacan
+26.413355491066724,-108.62306887903578,CFE Oficinas Area de Generacion EPS,oficina,El Fuerte
+26.27143653588163,-109.03494832154142,CFE,centro_atencion,Gustavo Diaz Ordaz
+25.977142362438848,-109.02016181532204,Subestacion Choacahui,subestacion,Choacahui
+25.920199768673978,-109.17425930501936,CFE Matico,cajero,Ahome
+25.817675583298428,-108.99427465574124,Subestacion Los Mochis Tres,subestacion,Los Mochis
+25.791064232057526,-109.00151734121273,CFE Matico,cajero,Los Mochis
+25.784247048235784,-108.99466876526235,CFE Auto Pago,cajero,Los Mochis
+25.783881225452117,-108.99522129414169,Subestacion Los Mochis Centro,subestacion,Los Mochis
+25.780031684004538,-108.96381712376957,CFE Distribucion Zona Los Mochis,oficina,Los Mochis
+25.771643140308655,-108.96717579265437,Subestacion Los Mochis Uno,subestacion,Los Mochis
+25.760502334002336,-108.81828786687052,CFE Matico,cajero,Guasave
+25.823355394175664,-108.21809970256129,CFE,centro_atencion,Sinaloa de Leyva
+25.579473616622977,-108.4804137840346,CFE Auto Pago,cajero,Guasave
+25.579941945807178,-108.4801568770825,Almacen CFE,almacen,Guasave
+25.580020867277074,-108.47940863361259,Subestacion Guasave,subestacion,Guasave
+25.56896704238066,-108.46004764886547,CFE Zona Guasave,centro_atencion,Guasave
+26.67802067756117,-108.33899681254614,Subestacion JAE,subestacion,Choix
+26.403834703812052,-108.6216723665099,Subestacion El Fuerte Penal,subestacion,El Fuerte
+25.859794076399286,-109.32777956128601,Subestacion Mayocoba,subestacion,Las Gruyas
+25.784766031654396,-109.07640383801154,Subestacion Lousiana,subestacion,Ahome
+25.793302260743832,-109.03894541438483,Subestacion CNT Centenario,subestacion,Los Mochis
+25.81852867078326,-108.90187902690532,Subestacion Transmision Los Mochis Industrial,subestacion,Ahome
+25.766085245693386,-108.82471710976868,Subestacion Juan Jose Rios,subestacion,Juan Jose Rios
+25.702769232089896,-108.31719636263801,Subestacion Bamoa,subestacion,Estacion Bamoa
+25.117431581627866,-108.01777267372984,Subestacion El Gato,subestacion,Leopoldo Sanchez Celis
+25.08193103910471,-108.05465488173627,CFE,centro_atencion,La Reforma
+25.486925372309088,-108.08195629857929,Subestacion Guamuchil 2,subestacion,Guamuchil
+25.458298764874403,-108.08835777517909,CFE Auto Pago,cajero,Guamuchil
+25.444734105776405,-108.06793658190821,CFE Distribuidor,oficina,Las Glorias
+25.444836749268386,-108.06859155605427,Subestacion Guamuchil,subestacion,Guamuchil
+25.76177327088048,-109.01818829139891,Subestacion Mochis Las Villas,subestacion,Los Mochis
+25.67316278140388,-108.7222175285429,Subestacion Ruiz Cortinez,subestacion,Adolfo Ruiz Cortinez
+25.607867099553573,-109.05158276146003,Central Termoelectrica Topolobampo,termoelectrica,Topolobampo
+25.08228694396013,-107.7002387954616,CFE,centro_atencion,Pericos
+24.82088505146554,-107.37743827064659,CFE Centro de Atencion,centro_atencion,La Quintas
+24.817675563393486,-107.41783475086226,CFE Gerencia Regional de Transmision Noroeste,oficina,Culiacan
+24.81850336933361,-107.4171389705491,Subestacion Culiacan Uno,subestacion,Culiacan
+24.814980834367613,-107.41803946774944,CFE Distribucion,oficina,Culiacan
+24.808490969969558,-107.40480410897213,CFE Angel Flores,centro_atencion,Culiacan
+24.78644950221077,-107.39385007046972,CFE Matico,cajero,Culiacan
+24.787778821042863,-107.37098588461946,Subestacion Culiacan Dos,subestacion,Culiacan
+24.786867725927905,-107.37082880851501,CFE Residencia de Obra Zona Sinaloa,oficina,Culiacan
+24.777086799004024,-107.44438029705402,CFE Matico,cajero,Culiacan
+24.777138622579727,-107.44437463137332,CFE Matico,cajero,Culiacan
+24.76726264157727,-107.6954970556734,CFE Navolato,centro_atencion,Navolato
+24.590658076866085,-107.39888712811384,CFE,centro_atencion,Costa Rica
+24.56920409643068,-106.80967880606937,Central Hidroelectrica,hidroelectrica,El Vertedor
+23.91528512414473,-106.89247196948827,CFE Matico,cajero,La Cruz
+25.090848746839235,-107.69617885337436,Subestacion de Pericos,subestacion,Pericos
+
+24.879602964657916,-107.54665460163885,Subestacion Culiacan Poniente,subestacion,Culiacan
+24.82770916776587,-107.45012630287583,Subestacion Stanza Castilla,subestacion,Culiacan
+24.829881134981694,-107.36169859752117,Subestacion Culiacan 3,subestacion,Culiacan
+24.75524083692418,-107.45126879922863,Subestacion Culiacan Cuatro,subestacion,Culiacan
+24.75254668270324,-107.35699814966915,Subestacion Culiacan Libramiento,subestacion,Culiacan
+24.732304394505277,-107.33998618754876,Subestacion Culiacan Potencia,subestacion,Culiacan
+24.42469949414844,-107.21343082829976,Subestacion Quila,subestacion,Quila
+24.32888466786608,-107.36873298709882,Subestacion El Dorado,subestacion,El Dorado
+23.962301967333453,-106.72025427846825,Subestacion Elota,subestacion,Elota
+23.83740964294145,-106.61799653657566,Subestacion Piaxtla,subestacion,El Indio
+23.291469068738007,-106.41078593910613,Subestacion CFE,subestacion,Mazatlan
+23.26625466559637,-106.40100919027996,Subestacion Mazatlan Oriente,subestacion,Mazatlan
+23.2493236537071,-106.4251745206791,Subestacion Mazatlan Norte,subestacion,Mazatlan
+23.24628942592403,-106.42004822141354,CFE Matico,cajero,Mazatlan
+23.24299029634776,-106.44164637805996,CFE Auto Pago,cajero,Mazatlan
+23.228814759928667,-106.42865684472183,Subestacion del Mar,subestacion,Mazatlan
+23.223595109241316,-106.41875135642222,CFE Zona Distribucion,oficina,Mazatlan
+23.202341129952863,-106.41388733081489,Subestacion Mazatlan Centro,subestacion,Mazatlan
+23.20216015628369,-106.41439996322342,CFE Zona Centro,centro_atencion,Mazatlan
+23.19046038000333,-106.3530520735986,Subestacion Mazatlan Dos,subestacion,Mazatlan
+23.19262274866673,-106.35437860059312,CFE Termoelectrica Jose Aceves Pozos,termoelectrica,Mazatlan
+23.269421621175105,-106.3703936286669,Subestacion Mazatlan Tecnologico,subestacion,Mazatlan
+23.21686351370034,-106.37761384914415,Subestacion Mazatlan Uno,subestacion,Mazatlan
+23.194837428936548,-106.20804026862407,Subestacion Villa Union,subestacion,Villa Union
+23.10038800040881,-105.67899091941878,Subestacion CFE,subestacion,La Canoa
+22.8382114053576,-105.78743774495379,Subestacion Escuinapa,subestacion,Escuinapa de Hidalgo
+22.835714126377816,-105.76960200689327,CFE Escuinapa,oficina,Escuinapa de Hidalgo
+22.994054309628353,-105.8584490722018,CFE,centro_atencion,El Rosario
+26.824955539834892,-107.08161557491043,CFE,centro_atencion,Guachochi
+26.935619605012118,-105.67068743439299,CFE Matico,cajero,Hidalgo del Parral
+27.92278943107058,-106.66759322528195,Subestacion CFE,subestacion,San Francisco de Borja
+28.534992801332123,-106.94634745456575,Subestacion Manitoba,subestacion,Cuauhtemoc
+28.363290516605993,-107.44805559874489,San Pedro Potencia,subestacion,Guerrero
+28.21679815551094,-108.22886117361406,Subestacion Baquiriachi,subestacion,Baquiriachi
+26.984669202271867,-107.96385019678053,Subestacion Diabras,subestacion,Agua Caliente
+26.863338155873898,-105.80811606024385,Subestacion Santiago Dos,subestacion,Mateo
+26.78470195738737,-105.65934138666714,Subestacion Taps Bolivar,subestacion,Roncesvalles
+26.940210664736863,-105.6762570868809,Subestacion Parral,subestacion,Hidalgo de Parral
