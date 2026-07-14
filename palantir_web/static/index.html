@@ -261,23 +261,41 @@ fetch('/api/osm').then(r=>r.json()).then(osm=>{
       .bindPopup('<b>'+(l.nombre||'Línea')+'</b><br>'+(l.voltaje?l.voltaje+' V':'')+'<br><span style="color:#68788a">OpenStreetMap</span>')
       .addTo(capaOSMLineas);
   });
-  // Subestaciones reales
+  // Subestaciones reales (con polígono si existe)
   (osm.subestaciones||[]).forEach(s=>{
-    L.circleMarker([s.lat,s.lon],{radius:3.5,color:'#5b8fb0',weight:1.3,fillColor:'#213542',fillOpacity:0.75})
-      .bindPopup('<b style="color:#5b8fb0">⚡ '+(s.nombre||'Subestación')+'</b><br>'+(s.voltaje?s.voltaje+' V<br>':'')+(s.operador?s.operador+'<br>':'')+'<span style="color:#68788a">OpenStreetMap</span>')
-      .addTo(capaOSM);
+    if(s.poligono && s.poligono.length>=3){
+      L.polygon(s.poligono,{color:'#5b8fb0',weight:1.2,fillColor:'#1a3a4a',fillOpacity:0.55})
+        .bindPopup('<b style="color:#5b8fb0">⚡ '+(s.nombre||'Subestación')+'</b><br>'+(s.voltaje?s.voltaje+' V<br>':'')+(s.operador?s.operador+'<br>':'')+'<span style="color:#68788a">OpenStreetMap</span>')
+        .addTo(capaOSM);
+    } else {
+      L.circleMarker([s.lat,s.lon],{radius:3.5,color:'#5b8fb0',weight:1.3,fillColor:'#213542',fillOpacity:0.75})
+        .bindPopup('<b style="color:#5b8fb0">⚡ '+(s.nombre||'Subestación')+'</b><br>'+(s.voltaje?s.voltaje+' V<br>':'')+(s.operador?s.operador+'<br>':'')+'<span style="color:#68788a">OpenStreetMap</span>')
+        .addTo(capaOSM);
+    }
   });
-  // Plantas reales
+  // Plantas reales (con polígono si existe)
   (osm.plantas||[]).forEach(p=>{
-    L.circleMarker([p.lat,p.lon],{radius:5,color:'#bd854f',weight:1.5,fillColor:'#bd854f44',fillOpacity:0.5})
-      .bindPopup('<b style="color:#bd854f">🏭 '+(p.nombre||'Central')+'</b><br>'+(p.fuente?p.fuente+'<br>':'')+'<span style="color:#68788a">OpenStreetMap</span>')
-      .addTo(capaOSM);
+    if(p.poligono && p.poligono.length>=3){
+      L.polygon(p.poligono,{color:'#bd854f',weight:1.2,fillColor:'#3d2a1a',fillOpacity:0.5})
+        .bindPopup('<b style="color:#bd854f">🏭 '+(p.nombre||'Central')+'</b><br>'+(p.fuente?p.fuente+'<br>':'')+'<span style="color:#68788a">OpenStreetMap</span>')
+        .addTo(capaOSM);
+    } else {
+      L.circleMarker([p.lat,p.lon],{radius:5,color:'#bd854f',weight:1.5,fillColor:'#bd854f44',fillOpacity:0.5})
+        .bindPopup('<b style="color:#bd854f">🏭 '+(p.nombre||'Central')+'</b><br>'+(p.fuente?p.fuente+'<br>':'')+'<span style="color:#68788a">OpenStreetMap</span>')
+        .addTo(capaOSM);
+    }
   });
-  // Generadores individuales (aerogeneradores, arreglos solares)
+  // Generadores individuales (con polígono si existe — paneles solares, aerogeneradores)
   (osm.generadores||[]).forEach(g=>{
-    L.circleMarker([g.lat,g.lon],{radius:2.5,color:'#7a9a6a',weight:1,fillColor:'#7a9a6a',fillOpacity:0.7})
-      .bindPopup('<b style="color:#7a9a6a">🌀 Generador</b><br>'+(g.fuente||'')+'<br><span style="color:#68788a">OpenStreetMap</span>')
-      .addTo(capaOSM);
+    if(g.poligono && g.poligono.length>=3){
+      L.polygon(g.poligono,{color:'#7a9a6a',weight:1,fillColor:'#3a5a2a',fillOpacity:0.5})
+        .bindPopup('<b style="color:#7a9a6a">🌀 Generador</b><br>'+(g.fuente||'')+'<br><span style="color:#68788a">OpenStreetMap</span>')
+        .addTo(capaOSM);
+    } else {
+      L.circleMarker([g.lat,g.lon],{radius:2.5,color:'#7a9a6a',weight:1,fillColor:'#7a9a6a',fillOpacity:0.7})
+        .bindPopup('<b style="color:#7a9a6a">🌀 Generador</b><br>'+(g.fuente||'')+'<br><span style="color:#68788a">OpenStreetMap</span>')
+        .addTo(capaOSM);
+    }
   });
   // Instalaciones CFE no eléctricas (oficinas, almacenes) etiquetadas en OSM
   (osm.instalaciones||[]).forEach(f=>{

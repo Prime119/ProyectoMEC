@@ -84,7 +84,7 @@ def obtener_infraestructura_region(refrescar: bool = False) -> dict:
     Obtiene subestaciones, plantas y líneas de toda la región (cacheado).
     Devuelve {"subestaciones": [...], "plantas": [...], "lineas": [...]}.
     """
-    cache = CACHE_DIR / "region_mx2.json"
+    cache = CACHE_DIR / "region_mx3.json"
     if cache.exists() and not refrescar:
         # Cache válido por 30 días
         if time.time() - cache.stat().st_mtime < 30 * 86400:
@@ -131,6 +131,10 @@ def obtener_infraestructura_region(refrescar: bool = False) -> dict:
             item = {"nombre": nombre, "lat": c[0], "lon": c[1],
                     "voltaje": tags.get("voltage", ""),
                     "operador": tags.get("operator", "")}
+            # Incluir el polígono si existe (para dibujar el área real en el mapa)
+            geom = el.get("geometry")
+            if geom and len(geom) >= 3:
+                item["poligono"] = [[p["lat"], p["lon"]] for p in geom]
             if power == "substation":
                 resultado["subestaciones"].append(item)
             elif power == "plant":
