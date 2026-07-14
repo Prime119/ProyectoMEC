@@ -68,9 +68,25 @@ def _zonas_plantas(margen: float = 0.025) -> dict:
 
 
 def todas_las_zonas() -> dict:
-    """Combina las zonas de ciudades + las zonas de cada planta de generación."""
+    """
+    Combina las zonas de ciudades + las zonas de cada planta + una cuadrícula
+    densa que cubre TODO el territorio de los 5 estados. Esto permite generar
+    hasta 30,000+ imágenes para el entrenamiento más preciso posible.
+    """
     z = dict(ZONAS)
     z.update(_zonas_plantas())
+    # Cuadrícula densa sobre toda la región (paso de 0.1° ≈ 11km)
+    # Cubre BC, BCS, Sonora, Chihuahua, Sinaloa completamente
+    paso = 0.1
+    lat = 22.0
+    idx = 0
+    while lat < 33.5:
+        lon = -118.0
+        while lon < -104.5:
+            z[f"grid_{idx}"] = (lat, lon, lat + paso, lon + paso)
+            idx += 1
+            lon += paso
+        lat += paso
     return z
 
 # Tamaño físico típico (metros) por clase, para estimar la caja en la imagen
@@ -217,10 +233,15 @@ def generar_dataset(salida: Path, zoom: int, max_imagenes: int,
 
     # Procesar PRIMERO las zonas de plantas (clases raras: eólica, hidro, etc.)
     # y luego las ciudades (clases abundantes: subestaciones, torres).
+    # Con --max-imagenes alto, también recorre la cuadrícula del territorio completo.
+    todas = todas_las_zonas()
     zonas_planta = _zonas_plantas()
-    orden = list(zonas_planta.items()) + list(ZONAS.items())
-    # Tope por zona: evita que una sola ciudad acapare todo el presupuesto (balanceo)
-    max_por_zona = max(15, max_imagenes // 12)
+    # Orden: plantas primero, luego ciudades, luego cuadrícula (grid_*)
+    orden = ([(k, v) for k, v in todas.items() if k.startswith("planta_")] +
+             [(k, v) for k, v in todas.items() if k in ZONAS] +
+             [(k, v) for k, v in todas.items() if k.startswith("grid_")])
+    # Tope por zona: evita que una sola zona acapare todo el presupuesto (balanceo)
+    max_por_zona = max(10, max_imagenes // max(len(orden), 1))
 
     for zona, bbox in orden:
         if len(escenas) >= max_imagenes:
