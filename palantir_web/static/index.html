@@ -239,20 +239,17 @@ var capaTorres = L.layerGroup();             // torres/postes (zoom>=11)
 
 function actualizarCapasOSM(){
   var z = map.getZoom();
-  // Subestaciones y plantas de OSM solo al acercar más (zoom>=10)
+  // Subestaciones y plantas solo al acercar (zoom>=10)
   if(z >= 10){
     if(!map.hasLayer(capaOSM)) map.addLayer(capaOSM);
   } else {
     if(map.hasLayer(capaOSM)) map.removeLayer(capaOSM);
   }
-  // Líneas de OSM visibles desde zoom 7 (se ven bien desde lejos)
-  if(z >= 7){
-    if(!map.hasLayer(capaOSMLineas)) map.addLayer(capaOSMLineas);
-  } else {
-    if(map.hasLayer(capaOSMLineas)) map.removeLayer(capaOSMLineas);
-  }
+  // Líneas de OSM SIEMPRE visibles (desde cualquier zoom)
+  if(!map.hasLayer(capaOSMLineas)) map.addLayer(capaOSMLineas);
 }
 map.on('zoomend', actualizarCapasOSM);
+actualizarCapasOSM();
 
 fetch('/api/osm').then(r=>r.json()).then(osm=>{
   // Líneas reales de transmisión
