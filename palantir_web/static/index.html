@@ -229,11 +229,16 @@ var capaTorres = L.layerGroup();             // torres/postes (zoom>=11)
 
 function actualizarCapasOSM(){
   var z = map.getZoom();
-  if(z >= 8){
+  // Subestaciones y plantas de OSM solo al acercar más (zoom>=10)
+  if(z >= 10){
     if(!map.hasLayer(capaOSM)) map.addLayer(capaOSM);
-    if(!map.hasLayer(capaOSMLineas)) map.addLayer(capaOSMLineas);
   } else {
     if(map.hasLayer(capaOSM)) map.removeLayer(capaOSM);
+  }
+  // Líneas de OSM visibles desde zoom 7 (se ven bien desde lejos)
+  if(z >= 7){
+    if(!map.hasLayer(capaOSMLineas)) map.addLayer(capaOSMLineas);
+  } else {
     if(map.hasLayer(capaOSMLineas)) map.removeLayer(capaOSMLineas);
   }
 }
@@ -400,6 +405,12 @@ function actualizarMapa(plantas){
       m._data = p;
     }
   });
+  // Ocultar plantas monitoreadas cuando se esta muy alejado (zoom < 8)
+  var z = map.getZoom();
+  Object.values(markers).forEach(m=>{
+    if(z < 8) m.setStyle({opacity:0,fillOpacity:0});
+    else m.setStyle({opacity:1,fillOpacity:0.45});
+  });
 }
 function popupHTML(p){
   var cls = p.estado==='Falla'?'st-bad':(p.estado==='Operando'?'st-ok':'st-warn');
@@ -491,7 +502,7 @@ var capaCFEManual = L.layerGroup();  // NO se agrega al mapa hasta zoom 10
 var cfeManualCargado = false;
 
 function cargarCFEManual(){
-  if(map.getZoom() < 10){
+  if(map.getZoom() < 11){
     if(map.hasLayer(capaCFEManual)) map.removeLayer(capaCFEManual);
     return;
   }
