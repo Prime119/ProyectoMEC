@@ -94,6 +94,8 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
 #map-search button:hover{filter:brightness(1.12);}
 #btn-ia{background:var(--purple) !important;color:#fff !important;}
 #btn-ia.cargando{opacity:.6;cursor:wait;}
+#btn-escanear{background:#1a3a22 !important;color:#5a9e78 !important;border:1px solid #3a5a4a !important;}
+#btn-escanear.cargando{opacity:.6;cursor:wait;}
 #btn-capa{background:var(--panel) !important;color:var(--text-h) !important;border:1px solid var(--border2) !important;}
 #btn-cfe-unused{display:none;}
 /* Marcador de instalación CFE de OSM (cuadrado verde chico) */
@@ -160,6 +162,7 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
       <input id="search-input" placeholder="LOCALIZAR activo CFE..." />
       <button onclick="buscar()">🔍 LOCALIZAR</button>
       <button id="btn-ia" onclick="detectarIA()" title="Detectar infraestructura con IA en el centro del mapa">🛰️ DETECTAR IA</button>
+      <button id="btn-escanear" onclick="escanearCiudad()" title="Escanear toda el área visible con IA (más completo, tarda más)">🏙️ ESCANEAR CIUDAD</button>
       <button id="btn-capa" onclick="cambiarCapa()" title="Cambiar entre mapa oscuro y satelital">🗺️ SATÉLITE</button>
     </div>
     <div id="ia-status"></div>
@@ -611,8 +614,68 @@ function actualizarTablaSubs(){
   document.querySelector('#tbl-subs tbody').innerHTML=html;
 }
 
+// === ESCANEAR CIUDAD (cuadrícula 5x5 = 25 puntos, cubre toda el área) ===
+function escanearCiudad(){
+  var btn = document.getElementById('btn-escanear');
+  btn.classList.add('cargando'); btn.textContent='🏙️ ESCANEANDO...';
+  capaIA.clearLayers();
+
+  var b = map.getBounds();
+  var puntos = [];
+  var filas=5, cols=5;
+  var pasoLat = (b.getNorth() - b.getSouth()) / (filas+1);
+  var pasoLon = (b.getEast() - b.getWest()) / (cols+1);
+  for(var i=1; i<=filas; i++){
+    for(var j=1; j<=cols; j++){
+      puntos.push({lat: b.getSouth() + pasoLat*i, lon: b.getWest() + pasoLon*j});
+    }
+  }
+  iaStatus('🏙️ Escaneando ciudad: 0/'+puntos.length+' zonas analizadas...', '#5a9e78');
+
+  var completados = 0;
+  var totalDets = 0;
+  // Procesar en lotes de 5 (para no saturar el servidor)
+  var loteSize = 5;
+  var idx = 0;
+
+  function procesarLote(){
+    var lote = puntos.slice(idx, idx+loteSize);
+    if(lote.length===0){
+      // Terminó todo — conectar las líneas de distribución
+      btn.classList.remove('cargando'); btn.textContent='🏙️ ESCANEAR CIUDAD';
+      conectarDeteccionesElectricas();
+      iaStatus('✅ Escaneo completo — <b>'+totalDets+'</b> detecciones + líneas de distribución en verde.', '#5a9e78');
+      return;
+    }
+    var pendientes = lote.length;
+    lote.forEach(function(pt){
+      fetch('/api/detectar?lat='+pt.lat+'&lon='+pt.lon)
+        .then(function(r){return r.text();})
+        .then(function(txt){
+          var d;
+          try{d=JSON.parse(txt);}catch(e){pendientes--;return;}
+          if(!d.error){
+            (d.detecciones||[]).forEach(function(t){
+              var icon = L.divIcon({className:'',iconSize:[16,16],iconAnchor:[8,8],
+                html:'<div class="ia-diamond" style="background:'+t.color+'"></div>'});
+              var m = L.marker([t.lat,t.lon],{icon:icon});
+              m.bindPopup('<b style="color:'+t.color+'">'+t.icono+' '+t.nombre+'</b><br>🤖 IA: '+(t.conf*100).toFixed(0)+'%<br><span style="color:#68788a">'+t.lat.toFixed(5)+', '+t.lon.toFixed(5)+'</span>');
+              capaIA.addLayer(m);
+              totalDets++;
+            });
+          }
+          pendientes--;
+          completados++;
+          iaStatus('🏙️ Escaneando ciudad: '+completados+'/'+puntos.length+' zonas ('+totalDets+' detecciones)...', '#5a9e78');
+          if(pendientes<=0){ idx+=loteSize; setTimeout(procesarLote, 200); }
+        })
+        .catch(function(){pendientes--; completados++; if(pendientes<=0){idx+=loteSize; setTimeout(procesarLote,200);}});
+    });
+  }
+  procesarLote();
+}
+
 // === CONECTAR DETECCIONES ELÉCTRICAS CON LÍNEAS DE DISTRIBUCIÓN ===
-// Solo conecta infraestructura eléctrica (torres, postes, subestaciones, transformadores)
 // NO conecta oficinas, cajeros, almacenes ni telecomunicaciones
 function conectarDeteccionesElectricas(){
   var clasesElectricas = ['torre_grande','torre_mediana','torre_chica','poste_grande',
