@@ -425,6 +425,19 @@ async def handle_estado(request):
     _ultima_actividad = time.time()
     _hubo_actividad = True
     tick_simulador()
+
+    # Enriquecer el resumen con datos de CENACE (reales o estimados por hora)
+    try:
+        from palantir_web.cenace import obtener_datos_cenace
+        cenace = obtener_datos_cenace()
+        ultimo_estado["resumen"]["generacion_total_mw"] = cenace["generacion_mw"]
+        ultimo_estado["resumen"]["demanda_estimada_mw"] = cenace["demanda_mw"]
+        ultimo_estado["resumen"]["frecuencia_sistema"] = cenace["frecuencia_hz"]
+        ultimo_estado["resumen"]["fuente_datos"] = cenace["fuente"]
+        ultimo_estado["resumen"]["mix_generacion"] = cenace["por_tipo"]
+    except Exception:
+        pass
+
     return web.json_response(ultimo_estado)
 
 
@@ -519,6 +532,20 @@ async def handle_detecciones_guardadas(request):
     return web.json_response(_cargar_detecciones())
 
 
+async def handle_exportar_csv(request):
+    """Exporta todas las detecciones guardadas como CSV descargable."""
+    dets = _cargar_detecciones()
+    lineas = ["lat,lon,clase,nombre,confianza,fuente"]
+    for d in dets:
+        lineas.append(f"{d.get('lat','')},{d.get('lon','')},{d.get('clase','')},{d.get('nombre','')},{d.get('conf','')},{d.get('fuente','')}")
+    csv_text = "\n".join(lineas)
+    return web.Response(
+        text=csv_text,
+        content_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=detecciones_falcon_cfe.csv"}
+    )
+
+
 # === APP ===
 async def on_startup(app):
     # Primer tick para tener datos listos de inmediato
@@ -538,6 +565,7 @@ def main():
     app.router.add_get("/api/estado", handle_estado)
     app.router.add_get("/api/detectar", handle_detectar)
     app.router.add_get("/api/detecciones", handle_detecciones_guardadas)
+    app.router.add_get("/api/exportar/csv", handle_exportar_csv)
     app.router.add_get("/api/lineas", handle_lineas_coords)
     app.router.add_get("/api/torres", handle_torres)
     app.router.add_get("/api/interconexiones", handle_interconexiones)

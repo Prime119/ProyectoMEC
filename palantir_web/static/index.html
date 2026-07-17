@@ -92,8 +92,6 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
 #map-search input:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(34,211,238,.15);}
 #map-search button{background:var(--cyan);color:#0a1017;border:none;padding:10px 16px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;transition:.15s;}
 #map-search button:hover{filter:brightness(1.12);}
-#btn-ia{background:var(--purple) !important;color:#fff !important;}
-#btn-ia.cargando{opacity:.6;cursor:wait;}
 #btn-escanear{background:#1a3a22 !important;color:#5a9e78 !important;border:1px solid #3a5a4a !important;}
 #btn-escanear.cargando{opacity:.6;cursor:wait;}
 #btn-capa{background:var(--panel) !important;color:var(--text-h) !important;border:1px solid var(--border2) !important;}
@@ -161,7 +159,6 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
     <div id="map-search">
       <input id="search-input" placeholder="LOCALIZAR activo CFE..." />
       <button onclick="buscar()">🔍 LOCALIZAR</button>
-      <button id="btn-ia" onclick="detectarIA()" title="Detectar infraestructura con IA en el centro del mapa">🛰️ DETECTAR IA</button>
       <button id="btn-escanear" onclick="escanearCiudad()" title="Escanear toda el área visible con IA (más completo, tarda más)">🏙️ ESCANEAR CIUDAD</button>
       <button id="btn-capa" onclick="cambiarCapa()" title="Cambiar entre mapa oscuro y satelital">🗺️ SATÉLITE</button>
     </div>
@@ -489,6 +486,8 @@ function actualizarKPIs(r){
   document.getElementById('kpi-fc').style.color = fc>85?'#ff1744':(fc>70?'#ffd600':'#00e676');
   document.getElementById('kpi-al').style.color = r.alertas_activas>0?'#ff1744':'#00e676';
   document.getElementById('kpi-pl').style.color = r.plantas_falla>0?'#ff1744':'#00e676';
+  // Fuente de datos (CENACE real o estimado)
+  if(r.fuente_datos) document.getElementById('ubicacion').title = 'Datos: '+r.fuente_datos;
 }
 
 function actualizarMapa(plantas){
@@ -626,6 +625,9 @@ function actualizarStats(){
   html += '🗼 Torres/postes: <b>aparecen zoom 11+</b><br>';
   html += '◆ Detecciones IA: <b>'+nDetecciones+'</b><br>';
   html += '🟢 Líneas distribución (IA): <b>estimadas al escanear</b>';
+  html += '</div>';
+  html += '<div style="margin-top:14px;display:flex;gap:8px;">';
+  html += '<button onclick="window.open(\'/api/exportar/csv\')" style="background:var(--panel);border:1px solid var(--border2);color:var(--text-h);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:11px;">📥 Exportar detecciones (CSV)</button>';
   html += '</div>';
   document.getElementById('stats-content').innerHTML = html;
 }
