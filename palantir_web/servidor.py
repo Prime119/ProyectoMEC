@@ -586,6 +586,148 @@ async def handle_historial(request):
     return web.json_response(historial)
 
 
+async def handle_reporte(request):
+    """Genera un reporte HTML completo descargable (imprimible como PDF)."""
+    from datetime import datetime
+    from palantir_web.cenace import obtener_datos_cenace
+
+    cenace = obtener_datos_cenace()
+    historial = motor_alertas.get_historial(50)
+    dets = _cargar_detecciones()
+
+    plantas_data = ultimo_estado.get("plantas", [])
+    lineas_data = ultimo_estado.get("lineas", [])
+    resumen = ultimo_estado.get("resumen", {})
+
+    # Generar HTML del reporte
+    html = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Reporte FALCON CFE — {datetime.now().strftime('%d/%m/%Y %H:%M')}</title>
+<style>
+body{{font-family:'Segoe UI',sans-serif;max-width:900px;margin:0 auto;padding:20px;color:#222;}}
+h1{{color:#1a5276;border-bottom:3px solid #1a5276;padding-bottom:10px;}}
+h2{{color:#2c3e50;margin-top:30px;border-bottom:1px solid #ddd;padding-bottom:5px;}}
+table{{width:100%;border-collapse:collapse;margin:10px 0;font-size:12px;}}
+th{{background:#1a5276;color:#fff;padding:8px;text-align:left;}}
+td{{padding:6px 8px;border-bottom:1px solid #eee;}}
+tr:hover td{{background:#f5f5f5;}}
+.kpi-grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:15px 0;}}
+.kpi{{background:#f8f9fa;border:1px solid #dee2e6;border-radius:8px;padding:15px;text-align:center;}}
+.kpi .valor{{font-size:24px;font-weight:bold;color:#1a5276;}}
+.kpi .label{{font-size:11px;color:#666;text-transform:uppercase;}}
+.alerta-crit{{color:#c0392b;font-weight:bold;}}
+.alerta-alta{{color:#e67e22;}}
+.footer{{margin-top:40px;color:#999;font-size:10px;text-align:center;border-top:1px solid #eee;padding-top:10px;}}
+@media print{{body{{margin:0;}} .no-print{{display:none;}}}}
+</style></head><body>
+<h1>🦅 FALCON CFE — Reporte de Infraestructura</h1>
+<p><b>Fecha:</b> {datetime.now().strftime('%d de %B de %Y, %H:%M hrs')}<br>
+<b>Región:</b> Noroeste de México (BC, BCS, Sonora, Chihuahua, Sinaloa)<br>
+<b>Fuente de datos:</b> {cenace.get('fuente','estimado')}</p>
+
+<h2>Resumen del Sistema</h2>
+<div class="kpi-grid">
+<div class="kpi"><div class="valor">{resumen.get('generacion_total_mw',0):.0f} MW</div><div class="label">Generación</div></div>
+<div class="kpi"><div class="valor">{resumen.get('demanda_estimada_mw',0):.0f} MW</div><div class="label">Demanda</div></div>
+<div class="kpi"><div class="valor">{resumen.get('factor_carga_sistema',0):.1f}%</div><div class="label">Factor Carga</div></div>
+<div class="kpi"><div class="valor">{resumen.get('plantas_operando',0)}/{resumen.get('plantas_total',0)}</div><div class="label">Plantas Operando</div></div>
+<div class="kpi"><div class="valor">{resumen.get('lineas_operando',0)}/{resumen.get('lineas_total',0)}</div><div class="label">Líneas Operando</div></div>
+<div class="kpi"><div class="valor">{resumen.get('frecuencia_sistema',60):.3f} Hz</div><div class="label">Frecuencia</div></div>
+</div>
+
+<h2>Mix de Generación</h2>
+<table><tr><th>Tipo</th><th>Generación (MW)</th></tr>"""
+
+    mix = cenace.get("por_tipo", {})
+    for tipo, mw in sorted(mix.items(), key=lambda x: -x[1]):
+        html += f"<tr><td>{tipo.replace('_',' ').title()}</td><td>{mw} MW</td></tr>"
+
+    html += "</table><h2>Estado de Plantas</h2><table><tr><th>Planta</th><th>Estado</th><th>Tipo</th><th>Gen MW</th><th>Cap MW</th><th>Temp</th></tr>"
+    for p in plantas_data[:28]:
+        color = 'alerta-crit' if p.get('estado')=='Falla' else ''
+        html += f"<tr class='{color}'><td>{p.get('nombre','')}</td><td>{p.get('estado','')}</td><td>{p.get('tipo','')}</td><td>{p.get('gen_mw',0):.0f}</td><td>{p.get('cap_mw',0)}</td><td>{p.get('temp',0):.0f}°C</td></tr>"
+
+    html += "</table><h2>Últimas Alertas</h2><table><tr><th>Fecha</th><th>Severidad</th><th>Mensaje</th></tr>"
+    for a in historial[-20:]:
+        cls = 'alerta-crit' if a.get('severidad')=='critica' else ('alerta-alta' if a.get('severidad')=='alta' else '')
+        html += f"<tr class='{cls}'><td>{a.get('timestamp','')}</td><td>{a.get('severidad','')}</td><td>{a.get('mensaje','')}</td></tr>"
+
+    html += f"""</table>
+<h2>Detecciones de IA Satelital</h2>
+<p>Total de detecciones acumuladas: <b>{len(dets)}</b></p>
+
+<div class="footer">
+Generado por FALCON CFE v1.0 — {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}<br>
+Sistema de Monitoreo de Infraestructura Eléctrica del Noroeste de México
+</div>
+<script class="no-print">document.title+=' (Ctrl+P para imprimir como PDF)';</script>
+</body></html>"""
+
+    return web.Response(text=html, content_type="text/html",
+                        headers={"Content-Disposition": "inline; filename=reporte_falcon_cfe.html"})
+
+
+async def handle_prediccion(request):
+    """Predicción de demanda para las próximas 12 horas basada en patrones históricos."""
+    import math
+    from datetime import datetime, timedelta
+
+    hora_actual = datetime.now().hour
+    mes = datetime.now().month
+    es_verano = mes in (5, 6, 7, 8, 9, 10)
+    base = 5500 if es_verano else 4800
+
+    predicciones = []
+    for h in range(12):
+        hora = (hora_actual + h) % 24
+        pico_offset = math.sin(math.pi * (hora - 5) / 12) if 5 <= hora <= 21 else -0.3
+        demanda = base + pico_offset * (1800 if es_verano else 1200)
+        demanda = max(3200, demanda)
+        ts = (datetime.now() + timedelta(hours=h)).strftime("%H:%M")
+        predicciones.append({"hora": ts, "demanda_mw": round(demanda), "h_offset": h})
+
+    return web.json_response({
+        "predicciones": predicciones,
+        "estacion": "verano" if es_verano else "invierno",
+        "nota": "Predicción basada en patrones históricos de demanda del Noroeste",
+    })
+
+
+async def handle_vehiculos(request):
+    """
+    Endpoint de tracking de vehículos CFE.
+    Preparado para recibir datos GPS reales. Por ahora devuelve datos de demo
+    que muestran cómo se vería el tracking en el mapa.
+    """
+    import random, math
+    from datetime import datetime
+
+    # Datos de demo (simula 5 vehículos de cuadrillas CFE)
+    vehiculos = [
+        {"id": "V-001", "tipo": "Cuadrilla Distribución", "conductor": "Juan Pérez",
+         "lat": 29.07 + random.gauss(0, 0.01), "lon": -110.96 + random.gauss(0, 0.01),
+         "velocidad_kmh": random.randint(0, 60), "estado": "en_ruta", "ciudad": "Hermosillo"},
+        {"id": "V-002", "tipo": "Cuadrilla Transmisión", "conductor": "Carlos López",
+         "lat": 29.09 + random.gauss(0, 0.01), "lon": -110.95 + random.gauss(0, 0.01),
+         "velocidad_kmh": random.randint(0, 80), "estado": "en_ruta", "ciudad": "Hermosillo"},
+        {"id": "V-003", "tipo": "Supervisor", "conductor": "María García",
+         "lat": 32.62 + random.gauss(0, 0.01), "lon": -115.45 + random.gauss(0, 0.01),
+         "velocidad_kmh": random.randint(0, 50), "estado": "en_sitio", "ciudad": "Mexicali"},
+        {"id": "V-004", "tipo": "Emergencia", "conductor": "Roberto Sánchez",
+         "lat": 31.69 + random.gauss(0, 0.01), "lon": -106.42 + random.gauss(0, 0.01),
+         "velocidad_kmh": random.randint(30, 100), "estado": "en_ruta", "ciudad": "Cd. Juárez"},
+        {"id": "V-005", "tipo": "Cuadrilla Distribución", "conductor": "Ana Martínez",
+         "lat": 24.80 + random.gauss(0, 0.01), "lon": -107.39 + random.gauss(0, 0.01),
+         "velocidad_kmh": 0, "estado": "estacionado", "ciudad": "Culiacán"},
+    ]
+    return web.json_response({
+        "vehiculos": vehiculos,
+        "total": len(vehiculos),
+        "en_ruta": sum(1 for v in vehiculos if v["estado"] == "en_ruta"),
+        "timestamp": datetime.now().strftime("%H:%M:%S"),
+        "nota": "Datos de demostración. Conecta datos GPS reales para tracking real.",
+    })
+
+
 # === APP ===
 async def on_startup(app):
     # Primer tick para tener datos listos de inmediato
@@ -607,6 +749,9 @@ def main():
     app.router.add_get("/api/detecciones", handle_detecciones_guardadas)
     app.router.add_get("/api/exportar/csv", handle_exportar_csv)
     app.router.add_get("/api/historial", handle_historial)
+    app.router.add_get("/api/reporte", handle_reporte)
+    app.router.add_get("/api/prediccion", handle_prediccion)
+    app.router.add_get("/api/vehiculos", handle_vehiculos)
     app.router.add_get("/api/lineas", handle_lineas_coords)
     app.router.add_get("/api/torres", handle_torres)
     app.router.add_get("/api/interconexiones", handle_interconexiones)

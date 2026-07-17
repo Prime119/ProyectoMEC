@@ -391,6 +391,24 @@ document.getElementById('leyenda').innerHTML = `
   <span style="display:inline-block;width:9px;height:9px;background:#5b8fb0;border:2px solid #fff;transform:rotate(45deg);margin:0 8px 0 2px;"></span>◆ Diamante = detectado por IA
 `;
 
+// === TRACKING DE VEHÍCULOS CFE (en tiempo real) ===
+var capaVehiculos = L.layerGroup().addTo(map);
+function actualizarVehiculos(){
+  fetch('/api/vehiculos').then(r=>r.json()).then(d=>{
+    capaVehiculos.clearLayers();
+    d.vehiculos.forEach(v=>{
+      var col = v.estado==='en_ruta'?'#5a9e78':(v.estado==='en_sitio'?'#c2a24e':'#93a1b0');
+      var icon = L.divIcon({className:'',iconSize:[20,20],iconAnchor:[10,10],
+        html:'<div style="width:14px;height:14px;background:'+col+';border:2px solid #fff;border-radius:50%;"></div>'});
+      L.marker([v.lat,v.lon],{icon:icon})
+        .bindPopup('<b style="color:'+col+'">🚗 '+v.id+'</b><br>'+v.tipo+'<br>'+v.conductor+'<br>'+v.velocidad_kmh+' km/h · <b>'+v.estado+'</b>')
+        .addTo(capaVehiculos);
+    });
+  }).catch(function(){});
+}
+actualizarVehiculos();
+setInterval(actualizarVehiculos, 10000); // actualizar cada 10s
+
 // === MODO NOCTURNO AUTOMÁTICO (ajusta brillo según hora del día) ===
 function aplicarModoHora(){
   var hora = new Date().getHours();
@@ -720,8 +738,42 @@ function actualizarStats(){
   html += '</div>';
   html += '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">';
   html += '<button onclick="window.open(\'/api/exportar/csv\')" style="background:var(--panel);border:1px solid var(--border2);color:var(--text-h);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:11px;">📥 Exportar detecciones (CSV)</button>';
-  html += '<button onclick="window.open(\'/api/historial?formato=csv\')" style="background:var(--panel);border:1px solid var(--border2);color:var(--text-h);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:11px;">📋 Exportar historial alertas (CSV)</button>';
+  html += '<button onclick="window.open(\'/api/historial?formato=csv\')" style="background:var(--panel);border:1px solid var(--border2);color:var(--text-h);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:11px;">📋 Historial alertas (CSV)</button>';
+  html += '<button onclick="window.open(\'/api/reporte\')" style="background:#1a3a4a;border:1px solid #5b8fb0;color:#5b8fb0;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;">📄 EXPORTAR REPORTE</button>';
   html += '</div>';
+  // Predicción de demanda
+  html += '<h4 style="margin:14px 0 8px 0;color:var(--text);">📈 Predicción de demanda (próximas 12h):</h4>';
+  html += '<div id="prediccion-container" style="font-size:10px;color:#93a1b0;">Cargando...</div>';
+  fetch('/api/prediccion').then(r=>r.json()).then(d=>{
+    var phtml='<div style="display:flex;gap:2px;align-items:flex-end;height:80px;">';
+    var max=Math.max(...d.predicciones.map(p=>p.demanda_mw));
+    d.predicciones.forEach(p=>{
+      var h=(p.demanda_mw/max*100).toFixed(0);
+      var col=p.demanda_mw>5500?'#c15f5f':(p.demanda_mw>4500?'#c2a24e':'#5a9e78');
+      phtml+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;">';
+      phtml+='<div style="width:100%;height:'+h+'%;background:'+col+';border-radius:2px 2px 0 0;min-height:4px;" title="'+p.hora+': '+p.demanda_mw+' MW"></div>';
+      phtml+='<span style="font-size:8px;margin-top:2px;">'+p.hora.split(':')[0]+'</span>';
+      phtml+='</div>';
+    });
+    phtml+='</div><div style="margin-top:4px;font-size:9px;">'+d.nota+' ('+d.estacion+')</div>';
+    document.getElementById('prediccion-container').innerHTML=phtml;
+  }).catch(e=>{document.getElementById('prediccion-container').textContent='Error cargando predicción';});
+  // Vehículos CFE
+  html += '<h4 style="margin:14px 0 8px 0;color:var(--text);">🚗 Tracking de vehículos CFE:</h4>';
+  html += '<div id="vehiculos-container" style="font-size:10px;color:#93a1b0;">Cargando...</div>';
+  fetch('/api/vehiculos').then(r=>r.json()).then(d=>{
+    var vhtml='<div style="margin-bottom:6px;color:var(--text-h);">'+d.total+' vehículos | '+d.en_ruta+' en ruta | <span style="color:#93a1b0">'+d.nota+'</span></div>';
+    vhtml+='<div style="display:flex;flex-direction:column;gap:4px;">';
+    d.vehiculos.forEach(v=>{
+      var col=v.estado==='en_ruta'?'#5a9e78':(v.estado==='en_sitio'?'#c2a24e':'#93a1b0');
+      vhtml+='<div style="display:flex;justify-content:space-between;padding:4px 8px;background:var(--panel);border-radius:4px;border-left:3px solid '+col+';">';
+      vhtml+='<span><b>'+v.id+'</b> '+v.tipo+'</span>';
+      vhtml+='<span>'+v.ciudad+' · '+v.velocidad_kmh+' km/h · <span style="color:'+col+'">'+v.estado+'</span></span>';
+      vhtml+='</div>';
+    });
+    vhtml+='</div>';
+    document.getElementById('vehiculos-container').innerHTML=vhtml;
+  }).catch(e=>{document.getElementById('vehiculos-container').textContent='Error cargando vehículos';});
   document.getElementById('stats-content').innerHTML = html;
 }
 
@@ -769,22 +821,36 @@ function toggleHeatmap(){
   btn.classList.add('activo');
 }
 
-// === MODO PRESENTACIÓN (pantalla completa, sin controles — para TV/monitor) ===
+// === MODO PRESENTACIÓN + DASHBOARD TV (rotación automática de vistas) ===
 var enPresentacion = false;
+var rotacionTV = null;
 function togglePresentacion(){
   enPresentacion = !enPresentacion;
   document.body.classList.toggle('presentacion', enPresentacion);
   map.invalidateSize();
-  // ESC para salir
   if(enPresentacion){
+    // Iniciar rotación automática de la cámara del mapa (efecto showroom)
+    var ciudades = [[29.07,-110.96,11],[32.52,-117.02,11],[32.62,-115.45,11],[31.69,-106.42,11],[24.80,-107.39,11],[28.0,-110,6]];
+    var idx = 0;
+    rotacionTV = setInterval(function(){
+      var c = ciudades[idx % ciudades.length];
+      map.flyTo([c[0],c[1]], c[2], {duration:3});
+      idx++;
+    }, 15000); // cambia cada 15 segundos
+    // ESC para salir
     document.addEventListener('keydown', function esc(e){
       if(e.key==='Escape'){
         enPresentacion=false;
         document.body.classList.remove('presentacion');
         map.invalidateSize();
+        if(rotacionTV) clearInterval(rotacionTV);
+        rotacionTV=null;
         document.removeEventListener('keydown',esc);
       }
     });
+  } else {
+    if(rotacionTV) clearInterval(rotacionTV);
+    rotacionTV = null;
   }
 }
 
