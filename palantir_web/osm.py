@@ -84,7 +84,7 @@ def obtener_infraestructura_region(refrescar: bool = False) -> dict:
     Obtiene subestaciones, plantas y líneas de toda la región (cacheado).
     Devuelve {"subestaciones": [...], "plantas": [...], "lineas": [...]}.
     """
-    cache = CACHE_DIR / "region_mx3.json"
+    cache = CACHE_DIR / "region_mx4.json"
     if cache.exists() and not refrescar:
         # Cache válido por 30 días
         if time.time() - cache.stat().st_mtime < 30 * 86400:
@@ -103,6 +103,7 @@ def obtener_infraestructura_region(refrescar: bool = False) -> dict:
       nwr["power"="plant"](area.mx)({bbox});
       nwr["power"="generator"](area.mx)({bbox});
       way["power"="line"](area.mx)({bbox});
+      way["power"="minor_line"](area.mx)({bbox});
       nwr["operator"~"CFE|Comisi",i](area.mx)({bbox});
     );
     out geom;
@@ -115,7 +116,7 @@ def obtener_infraestructura_region(refrescar: bool = False) -> dict:
         tags = el.get("tags", {})
         power = tags.get("power")
         nombre = tags.get("name", tags.get("operator", ""))
-        if power == "line":
+        if power in ("line", "minor_line"):
             geom = el.get("geometry")
             if geom and len(geom) >= 2:
                 coords = [[p["lat"], p["lon"]] for p in geom]
