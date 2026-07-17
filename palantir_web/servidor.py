@@ -438,6 +438,7 @@ async def handle_detectar(request):
     """
     Detecta infraestructura con el modelo de IA sobre el área visible.
     Recibe el centro (lat, lon) y descarga una imagen satelital de ~500m para analizar.
+    Las detecciones se GUARDAN en disco para no perderlas al reiniciar.
     """
     if motor_ia is None or cliente_sat is None:
         return web.json_response({"error": "IA no disponible", "detecciones": []})
@@ -465,7 +466,10 @@ async def handle_detectar(request):
                     "fuente": str(d.fuente),
                 })
             except Exception:
-                continue  # ignora una detección con valores inválidos
+                continue
+        # Guardar las detecciones nuevas en disco
+        if salida:
+            _guardar_detecciones(salida)
         return salida
 
     try:
@@ -473,11 +477,46 @@ async def handle_detectar(request):
     except Exception as ex:
         print(f"[IA] Error al detectar: {ex}")
         return web.json_response({"error": str(ex), "detecciones": []})
-    # dumps seguro: nunca emite NaN/Infinity (JSON inválido para el navegador)
     return web.json_response(
         {"modo": motor_ia.modo, "detecciones": dets},
         dumps=lambda o: json.dumps(o, ensure_ascii=False, allow_nan=False),
     )
+
+
+# === PERSISTENCIA DE DETECCIONES ===
+_DETECCIONES_PATH = RAIZ / "datos" / "detecciones_ia.json"
+
+
+def _cargar_detecciones() -> list[dict]:
+    """Carga detecciones guardadas de sesiones anteriores."""
+    if _DETECCIONES_PATH.exists():
+        try:
+            return json.loads(_DETECCIONES_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return []
+
+
+def _guardar_detecciones(nuevas: list[dict]):
+    """Agrega detecciones nuevas al archivo (sin duplicar las que ya existen)."""
+    existentes = _cargar_detecciones()
+    # Deduplicar por coordenadas cercanas
+    for nueva in nuevas:
+        es_dup = False
+        for ex in existentes:
+            if (abs(ex.get("lat", 0) - nueva["lat"]) < 0.0003 and
+                abs(ex.get("lon", 0) - nueva["lon"]) < 0.0003):
+                es_dup = True
+                break
+        if not es_dup:
+            existentes.append(nueva)
+    _DETECCIONES_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _DETECCIONES_PATH.write_text(json.dumps(existentes, ensure_ascii=False), encoding="utf-8")
+
+
+async def handle_detecciones_guardadas(request):
+    """Devuelve todas las detecciones guardadas de sesiones anteriores."""
+    return web.json_response(_cargar_detecciones())
 
 
 # === APP ===
@@ -498,6 +537,7 @@ def main():
     app.router.add_get("/ws", ws_handler)
     app.router.add_get("/api/estado", handle_estado)
     app.router.add_get("/api/detectar", handle_detectar)
+    app.router.add_get("/api/detecciones", handle_detecciones_guardadas)
     app.router.add_get("/api/lineas", handle_lineas_coords)
     app.router.add_get("/api/torres", handle_torres)
     app.router.add_get("/api/interconexiones", handle_interconexiones)

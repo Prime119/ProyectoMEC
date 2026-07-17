@@ -184,6 +184,7 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
       <div class="tab" onclick="openTab('subs')">🔌 SUBESTACIONES</div>
       <div class="tab" onclick="openTab('lineas')">〰️ LÍNEAS</div>
       <div class="tab" onclick="openTab('alertas')">🚨 ALERTAS</div>
+      <div class="tab" onclick="openTab('stats')">📊 STATS</div>
       <div class="tab" onclick="openTab('mec')">🤖 MEC</div>
     </div>
     <div id="tab-content">
@@ -191,6 +192,7 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
       <div id="pane-subs" class="tab-pane"><table id="tbl-subs"><thead><tr><th>Subestación</th><th>Tipo</th><th>Ciudad</th></tr></thead><tbody></tbody></table></div>
       <div id="pane-lineas" class="tab-pane"><table id="tbl-lineas"><thead><tr><th>Línea</th><th>Tensión</th><th>Carga%</th><th>Flujo MW</th><th>Corriente</th><th>Temp</th><th>Estado</th></tr></thead><tbody></tbody></table></div>
       <div id="pane-alertas" class="tab-pane"><div id="alertas-feed"></div></div>
+      <div id="pane-stats" class="tab-pane"><div id="stats-content" style="padding:8px;font-family:var(--mono);font-size:11px;color:var(--text-h);line-height:2;"></div></div>
       <div id="pane-mec" class="tab-pane"><div id="mec-panel"><div id="mec-messages"></div><div id="mec-input-bar"><button id="mec-mic" onclick="mecEscuchar()" title="Hablar">🎙️</button><input id="mec-input" placeholder="Pregunta o habla..." /><button id="mec-send" onclick="mecSend()">ENVIAR</button><button id="mec-voz" onclick="mecToggleVoz()" title="Voz de MEC" class="on">🔊</button></div></div></div>
     </div>
   </div>
@@ -596,6 +598,36 @@ function openTab(name){
   document.getElementById('pane-'+name).classList.add('active');
   event.target.classList.add('active');
   if(name==='subs') actualizarTablaSubs();
+  if(name==='stats') actualizarStats();
+}
+
+// Pestaña STATS: estadísticas de la zona visible
+function actualizarStats(){
+  var ub = detectarUbicacion();
+  var nDetecciones = 0;
+  capaIA.eachLayer(function(){ nDetecciones++; });
+  var nSubs = todasLasSubs.length;
+  var c = map.getCenter();
+  var radio = 3.0 / Math.max(map.getZoom(),6);
+  var subsZona = todasLasSubs.filter(s=>Math.abs(s.lat-c.lat)<radio&&Math.abs(s.lon-c.lng)<radio).length;
+
+  var html = '<h3 style="color:var(--text-h);margin:0 0 12px 0;">📊 Estadísticas — '+(ub.ciudad||ub.estado||'Región')+'</h3>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
+  html += '<div style="background:var(--panel);padding:10px;border-radius:6px;border:1px solid var(--border);">Subestaciones zona<br><b style="font-size:18px;color:var(--text-h);">'+subsZona+'</b></div>';
+  html += '<div style="background:var(--panel);padding:10px;border-radius:6px;border:1px solid var(--border);">Total subestaciones<br><b style="font-size:18px;color:var(--text-h);">'+nSubs+'</b></div>';
+  html += '<div style="background:var(--panel);padding:10px;border-radius:6px;border:1px solid var(--border);">Detecciones IA<br><b style="font-size:18px;color:#5a9e78;">'+nDetecciones+'</b></div>';
+  html += '<div style="background:var(--panel);padding:10px;border-radius:6px;border:1px solid var(--border);">Zoom actual<br><b style="font-size:18px;color:var(--text-h);">'+map.getZoom()+'</b></div>';
+  html += '</div>';
+  html += '<h4 style="margin:14px 0 8px 0;color:var(--text);">Infraestructura en el mapa:</h4>';
+  html += '<div style="line-height:2;">';
+  html += '⚡ Plantas monitoreadas: <b>28</b><br>';
+  html += '🔌 Subestaciones (CSV+OSM): <b>'+nSubs+'</b><br>';
+  html += '🏢 Instalaciones CSV (Google Maps): <b>481</b><br>';
+  html += '🗼 Torres/postes: <b>aparecen zoom 11+</b><br>';
+  html += '◆ Detecciones IA: <b>'+nDetecciones+'</b><br>';
+  html += '🟢 Líneas distribución (IA): <b>estimadas al escanear</b>';
+  html += '</div>';
+  document.getElementById('stats-content').innerHTML = html;
 }
 
 // Tabla de subestaciones (del CSV + OSM, filtrada por zona visible)
@@ -756,6 +788,22 @@ function buscar(){
   }
 }
 document.getElementById('search-input').addEventListener('keydown',e=>{if(e.key==='Enter')buscar();});
+
+// === DETECCIONES GUARDADAS (de escaneos anteriores, persisten al reiniciar) ===
+fetch('/api/detecciones').then(r=>r.json()).then(dets=>{
+  if(dets.length>0){
+    dets.forEach(t=>{
+      var icon = L.divIcon({className:'',iconSize:[16,16],iconAnchor:[8,8],
+        html:'<div class="ia-diamond" style="background:'+(t.color||'#5b8fb0')+'"></div>'});
+      var m = L.marker([t.lat,t.lon],{icon:icon});
+      m.bindPopup('<b style="color:'+(t.color||'#5b8fb0')+'">'+( t.icono||'◆')+' '+(t.nombre||'Detección')+'</b><br>🤖 IA: '+(t.conf?((t.conf*100).toFixed(0)+'%'):'—')+'<br><span style="color:#68788a">(guardada)</span>');
+      capaIA.addLayer(m);
+    });
+    // Conectar con líneas verdes
+    conectarDeteccionesElectricas();
+    console.log('Detecciones guardadas cargadas:',dets.length);
+  }
+}).catch(e=>console.error('Error cargando detecciones guardadas:',e));
 
 // === INSTALACIONES CFE MANUALES (de Google Maps, archivo CSV) ===
 // Solo visibles al acercar (zoom >= 10) para no sobrecargar la vista alejada
