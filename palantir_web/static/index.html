@@ -380,6 +380,25 @@ document.getElementById('leyenda').innerHTML = `
   <span style="display:inline-block;width:9px;height:9px;background:#5b8fb0;border:2px solid #fff;transform:rotate(45deg);margin:0 8px 0 2px;"></span>◆ Diamante = detectado por IA
 `;
 
+// === MODO NOCTURNO AUTOMÁTICO (ajusta brillo según hora del día) ===
+function aplicarModoHora(){
+  var hora = new Date().getHours();
+  var cuerpo = document.body;
+  var mapa = document.getElementById('map');
+  // De noche (20-6): mapa más oscuro. De día (7-19): normal.
+  if(hora >= 20 || hora < 6){
+    mapa.style.filter = 'brightness(0.85)';
+    cuerpo.style.setProperty('--bg','#080c14');
+  } else if(hora >= 6 && hora < 8){
+    mapa.style.filter = 'brightness(0.92)'; // amanecer
+  } else {
+    mapa.style.filter = 'brightness(1)';
+    cuerpo.style.setProperty('--bg','#10151c');
+  }
+}
+aplicarModoHora();
+setInterval(aplicarModoHora, 60000); // revisar cada minuto
+
 // === POLLING: DATOS EN TIEMPO REAL (cada 2 seg) = "latido" hacia el servidor ===
 var fallosSeguidos = 0;
 
@@ -506,6 +525,8 @@ function actualizarKPIs(r){
   document.getElementById('kpi-pl').style.color = r.plantas_falla>0?'#ff1744':'#00e676';
   // Fuente de datos (CENACE real o estimado)
   if(r.fuente_datos) document.getElementById('ubicacion').title = 'Datos: '+r.fuente_datos;
+  // Guardar mix de generación para la pestaña STATS
+  window._mixGeneracion = r.mix_generacion || {};
 }
 
 function actualizarMapa(plantas){
@@ -643,6 +664,27 @@ function actualizarStats(){
   html += '🗼 Torres/postes: <b>aparecen zoom 11+</b><br>';
   html += '◆ Detecciones IA: <b>'+nDetecciones+'</b><br>';
   html += '🟢 Líneas distribución (IA): <b>estimadas al escanear</b>';
+  html += '</div>';
+  // Gráfica de mix de generación por tipo (Paso 10)
+  html += '<h4 style="margin:14px 0 8px 0;color:var(--text);">⚡ Mix de generación por tipo:</h4>';
+  var mix = window._mixGeneracion || {};
+  var maxMW = Math.max(...Object.values(mix), 1);
+  var coloresMix = {ciclo_combinado:'#bd854f',termoelectrica:'#bd6a5a',turbogas:'#c49060',carbonifera:'#8a6f5a',solar:'#c2a24e',eolica:'#5f9bad',geotermica:'#897eab',hidroelectrica:'#5b82ad'};
+  var nombresMix = {ciclo_combinado:'Ciclo Comb.',termoelectrica:'Termoeléctrica',turbogas:'Turbogás',carbonifera:'Carbón',solar:'Solar',eolica:'Eólica',geotermica:'Geotérmica',hidroelectrica:'Hidro'};
+  html += '<div style="display:flex;flex-direction:column;gap:4px;">';
+  Object.keys(mix).forEach(tipo=>{
+    var mw = mix[tipo];
+    var pct = (mw/maxMW*100).toFixed(0);
+    var col = coloresMix[tipo]||'#5b8fb0';
+    var nom = nombresMix[tipo]||tipo;
+    html += '<div style="display:flex;align-items:center;gap:6px;font-size:10px;">';
+    html += '<span style="width:80px;color:#93a1b0;">'+nom+'</span>';
+    html += '<div style="flex:1;height:14px;background:var(--panel);border-radius:3px;overflow:hidden;">';
+    html += '<div style="width:'+pct+'%;height:100%;background:'+col+';border-radius:3px;transition:width .5s;"></div>';
+    html += '</div>';
+    html += '<span style="width:55px;text-align:right;color:var(--text-h);font-family:var(--mono);">'+mw+' MW</span>';
+    html += '</div>';
+  });
   html += '</div>';
   // Recomendaciones para mejorar el modelo (Paso 9)
   html += '<h4 style="margin:14px 0 8px 0;color:var(--text);">🧠 Mejorar precisión del modelo:</h4>';

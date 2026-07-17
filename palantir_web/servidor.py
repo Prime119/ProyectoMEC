@@ -613,6 +613,19 @@ def main():
     print("=" * 60)
     print("  🦅 FALCON CFE — Versión Web")
     print("  Abriendo en http://localhost:8080")
+    print("")
+    # Mostrar IP de red local para que otros se conecten
+    try:
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip_local = s.getsockname()[0]
+        s.close()
+        print(f"  📡 Otros en tu red pueden acceder en:")
+        print(f"     http://{ip_local}:8080")
+    except Exception:
+        pass
+    print("")
     print("  Presiona Ctrl+C para detener")
     print("=" * 60)
 
