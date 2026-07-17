@@ -32,7 +32,9 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI','Inter',syste
 #main{display:flex;height:calc(100vh - 50px);}
 #map-panel{flex:1;position:relative;}
 #map{width:100%;height:100%;}
-#right-panel{width:540px;background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+#right-panel{width:540px;background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:width .3s,opacity .3s;}
+#right-panel.oculto{width:0;opacity:0;overflow:hidden;border:none;padding:0;}
+#zoom-info{position:absolute;bottom:50px;right:14px;z-index:1000;background:rgba(14,22,38,.9);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:9px;color:var(--text);font-family:var(--mono);line-height:1.6;}
 /* KPIs */
 #kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:14px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,#0c1424,#0a111e);}
 .kpi{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;position:relative;overflow:hidden;transition:.2s;}
@@ -142,8 +144,11 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
   <span class="logo">FALCON</span>
   <span class="sub">/ CFE NOROESTE — Infraestructura Eléctrica en Tiempo Real</span>
   <div class="right">
+    <span id="ubicacion" style="color:#93a1b0;font-size:11px;"></span>
+    <span id="zoom-nivel" style="color:#5b8fb0;font-size:10px;font-family:var(--mono);">Z:6</span>
     <span class="freq" id="freq">60.000 Hz</span>
     <span class="clock" id="clock">--</span>
+    <button id="btn-panel" onclick="togglePanel()" style="background:var(--panel);border:1px solid var(--border2);color:var(--text-h);padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;">◀ Panel</button>
   </div>
 </div>
 <!-- MAIN -->
@@ -159,6 +164,7 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
     </div>
     <div id="ia-status"></div>
     <div id="leyenda"></div>
+    <div id="zoom-info"></div>
   </div>
   <!-- RIGHT PANEL -->
   <div id="right-panel">
@@ -370,6 +376,69 @@ document.getElementById('leyenda').innerHTML = `
 
 // === POLLING: DATOS EN TIEMPO REAL (cada 2 seg) = "latido" hacia el servidor ===
 var fallosSeguidos = 0;
+
+// Panel retráctil
+function togglePanel(){
+  var panel = document.getElementById('right-panel');
+  var btn = document.getElementById('btn-panel');
+  panel.classList.toggle('oculto');
+  btn.textContent = panel.classList.contains('oculto') ? '▶ Panel' : '◀ Panel';
+  setTimeout(()=>map.invalidateSize(), 350); // recalcular tamaño del mapa
+}
+
+// Indicador de zoom + qué aparece en cada nivel
+function actualizarZoomInfo(){
+  var z = map.getZoom();
+  document.getElementById('zoom-nivel').textContent = 'Z:'+z;
+  var info = 'Zoom '+z+'\n';
+  info += z>=6 ? '✓ Líneas transmisión\n' : '· Líneas (zoom 6+)\n';
+  info += z>=8 ? '✓ Plantas monitoreadas\n' : '· Plantas (zoom 8+)\n';
+  info += z>=10 ? '✓ Subestaciones OSM\n' : '· Subestaciones (zoom 10+)\n';
+  info += z>=11 ? '✓ Oficinas/almacenes\n' : '· Oficinas (zoom 11+)\n';
+  info += z>=11 ? '✓ Torres/postes\n' : '· Torres (zoom 11+)\n';
+  info += z>=13 ? '✓ Red distribución' : '· Distribución (zoom 13+)';
+  document.getElementById('zoom-info').innerText = info;
+}
+map.on('zoomend', actualizarZoomInfo);
+actualizarZoomInfo();
+
+// Detección automática de ubicación (estado/ciudad) según el centro del mapa
+var estadosGeo = [
+  {nombre:'Baja California',lat:30.5,lon:-116.0,radio:2.5},
+  {nombre:'Baja California Sur',lat:24.5,lon:-111.0,radio:2.5},
+  {nombre:'Sonora',lat:29.5,lon:-110.5,radio:3},
+  {nombre:'Chihuahua',lat:29.0,lon:-106.5,radio:3},
+  {nombre:'Sinaloa',lat:24.5,lon:-107.5,radio:2.5},
+];
+var ciudadesGeo = [
+  {nombre:'Hermosillo',lat:29.07,lon:-110.96},{nombre:'Tijuana',lat:32.52,lon:-117.02},
+  {nombre:'Mexicali',lat:32.62,lon:-115.45},{nombre:'Cd. Juárez',lat:31.69,lon:-106.42},
+  {nombre:'Chihuahua',lat:28.63,lon:-106.09},{nombre:'Culiacán',lat:24.80,lon:-107.39},
+  {nombre:'Los Mochis',lat:25.79,lon:-108.99},{nombre:'Mazatlán',lat:23.24,lon:-106.42},
+  {nombre:'La Paz',lat:24.14,lon:-110.31},{nombre:'Guaymas',lat:27.92,lon:-110.90},
+  {nombre:'Cd. Obregón',lat:27.49,lon:-109.93},{nombre:'Nogales',lat:31.31,lon:-110.94},
+  {nombre:'Ensenada',lat:31.87,lon:-116.60},{nombre:'Los Cabos',lat:22.90,lon:-109.92},
+];
+function detectarUbicacion(){
+  var c = map.getCenter();
+  var ciudad = '', estado = '';
+  var mejorDist = 999;
+  ciudadesGeo.forEach(ci=>{
+    var d = Math.sqrt(Math.pow(c.lat-ci.lat,2)+Math.pow(c.lng-ci.lon,2));
+    if(d < mejorDist && d < 0.5){ mejorDist=d; ciudad=ci.nombre; }
+  });
+  estadosGeo.forEach(es=>{
+    var d = Math.sqrt(Math.pow(c.lat-es.lat,2)+Math.pow(c.lng-es.lon,2));
+    if(d < es.radio){ estado=es.nombre; }
+  });
+  var txt = '';
+  if(ciudad) txt = '📍 '+ciudad;
+  else if(estado) txt = '📍 '+estado;
+  document.getElementById('ubicacion').textContent = txt;
+  return {ciudad:ciudad, estado:estado};
+}
+map.on('moveend', detectarUbicacion);
+detectarUbicacion();
 function pedirEstado(){
   fetch('/api/estado').then(r=>r.json()).then(data=>{
     fallosSeguidos = 0;
@@ -455,8 +524,20 @@ function actualizarLineas(lineas){
 
 // === TABLAS ===
 function actualizarTabla(plantas){
+  // Filtrar: solo mostrar plantas del estado/ciudad donde está el mapa
+  var ub = detectarUbicacion();
+  var filtradas = plantas;
+  if(map.getZoom() >= 8 && ub.estado){
+    // Al estar acercado, filtrar por cercanía al centro visible
+    var c = map.getCenter();
+    var radio = 3.0 / map.getZoom(); // radio se reduce al acercar
+    filtradas = plantas.filter(p=>
+      Math.abs(p.lat-c.lat)<radio && Math.abs(p.lon-c.lng)<radio
+    );
+    if(filtradas.length===0) filtradas = plantas; // fallback: mostrar todas
+  }
   var html='';
-  plantas.forEach(p=>{
+  filtradas.forEach(p=>{
     var cls=p.estado==='Falla'?'st-bad':(p.estado==='Operando'?'st-ok':'st-warn');
     var pct = p.cap_mw>0?Math.round(p.gen_mw/p.cap_mw*100):0;
     html+=`<tr><td>${p.nombre.substring(0,22)}</td><td class="${cls}">${p.estado}</td>
