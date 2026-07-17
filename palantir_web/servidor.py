@@ -451,6 +451,13 @@ async def handle_estado(request):
             ultimo_estado.get("resumen", {})
         )
         ultimo_estado["alertas_nuevas"] = alertas_nuevas
+        # Enviar alertas críticas a Telegram (si está configurado)
+        if alertas_nuevas:
+            try:
+                from palantir_web.telegram import enviar_alertas_criticas
+                enviar_alertas_criticas(alertas_nuevas)
+            except Exception:
+                pass
     except Exception:
         ultimo_estado["alertas_nuevas"] = []
 

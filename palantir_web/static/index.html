@@ -94,6 +94,14 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
 #map-search button:hover{filter:brightness(1.12);}
 #btn-escanear{background:#1a3a22 !important;color:#5a9e78 !important;border:1px solid #3a5a4a !important;}
 #btn-escanear.cargando{opacity:.6;cursor:wait;}
+#btn-heat{background:var(--panel) !important;color:#c2a24e !important;border:1px solid #5a4a2a !important;}
+#btn-heat.activo{background:#3a2a1a !important;border-color:#c2a24e !important;}
+#btn-present{background:var(--panel) !important;color:var(--text-h) !important;border:1px solid var(--border2) !important;font-size:14px !important;padding:6px 10px !important;}
+/* Modo presentación: oculta controles */
+body.presentacion #topbar,body.presentacion #map-search,body.presentacion #leyenda,
+body.presentacion #zoom-info,body.presentacion #right-panel,body.presentacion #ia-status{display:none !important;}
+body.presentacion #map-panel{position:fixed;inset:0;z-index:9999;}
+body.presentacion #main{height:100vh;}
 #btn-capa{background:var(--panel) !important;color:var(--text-h) !important;border:1px solid var(--border2) !important;}
 #btn-cfe-unused{display:none;}
 /* Marcador de instalación CFE de OSM (cuadrado verde chico) */
@@ -160,6 +168,8 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
       <input id="search-input" placeholder="LOCALIZAR activo CFE..." />
       <button onclick="buscar()">🔍 LOCALIZAR</button>
       <button id="btn-escanear" onclick="escanearCiudad()" title="Escanear toda el área visible con IA (más completo, tarda más)">🏙️ ESCANEAR CIUDAD</button>
+      <button id="btn-heat" onclick="toggleHeatmap()" title="Mapa de calor de infraestructura">🔥 CALOR</button>
+      <button id="btn-present" onclick="togglePresentacion()" title="Modo presentación (pantalla completa sin controles)">🖥️</button>
       <button id="btn-capa" onclick="cambiarCapa()" title="Cambiar entre mapa oscuro y satelital">🗺️ SATÉLITE</button>
     </div>
     <div id="ia-status"></div>
@@ -196,6 +206,7 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
 <script>
 
@@ -687,6 +698,18 @@ function actualizarStats(){
   });
   html += '</div>';
   // Recomendaciones para mejorar el modelo (Paso 9)
+  html += '<h4 style="margin:14px 0 8px 0;color:var(--text);">📊 Comparativa por estado:</h4>';
+  html += '<table style="width:100%;font-size:10px;margin-bottom:12px;"><thead><tr><th>Estado</th><th>Plantas</th><th>Cap. MW</th><th>Subestaciones</th></tr></thead><tbody>';
+  var estComp = [
+    {n:'Baja California',p:6,mw:3280,s:4}, {n:'B.C. Sur',p:4,mw:274,s:2},
+    {n:'Sonora',p:7,mw:2699,s:5}, {n:'Chihuahua',p:5,mw:1611,s:4},
+    {n:'Sinaloa',p:6,mw:1952,s:4}
+  ];
+  estComp.forEach(e=>{
+    html += '<tr><td>'+e.n+'</td><td style="text-align:center">'+e.p+'</td><td style="text-align:center;color:var(--text-h)">'+e.mw.toLocaleString()+'</td><td style="text-align:center">'+e.s+'</td></tr>';
+  });
+  html += '</tbody></table>';
+
   html += '<h4 style="margin:14px 0 8px 0;color:var(--text);">🧠 Mejorar precisión del modelo:</h4>';
   html += '<div style="line-height:1.8;font-size:10px;color:#93a1b0;">';
   if(nDetecciones < 50) html += '• Escanea más zonas para acumular detecciones<br>';
@@ -716,6 +739,53 @@ function actualizarTablaSubs(){
     html+=`<tr><td>${(s.nombre||'Subestación').substring(0,30)}</td><td>${s.tipo||'subestacion'}</td><td>${s.ciudad||''}</td></tr>`;
   });
   document.querySelector('#tbl-subs tbody').innerHTML=html;
+}
+
+// === MAPA DE CALOR (heatmap de concentración de infraestructura) ===
+var capaCalor = null;
+var heatActivo = false;
+function toggleHeatmap(){
+  var btn = document.getElementById('btn-heat');
+  if(heatActivo){
+    if(capaCalor) map.removeLayer(capaCalor);
+    heatActivo = false;
+    btn.classList.remove('activo');
+    return;
+  }
+  // Recopilar todos los puntos de infraestructura para el heatmap
+  var puntos = [];
+  // Del CSV manual
+  capaCFEManual.eachLayer(function(l){ if(l.getLatLng) puntos.push([l.getLatLng().lat,l.getLatLng().lng,0.6]); });
+  // De OSM
+  capaOSM.eachLayer(function(l){ if(l.getLatLng) puntos.push([l.getLatLng().lat,l.getLatLng().lng,0.8]); });
+  // Detecciones de IA
+  capaIA.eachLayer(function(l){ if(l.getLatLng) puntos.push([l.getLatLng().lat,l.getLatLng().lng,1.0]); });
+  // Marcadores monitoreados
+  Object.values(markers).forEach(function(m){ if(m.getLatLng) puntos.push([m.getLatLng().lat,m.getLatLng().lng,1.0]); });
+
+  if(puntos.length===0){ iaStatus('No hay suficientes puntos para el mapa de calor. Escanea una zona primero.','#c2a24e'); return; }
+  capaCalor = L.heatLayer(puntos, {radius:25, blur:20, maxZoom:14, gradient:{0.2:'#1a237e',0.4:'#1565c0',0.6:'#00897b',0.8:'#fdd835',1.0:'#ff6f00'}}).addTo(map);
+  heatActivo = true;
+  btn.classList.add('activo');
+}
+
+// === MODO PRESENTACIÓN (pantalla completa, sin controles — para TV/monitor) ===
+var enPresentacion = false;
+function togglePresentacion(){
+  enPresentacion = !enPresentacion;
+  document.body.classList.toggle('presentacion', enPresentacion);
+  map.invalidateSize();
+  // ESC para salir
+  if(enPresentacion){
+    document.addEventListener('keydown', function esc(e){
+      if(e.key==='Escape'){
+        enPresentacion=false;
+        document.body.classList.remove('presentacion');
+        map.invalidateSize();
+        document.removeEventListener('keydown',esc);
+      }
+    });
+  }
 }
 
 // === ESCANEAR CIUDAD (cuadrícula 5x5 = 25 puntos, cubre toda el área) ===
