@@ -56,6 +56,11 @@ try:
 except Exception as e:
     print(f"⚠️ IA satelital no disponible: {e}")
 
+# Motor de alertas inteligentes
+from palantir_web.alertas import MotorAlertas
+motor_alertas = MotorAlertas()
+print(f"🚨 Motor de alertas activo ({len(motor_alertas.historial)} eventos en historial)")
+
 
 # === SIMULADOR ===
 simulador = SimuladorTelemetria()
@@ -438,6 +443,17 @@ async def handle_estado(request):
     except Exception:
         pass
 
+    # Generar alertas inteligentes
+    try:
+        alertas_nuevas = motor_alertas.analizar(
+            ultimo_estado.get("plantas", []),
+            ultimo_estado.get("lineas", []),
+            ultimo_estado.get("resumen", {})
+        )
+        ultimo_estado["alertas_nuevas"] = alertas_nuevas
+    except Exception:
+        ultimo_estado["alertas_nuevas"] = []
+
     return web.json_response(ultimo_estado)
 
 
@@ -548,6 +564,21 @@ async def handle_exportar_csv(request):
     )
 
 
+async def handle_historial(request):
+    """Devuelve el historial de alertas (exportable)."""
+    formato = request.query.get("formato", "json")
+    historial = motor_alertas.get_historial(500)
+    if formato == "csv":
+        lineas = ["timestamp,severidad,tipo,mensaje,activo"]
+        for h in historial:
+            lineas.append(f"{h.get('timestamp','')},{h.get('severidad','')},{h.get('tipo','')},\"{h.get('mensaje','')}\",{h.get('activo_nombre','')}")
+        return web.Response(
+            text="\n".join(lineas), content_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=historial_alertas_falcon.csv"}
+        )
+    return web.json_response(historial)
+
+
 # === APP ===
 async def on_startup(app):
     # Primer tick para tener datos listos de inmediato
@@ -568,6 +599,7 @@ def main():
     app.router.add_get("/api/detectar", handle_detectar)
     app.router.add_get("/api/detecciones", handle_detecciones_guardadas)
     app.router.add_get("/api/exportar/csv", handle_exportar_csv)
+    app.router.add_get("/api/historial", handle_historial)
     app.router.add_get("/api/lineas", handle_lineas_coords)
     app.router.add_get("/api/torres", handle_torres)
     app.router.add_get("/api/interconexiones", handle_interconexiones)

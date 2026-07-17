@@ -456,6 +456,23 @@ function pedirEstado(){
     actualizarTabla(data.plantas);
     actualizarTablaLineas(data.lineas);
     actualizarAlertas(data.plantas, data.lineas);
+    // Alertas inteligentes con voz (MEC anuncia las críticas)
+    if(data.alertas_nuevas && data.alertas_nuevas.length > 0){
+      data.alertas_nuevas.forEach(a=>{
+        // Mostrar en el feed de alertas
+        var cls = a.severidad==='critica'?'alerta-crit':(a.severidad==='alta'?'alerta-warn':'alerta-info');
+        var div = document.createElement('div');
+        div.className = 'alerta '+cls;
+        div.textContent = a.mensaje;
+        if(alertasFeed) alertasFeed.prepend(div);
+        // MEC lo dice en voz alta (solo críticas y altas)
+        if((a.severidad==='critica'||a.severidad==='alta') && vozActiva && window.speechSynthesis){
+          var u = new SpeechSynthesisUtterance(a.mensaje.replace(/[🚨⚠️🔥⚡🔧]/g,''));
+          u.lang='es-MX'; u.rate=1.1;
+          speechSynthesis.speak(u);
+        }
+      });
+    }
   }).catch(e=>{
     // Si el servidor se detuvo (Ctrl+C), tras varios fallos mostramos aviso
     fallosSeguidos++;
@@ -627,8 +644,18 @@ function actualizarStats(){
   html += '◆ Detecciones IA: <b>'+nDetecciones+'</b><br>';
   html += '🟢 Líneas distribución (IA): <b>estimadas al escanear</b>';
   html += '</div>';
-  html += '<div style="margin-top:14px;display:flex;gap:8px;">';
+  // Recomendaciones para mejorar el modelo (Paso 9)
+  html += '<h4 style="margin:14px 0 8px 0;color:var(--text);">🧠 Mejorar precisión del modelo:</h4>';
+  html += '<div style="line-height:1.8;font-size:10px;color:#93a1b0;">';
+  if(nDetecciones < 50) html += '• Escanea más zonas para acumular detecciones<br>';
+  if(nDetecciones > 0) html += '• Revisa las detecciones (algunas pueden ser incorrectas)<br>';
+  html += '• Reentrenar con más imágenes mejora la precisión<br>';
+  html += '• Etiquetado fino en Roboflow → modelo por sección<br>';
+  html += '• El modelo actual detecta: subestaciones, torres, solares';
+  html += '</div>';
+  html += '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">';
   html += '<button onclick="window.open(\'/api/exportar/csv\')" style="background:var(--panel);border:1px solid var(--border2);color:var(--text-h);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:11px;">📥 Exportar detecciones (CSV)</button>';
+  html += '<button onclick="window.open(\'/api/historial?formato=csv\')" style="background:var(--panel);border:1px solid var(--border2);color:var(--text-h);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:11px;">📋 Exportar historial alertas (CSV)</button>';
   html += '</div>';
   document.getElementById('stats-content').innerHTML = html;
 }
