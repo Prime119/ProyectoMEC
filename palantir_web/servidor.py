@@ -450,7 +450,8 @@ async def vigilar_pagina(app):
 async def handle_detectar(request):
     """
     Detecta infraestructura con el modelo de IA sobre el área visible.
-    Recibe el centro (lat, lon) y descarga una imagen satelital de ~500m para analizar.
+    Recibe el centro (lat, lon) y descarga una imagen satelital a ZOOM 19
+    (donde el modelo fue entrenado), sin importar a qué zoom esté el usuario.
     Las detecciones se GUARDAN en disco para no perderlas al reiniciar.
     """
     if motor_ia is None or cliente_sat is None:
@@ -464,7 +465,8 @@ async def handle_detectar(request):
     loop = asyncio.get_event_loop()
 
     def _run():
-        area = cliente_sat.area_alrededor(lon, lat, radio_m=500, zoom=18)
+        # SIEMPRE descarga a zoom 19 (donde el modelo fue entrenado y detecta bien)
+        area = cliente_sat.area_alrededor(lon, lat, radio_m=300, zoom=19)
         if area.imagen is None:
             return []
         dets = motor_ia.analizar(area)

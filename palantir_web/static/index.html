@@ -402,6 +402,7 @@ function actualizarZoomInfo(){
   info += z>=10 ? '✓ Subestaciones OSM\n' : '· Subestaciones (zoom 10+)\n';
   info += z>=11 ? '✓ Oficinas/almacenes\n' : '· Oficinas (zoom 11+)\n';
   info += z>=11 ? '✓ Torres/postes\n' : '· Torres (zoom 11+)\n';
+  info += z>=12 ? '✓ Escanear ciudad\n' : '· Escanear (zoom 12+)\n';
   info += z>=13 ? '✓ Red distribución' : '· Distribución (zoom 13+)';
   document.getElementById('zoom-info').innerText = info;
 }
