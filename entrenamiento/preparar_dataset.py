@@ -217,6 +217,16 @@ def generar_dataset(salida: Path, zoom: int, max_imagenes: int,
                 "labels/train", "labels/val", "labels/test"]:
         (salida / sub).mkdir(parents=True, exist_ok=True)
 
+    # Detectar imágenes que YA existen (para no repetir trabajo)
+    existentes = set()
+    for parte in ["train", "val", "test"]:
+        img_dir = salida / "images" / parte
+        if img_dir.exists():
+            for f in img_dir.glob("*.jpg"):
+                existentes.add(f.stem)  # nombre sin extensión
+    if existentes:
+        print(f"⏩ {len(existentes)} imágenes ya existen — se omitirán (continuando desde donde quedó)")
+
     # Cargar la infraestructura de OSM UNA SOLA VEZ (cacheada en disco)
     region = {}
     try:
@@ -230,6 +240,7 @@ def generar_dataset(salida: Path, zoom: int, max_imagenes: int,
 
     escenas = []  # (nombre, area, etiquetas[])
     grado = radio_m / 111320.0  # paso de cuadrícula (aprox)
+    total_con_existentes = len(existentes)  # contar las que ya existen como progreso
 
     # Procesar PRIMERO las zonas de plantas (clases raras: eólica, hidro, etc.)
     # y luego las ciudades (clases abundantes: subestaciones, torres).
@@ -244,7 +255,7 @@ def generar_dataset(salida: Path, zoom: int, max_imagenes: int,
     max_por_zona = max(10, max_imagenes // max(len(orden), 1))
 
     for zona, bbox in orden:
-        if len(escenas) >= max_imagenes:
+        if total_con_existentes + len(escenas) >= max_imagenes:
             break
         print(f"\n== Zona: {zona} ==")
         # UNA consulta de detalle por zona; luego todo se filtra en memoria
@@ -255,24 +266,34 @@ def generar_dataset(salida: Path, zoom: int, max_imagenes: int,
         s, w, n, e = bbox
         en_zona = 0
         lat = s
-        while lat < n and len(escenas) < max_imagenes and en_zona < max_por_zona:
+        while lat < n and total_con_existentes + len(escenas) < max_imagenes and en_zona < max_por_zona:
             lon = w
-            while lon < e and len(escenas) < max_imagenes and en_zona < max_por_zona:
+            while lon < e and total_con_existentes + len(escenas) < max_imagenes and en_zona < max_por_zona:
                 cen_lat, cen_lon = lat + grado, lon + grado
+                # Nombre que tendría esta escena
+                nombre_candidato = f"{zona}_{total_con_existentes + len(escenas)}"
+                # Saltar si ya existe
+                if nombre_candidato in existentes or f"{zona}_{len(escenas)}" in existentes:
+                    lon += grado * 2
+                    continue
                 cercanos = [a for a in activos
                             if abs(a["lat"] - cen_lat) < grado and abs(a["lon"] - cen_lon) < grado]
                 if cercanos:
                     esc = _crear_escena(cliente, cen_lon, cen_lat, zoom, radio_m,
-                                        zona, len(escenas), activos)
+                                        zona, total_con_existentes + len(escenas), activos)
                     if esc:
                         escenas.append(esc)
                         en_zona += 1
-                        print(f"  imagen {len(escenas)}/{max_imagenes} — {len(esc[2])} etiquetas")
+                        print(f"  imagen {total_con_existentes + len(escenas)}/{max_imagenes} — {len(esc[2])} etiquetas")
                 lon += grado * 2
             lat += grado * 2
 
-    print(f"\nTotal de escenas con etiquetas: {len(escenas)}")
-    _guardar_escenas(escenas, salida, split)
+    print(f"\nNuevas escenas generadas: {len(escenas)}")
+    print(f"Total en el dataset (existentes + nuevas): {total_con_existentes + len(escenas)}")
+    if escenas:
+        _guardar_escenas(escenas, salida, split)
+    else:
+        print("(No se generaron imágenes nuevas — todas las zonas ya estaban cubiertas)")
 
 
 def _crear_escena(cliente, lon, lat, zoom, radio_m, zona, idx, activos):
