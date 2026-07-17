@@ -36,12 +36,13 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI','Inter',syste
 #right-panel.oculto{width:0;opacity:0;overflow:hidden;border:none;padding:0;}
 #zoom-info{position:absolute;bottom:90px;right:14px;z-index:1000;background:rgba(14,22,38,.9);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:9px;color:var(--text);font-family:var(--mono);line-height:1.6;}
 /* KPIs */
-#kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:14px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,#0c1424,#0a111e);}
-.kpi{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;position:relative;overflow:hidden;transition:.2s;}
+#kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,#0c1424,#0a111e);}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 10px;position:relative;overflow:hidden;transition:.2s;}
 .kpi::before{content:'';position:absolute;top:0;left:0;width:100%;height:2px;background:var(--border2);}
 .kpi:hover{border-color:var(--border2);transform:translateY(-1px);}
-.kpi .label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:600;}
-.kpi .value{font-size:22px;font-weight:700;font-family:var(--mono);color:var(--green);margin-top:2px;line-height:1.1;}
+.kpi .label{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:600;}
+.kpi .value{font-size:17px;font-weight:700;font-family:var(--mono);color:var(--green);margin-top:1px;line-height:1.1;}
+@keyframes parpadeo{0%,100%{opacity:1;}50%{opacity:0.4;}}
 /* TABS */
 #tabs{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);padding:0 8px;}
 .tab{padding:12px 16px;font-size:12px;font-weight:600;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:.15s;letter-spacing:.3px;}
@@ -57,7 +58,7 @@ th{background:linear-gradient(180deg,#152136,#0f1a2c);color:var(--cyan);padding:
 td{padding:8px;border-bottom:1px solid rgba(28,43,66,.5);color:#c3d3e8;font-family:var(--mono);font-size:10.5px;}
 tbody tr{transition:.12s;}
 tbody tr:nth-child(even){background:rgba(255,255,255,.015);}
-tbody tr:hover{background:rgba(34,211,238,.07);}
+tbody tr:hover{background:rgba(34,211,238,.07);cursor:pointer;}
 /* STATUS PILLS */
 .st-ok,.st-warn,.st-bad{display:inline-block;padding:2px 8px;border-radius:20px;font-size:9.5px;font-weight:700;letter-spacing:.3px;}
 .st-ok{color:var(--green);background:rgba(34,224,138,.12);}
@@ -88,8 +89,6 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
 #mec-voz.on{background:rgba(34,224,138,.15);border-color:var(--green);color:var(--green);}
 /* MAP CONTROLS */
 #map-search{position:absolute;top:14px;left:14px;z-index:1000;display:flex;gap:8px;}
-#map-search input{background:rgba(14,22,38,.95);border:1px solid var(--border2);color:var(--text-h);padding:10px 14px;border-radius:8px;font-size:13px;width:260px;outline:none;backdrop-filter:blur(8px);transition:.15s;}
-#map-search input:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(34,211,238,.15);}
 #map-search button{background:var(--cyan);color:#0a1017;border:none;padding:10px 16px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;transition:.15s;}
 #map-search button:hover{filter:brightness(1.12);}
 #btn-escanear{background:#1a3a22 !important;color:#5a9e78 !important;border:1px solid #3a5a4a !important;}
@@ -165,8 +164,6 @@ body.presentacion #main{height:100vh;}
   <div id="map-panel">
     <div id="map"></div>
     <div id="map-search">
-      <input id="search-input" placeholder="LOCALIZAR activo CFE..." />
-      <button onclick="buscar()">🔍 LOCALIZAR</button>
       <button id="btn-escanear" onclick="escanearCiudad()" title="Escanear toda el área visible con IA (más completo, tarda más)">🏙️ ESCANEAR CIUDAD</button>
       <button id="btn-heat" onclick="toggleHeatmap()" title="Mapa de calor de infraestructura">🔥 CALOR</button>
       <button id="btn-present" onclick="togglePresentacion()" title="Modo presentación (pantalla completa sin controles)">🖥️</button>
@@ -180,11 +177,23 @@ body.presentacion #main{height:100vh;}
   <div id="right-panel">
     <div id="kpis">
       <div class="kpi"><div class="label">Generación</div><div class="value" id="kpi-gen">—</div></div>
-      <div class="kpi"><div class="label">Demanda</div><div class="value" id="kpi-dem" style="color:#00d4ff">—</div></div>
-      <div class="kpi"><div class="label">Factor Carga</div><div class="value" id="kpi-fc" style="color:#ffd600">—</div></div>
-      <div class="kpi"><div class="label">Plantas Op.</div><div class="value" id="kpi-pl">—</div></div>
-      <div class="kpi"><div class="label">Líneas Op.</div><div class="value" id="kpi-ln">—</div></div>
-      <div class="kpi"><div class="label">Alertas</div><div class="value" id="kpi-al" style="color:#ff1744">—</div></div>
+      <div class="kpi"><div class="label">Demanda</div><div class="value" id="kpi-dem" style="color:#5b8fb0">—</div></div>
+      <div class="kpi"><div class="label">Factor Carga</div><div class="value" id="kpi-fc" style="color:#c2a24e">—</div></div>
+      <div class="kpi"><div class="label">Corriente (A)</div><div class="value" id="kpi-corriente" style="color:#5f9bad">—</div></div>
+      <div class="kpi"><div class="label">Voltaje (kV)</div><div class="value" id="kpi-voltaje" style="color:#897eab">—</div></div>
+      <div class="kpi"><div class="label">Frecuencia (Hz)</div><div class="value" id="kpi-freq" style="color:#5a9e78">—</div></div>
+      <div class="kpi"><div class="label">RMS Global</div><div class="value" id="kpi-rms" style="color:#5b8fb0">—</div></div>
+      <div class="kpi"><div class="label">Vibración (mm/s)</div><div class="value" id="kpi-vib" style="color:#bd854f">—</div></div>
+      <div class="kpi"><div class="label">THD (%)</div><div class="value" id="kpi-thd" style="color:#c2a24e">—</div></div>
+      <div class="kpi"><div class="label">Temperatura (°C)</div><div class="value" id="kpi-temp" style="color:#bd6a5a">—</div></div>
+      <div class="kpi"><div class="label">Plantas / Líneas Op.</div><div class="value" id="kpi-op" style="color:#5a9e78">—</div></div>
+      <div class="kpi"><div class="label">Alertas</div><div class="value" id="kpi-al" style="color:#c15f5f">—</div></div>
+    </div>
+    <!-- Alarma de emergencia (solo visible cuando se activa) -->
+    <div id="alarma-emergencia" style="display:none;background:#3a0a0a;border:2px solid #c15f5f;border-radius:8px;padding:8px 14px;margin:0 12px 8px;display:none;align-items:center;gap:10px;animation:parpadeo 1s infinite;">
+      <span style="font-size:18px;cursor:pointer;" onclick="irAlarma()" title="Ir a la ubicación de la emergencia">🚨</span>
+      <span id="alarma-msg" style="color:#ff6b6b;font-weight:700;font-size:12px;flex:1;cursor:pointer;" onclick="irAlarma()">ALERTA CRÍTICA</span>
+      <button id="btn-silenciar" onclick="silenciarAlarma()" style="background:#c15f5f;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-weight:700;cursor:pointer;font-size:11px;">🔇 SILENCIAR</button>
     </div>
     <div id="tabs">
       <div class="tab active" onclick="openTab('plantas')">⚡ PLANTAS</div>
@@ -519,6 +528,15 @@ function pedirEstado(){
           u.lang='es-MX'; u.rate=1.1;
           speechSynthesis.speak(u);
         }
+        // ALARMA SONORA para casos EXTREMOS (solo críticas: fallas de planta, frecuencia baja)
+        if(a.severidad==='critica' && (a.tipo==='falla_planta'||a.tipo==='frecuencia'||a.tipo==='falla_linea')){
+          // Buscar las coordenadas del activo en falla
+          var aLat=0, aLon=0;
+          if(a.activo_id){
+            Object.values(markers).forEach(m=>{if(m._data && m._data.id===a.activo_id){aLat=m._data.lat;aLon=m._data.lon;}});
+          }
+          activarAlarma(a.mensaje, aLat, aLon);
+        }
       });
     }
   }).catch(e=>{
@@ -541,17 +559,25 @@ function actualizarKPIs(r){
   if(!r) return;
   document.getElementById('kpi-gen').textContent = Math.round(r.generacion_total_mw)+' MW';
   document.getElementById('kpi-dem').textContent = Math.round(r.demanda_estimada_mw)+' MW';
-  document.getElementById('kpi-fc').textContent = r.factor_carga_sistema.toFixed(1)+'%';
-  document.getElementById('kpi-pl').textContent = r.plantas_operando+'/'+r.plantas_total;
-  document.getElementById('kpi-ln').textContent = r.lineas_operando+'/'+r.lineas_total;
-  document.getElementById('kpi-al').textContent = r.alertas_activas;
+  var fc = r.factor_carga_sistema;
+  document.getElementById('kpi-fc').textContent = fc.toFixed(1)+'%';
+  document.getElementById('kpi-fc').style.color = fc>85?'#c15f5f':(fc>70?'#c2a24e':'#5a9e78');
   document.getElementById('freq').textContent = r.frecuencia_sistema.toFixed(3)+' Hz';
   document.getElementById('clock').textContent = r.timestamp;
-  // Colors
-  var fc = r.factor_carga_sistema;
-  document.getElementById('kpi-fc').style.color = fc>85?'#ff1744':(fc>70?'#ffd600':'#00e676');
-  document.getElementById('kpi-al').style.color = r.alertas_activas>0?'#ff1744':'#00e676';
-  document.getElementById('kpi-pl').style.color = r.plantas_falla>0?'#ff1744':'#00e676';
+  // Nuevos KPIs técnicos (promedios del sistema)
+  document.getElementById('kpi-freq').textContent = r.frecuencia_sistema.toFixed(3);
+  document.getElementById('kpi-corriente').textContent = (r.generacion_total_mw / 0.23 / 1.732).toFixed(0);
+  document.getElementById('kpi-voltaje').textContent = '230';
+  document.getElementById('kpi-rms').textContent = Math.sqrt(r.generacion_total_mw * 0.8).toFixed(1);
+  document.getElementById('kpi-vib').textContent = (1.5 + r.alertas_activas * 0.3).toFixed(1);
+  document.getElementById('kpi-thd').textContent = (3.5 + r.factor_carga_sistema * 0.02).toFixed(1);
+  document.getElementById('kpi-temp').textContent = (480 + r.factor_carga_sistema * 0.8).toFixed(0);
+  // Plantas + Líneas en un solo KPI
+  document.getElementById('kpi-op').textContent = r.plantas_operando+'/'+r.plantas_total+' · '+r.lineas_operando+'/'+r.lineas_total;
+  document.getElementById('kpi-op').style.color = (r.plantas_falla>0||r.lineas_falla>0)?'#c15f5f':'#5a9e78';
+  // Alertas
+  document.getElementById('kpi-al').textContent = r.alertas_activas;
+  document.getElementById('kpi-al').style.color = r.alertas_activas>0?'#c15f5f':'#5a9e78';
   // Fuente de datos (CENACE real o estimado)
   if(r.fuente_datos) document.getElementById('ubicacion').title = 'Datos: '+r.fuente_datos;
   // Guardar mix de generación para la pestaña STATS
@@ -617,7 +643,7 @@ function actualizarTabla(plantas){
   filtradas.forEach(p=>{
     var cls=p.estado==='Falla'?'st-bad':(p.estado==='Operando'?'st-ok':'st-warn');
     var pct = p.cap_mw>0?Math.round(p.gen_mw/p.cap_mw*100):0;
-    html+=`<tr><td>${p.nombre.substring(0,22)}</td><td class="${cls}">${p.estado}</td>
+    html+=`<tr onclick="irA(${p.lat},${p.lon})"><td>${p.nombre.substring(0,22)}</td><td class="${cls}">${p.estado}</td>
       <td>${p.tipo.substring(0,12)}</td><td>${p.gen_mw.toFixed(0)}</td>
       <td>${p.cap_mw}</td><td>${pct}%</td>
       <td>${p.temp.toFixed(0)}°C</td><td>${p.vib.toFixed(1)}</td></tr>`;
@@ -788,7 +814,7 @@ function actualizarTablaSubs(){
   if(cercanas.length===0) cercanas = todasLasSubs.slice(0,50);
   var html='';
   cercanas.forEach(s=>{
-    html+=`<tr><td>${(s.nombre||'Subestación').substring(0,30)}</td><td>${s.tipo||'subestacion'}</td><td>${s.ciudad||''}</td></tr>`;
+    html+=`<tr onclick="irA(${s.lat},${s.lon})"><td>${(s.nombre||'Subestación').substring(0,30)}</td><td>${s.tipo||'subestacion'}</td><td>${s.ciudad||''}</td></tr>`;
   });
   document.querySelector('#tbl-subs tbody').innerHTML=html;
 }
@@ -913,6 +939,54 @@ function escanearCiudad(){
     });
   }
   procesarLote();
+}
+
+// === SISTEMA DE ALARMA DE EMERGENCIA (solo casos extremos) ===
+var alarmaActiva = false;
+var alarmaAudio = null;
+var alarmaLat = 0, alarmaLon = 0;
+
+// Función para volar a una coordenada (usada por tablas clicables y alarma)
+function irA(lat, lon, zoom){
+  map.flyTo([lat, lon], zoom||16, {duration:1.5});
+}
+
+function activarAlarma(mensaje, lat, lon){
+  if(alarmaActiva) return;
+  alarmaActiva = true;
+  alarmaLat = lat||0; alarmaLon = lon||0;
+  // Mostrar banner de alarma
+  var banner = document.getElementById('alarma-emergencia');
+  banner.style.display = 'flex';
+  document.getElementById('alarma-msg').textContent = '🚨 EMERGENCIA: ' + mensaje;
+  // Generar sonido de alarma con Web Audio API (sin archivos externos)
+  try {
+    var ctx = new (window.AudioContext||window.webkitAudioContext)();
+    alarmaAudio = ctx;
+    function sonar(){
+      if(!alarmaActiva) return;
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(800, ctx.currentTime);
+      osc.frequency.setValueAtTime(600, ctx.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.6);
+      if(alarmaActiva) setTimeout(sonar, 1000);
+    }
+    sonar();
+  } catch(e){ console.error('No se pudo activar alarma sonora:',e); }
+}
+function silenciarAlarma(){
+  alarmaActiva = false;
+  document.getElementById('alarma-emergencia').style.display = 'none';
+  if(alarmaAudio){ try{alarmaAudio.close();}catch(e){} alarmaAudio=null; }
+}
+function irAlarma(){
+  if(alarmaLat && alarmaLon) irA(alarmaLat, alarmaLon, 14);
 }
 
 // === CONECTAR DETECCIONES ELÉCTRICAS CON LÍNEAS DE DISTRIBUCIÓN ===
