@@ -178,12 +178,14 @@ tbody tr:hover{background:rgba(34,211,238,.07);}
     </div>
     <div id="tabs">
       <div class="tab active" onclick="openTab('plantas')">⚡ PLANTAS</div>
-      <div class="tab" onclick="openTab('lineas')">🔌 LÍNEAS</div>
+      <div class="tab" onclick="openTab('subs')">🔌 SUBESTACIONES</div>
+      <div class="tab" onclick="openTab('lineas')">〰️ LÍNEAS</div>
       <div class="tab" onclick="openTab('alertas')">🚨 ALERTAS</div>
       <div class="tab" onclick="openTab('mec')">🤖 MEC</div>
     </div>
     <div id="tab-content">
       <div id="pane-plantas" class="tab-pane active"><table id="tbl-plantas"><thead><tr><th>Planta</th><th>Estado</th><th>Tipo</th><th>Gen MW</th><th>Cap MW</th><th>%</th><th>Temp</th><th>Vib</th></tr></thead><tbody></tbody></table></div>
+      <div id="pane-subs" class="tab-pane"><table id="tbl-subs"><thead><tr><th>Subestación</th><th>Tipo</th><th>Ciudad</th></tr></thead><tbody></tbody></table></div>
       <div id="pane-lineas" class="tab-pane"><table id="tbl-lineas"><thead><tr><th>Línea</th><th>Tensión</th><th>Carga%</th><th>Flujo MW</th><th>Corriente</th><th>Temp</th><th>Estado</th></tr></thead><tbody></tbody></table></div>
       <div id="pane-alertas" class="tab-pane"><div id="alertas-feed"></div></div>
       <div id="pane-mec" class="tab-pane"><div id="mec-panel"><div id="mec-messages"></div><div id="mec-input-bar"><button id="mec-mic" onclick="mecEscuchar()" title="Hablar">🎙️</button><input id="mec-input" placeholder="Pregunta o habla..." /><button id="mec-send" onclick="mecSend()">ENVIAR</button><button id="mec-voz" onclick="mecToggleVoz()" title="Voz de MEC" class="on">🔊</button></div></div></div>
@@ -266,6 +268,8 @@ fetch('/api/osm').then(r=>r.json()).then(osm=>{
   });
   // Subestaciones reales (con polígono si existe)
   (osm.subestaciones||[]).forEach(s=>{
+    // Agregar a la lista para la tabla del panel
+    todasLasSubs.push({nombre:s.nombre||'Subestación',lat:s.lat,lon:s.lon,tipo:s.voltaje||'subestacion',ciudad:s.operador||'OSM'});
     if(s.poligono && s.poligono.length>=3){
       L.polygon(s.poligono,{color:'#5b8fb0',weight:1.2,fillColor:'#1a3a4a',fillOpacity:0.55})
         .bindPopup('<b style="color:#5b8fb0">⚡ '+(s.nombre||'Subestación')+'</b><br>'+(s.voltaje?s.voltaje+' V<br>':'')+(s.operador?s.operador+'<br>':'')+'<span style="color:#68788a">OpenStreetMap</span>')
@@ -438,6 +442,7 @@ function detectarUbicacion(){
   return {ciudad:ciudad, estado:estado};
 }
 map.on('moveend', detectarUbicacion);
+map.on('moveend', function(){ if(document.getElementById('pane-subs').classList.contains('active')) actualizarTablaSubs(); });
 detectarUbicacion();
 function pedirEstado(){
   fetch('/api/estado').then(r=>r.json()).then(data=>{
@@ -587,6 +592,23 @@ function openTab(name){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('pane-'+name).classList.add('active');
   event.target.classList.add('active');
+  if(name==='subs') actualizarTablaSubs();
+}
+
+// Tabla de subestaciones (del CSV + OSM, filtrada por zona visible)
+var todasLasSubs = [];  // se llena al cargar CSV y OSM
+function actualizarTablaSubs(){
+  var c = map.getCenter();
+  var radio = 3.0 / Math.max(map.getZoom(), 6);
+  var cercanas = todasLasSubs.filter(s=>
+    Math.abs(s.lat-c.lat)<radio && Math.abs(s.lon-c.lng)<radio
+  );
+  if(cercanas.length===0) cercanas = todasLasSubs.slice(0,50);
+  var html='';
+  cercanas.forEach(s=>{
+    html+=`<tr><td>${(s.nombre||'Subestación').substring(0,30)}</td><td>${s.tipo||'subestacion'}</td><td>${s.ciudad||''}</td></tr>`;
+  });
+  document.querySelector('#tbl-subs tbody').innerHTML=html;
 }
 
 // === CONECTAR DETECCIONES ELÉCTRICAS CON LÍNEAS DE DISTRIBUCIÓN ===
@@ -694,6 +716,8 @@ function cargarCFEManual(){
   cfeManualCargado = true;
   fetch('/api/cfe/manual').then(r=>r.json()).then(items=>{
     items.forEach(i=>{
+      // Guardar subestaciones en la lista para la tabla
+      if(i.tipo==='subestacion') todasLasSubs.push({nombre:i.nombre,lat:i.lat,lon:i.lon,tipo:'subestacion',ciudad:i.ciudad});
       var icon = L.divIcon({className:'',iconSize:[12,12],iconAnchor:[6,6],
         html:'<div class="cfe-marker-manual"></div>'});
       var m = L.marker([i.lat,i.lon],{icon:icon});
