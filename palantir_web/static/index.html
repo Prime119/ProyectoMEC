@@ -508,6 +508,76 @@ function openTab(name){
   event.target.classList.add('active');
 }
 
+// === CONECTAR DETECCIONES ELÉCTRICAS CON LÍNEAS DE DISTRIBUCIÓN ===
+// Solo conecta infraestructura eléctrica (torres, postes, subestaciones, transformadores)
+// NO conecta oficinas, cajeros, almacenes ni telecomunicaciones
+function conectarDeteccionesElectricas(){
+  var clasesElectricas = ['torre_grande','torre_mediana','torre_chica','poste_grande',
+    'poste_mediano','poste_chico','subestacion','transformador'];
+  // Recolectar todas las detecciones eléctricas del layer
+  var puntosElec = [];
+  capaIA.eachLayer(function(layer){
+    if(layer.getLatLng){
+      var popup = layer.getPopup();
+      if(popup){
+        var content = popup.getContent() || '';
+        // Solo incluir si es infraestructura eléctrica (no oficinas/cajeros)
+        var esElectrica = clasesElectricas.some(c => content.toLowerCase().includes('torre') ||
+          content.toLowerCase().includes('subestac') || content.toLowerCase().includes('poste') ||
+          content.toLowerCase().includes('transforma'));
+        if(esElectrica || content.includes('Torre') || content.includes('Subestac')){
+          puntosElec.push(layer.getLatLng());
+        }
+      }
+    }
+  });
+  if(puntosElec.length < 2) return;
+
+  // Conectar cada punto con su vecino más cercano (algoritmo nearest neighbor)
+  // Distancia máxima para conectar: ~800m (líneas de distribución no van más lejos entre postes)
+  var maxDist = 0.008; // ~800m en grados
+  var conectados = new Set();
+
+  for(var i=0; i<puntosElec.length; i++){
+    var mejorDist = maxDist;
+    var mejorJ = -1;
+    for(var j=0; j<puntosElec.length; j++){
+      if(i===j) continue;
+      var clave = Math.min(i,j)+'-'+Math.max(i,j);
+      if(conectados.has(clave)) continue;
+      var dist = Math.sqrt(Math.pow(puntosElec[i].lat-puntosElec[j].lat,2) +
+                           Math.pow(puntosElec[i].lng-puntosElec[j].lng,2));
+      if(dist < mejorDist){
+        mejorDist = dist;
+        mejorJ = j;
+      }
+    }
+    if(mejorJ >= 0){
+      var clave2 = Math.min(i,mejorJ)+'-'+Math.max(i,mejorJ);
+      conectados.add(clave2);
+      L.polyline([puntosElec[i], puntosElec[mejorJ]], {
+        color:'#4a7a9a', weight:1.5, opacity:0.6, dashArray:'4,4'
+      }).bindPopup('⚡ Línea de distribución (estimada por IA)').addTo(capaIA);
+    }
+  }
+  // También conectar con las subestaciones de OSM cercanas
+  if(typeof capaOSM !== 'undefined'){
+    capaOSM.eachLayer(function(osmLayer){
+      if(osmLayer.getLatLng){
+        var osmPt = osmLayer.getLatLng();
+        puntosElec.forEach(function(pt){
+          var dist = Math.sqrt(Math.pow(pt.lat-osmPt.lat,2)+Math.pow(pt.lng-osmPt.lng,2));
+          if(dist < maxDist && dist > 0.001){
+            L.polyline([pt, osmPt], {color:'#4a7a9a', weight:1.2, opacity:0.4, dashArray:'3,5'})
+              .bindPopup('⚡ Conexión estimada a subestación').addTo(capaIA);
+          }
+        });
+      }
+    });
+  }
+  console.log('Líneas de distribución estimadas:', conectados.size);
+}
+
 // === BUSCADOR ===
 function buscar(){
   var q = document.getElementById('search-input').value.toLowerCase();
@@ -662,7 +732,9 @@ function detectarIA(){
         }
         if(completados >= puntos.length){
           btn.classList.remove('cargando'); btn.textContent='🛰️ DETECTAR IA';
-          if(totalDets>0) iaStatus('✅ Modo <b>'+(d.modo||'IA')+'</b> — <b>'+totalDets+'</b> detecciones en el área visible.', '#5a9e78');
+          // Conectar detecciones eléctricas cercanas con líneas (simula red de distribución)
+          conectarDeteccionesElectricas();
+          if(totalDets>0) iaStatus('✅ Modo <b>'+(d.modo||'IA')+'</b> — <b>'+totalDets+'</b> detecciones + líneas de distribución generadas.', '#5a9e78');
           else iaStatus('0 detecciones en esta área. Acércate a zonas con infraestructura.', '#c2a24e');
         }
       }).catch(e=>{
