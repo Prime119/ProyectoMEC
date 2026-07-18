@@ -1,0 +1,67 @@
+{
+  "_comentario": "INSTRUCCIONES: Copia este archivo como scada_config.json y llena los datos",
+  "_paso1": "Elige el protocolo que usa tu sistema (opc-ua, modbus, rest, mqtt)",
+  "_paso2": "Llena la dirección del servidor, usuario y contraseña",
+  "_paso3": "Reinicia FALCON — los datos reales reemplazan los simulados",
+  "protocolo": "opc-ua",
+  "conexion": {
+    "servidor": "opc.tcp://IP_DEL_SERVIDOR_SCADA:4840",
+    "usuario": "tu_usuario_de_lectura",
+    "password": "tu_contraseña",
+    "timeout_s": 10
+  },
+  "nodos": {
+    "_comentario": "Lista de puntos/tags que quieres leer del SCADA",
+    "generacion_total": "ns=2;s=Sistema.GeneracionTotal_MW",
+    "demanda_total": "ns=2;s=Sistema.DemandaTotal_MW",
+    "frecuencia": "ns=2;s=Sistema.Frecuencia_Hz",
+    "subestaciones": [
+      {
+        "nombre": "Subestacion Hermosillo",
+        "voltaje": "ns=2;s=SE_Hermosillo.Voltaje_kV",
+        "corriente": "ns=2;s=SE_Hermosillo.Corriente_A",
+        "potencia": "ns=2;s=SE_Hermosillo.Potencia_MW",
+        "temperatura": "ns=2;s=SE_Hermosillo.Temperatura_C",
+        "estado": "ns=2;s=SE_Hermosillo.Estado"
+      }
+    ]
+  },
+  "alternativas": {
+    "modbus": {
+      "servidor": "IP_DEL_MEDIDOR:502",
+      "registros": {
+        "voltaje": {
+          "direccion": 0,
+          "tipo": "float32"
+        },
+        "corriente": {
+          "direccion": 2,
+          "tipo": "float32"
+        },
+        "potencia": {
+          "direccion": 4,
+          "tipo": "float32"
+        },
+        "frecuencia": {
+          "direccion": 6,
+          "tipo": "float32"
+        }
+      }
+    },
+    "rest_api": {
+      "url": "https://api.cfe.gob.mx/v1/telemetria",
+      "token": "TU_TOKEN_DE_API",
+      "intervalo_s": 5
+    },
+    "mqtt": {
+      "broker": "mqtt://IP_DEL_BROKER:1883",
+      "usuario": "falcon",
+      "password": "tu_password",
+      "topics": {
+        "generacion": "cfe/noroeste/generacion",
+        "demanda": "cfe/noroeste/demanda",
+        "alertas": "cfe/noroeste/alertas"
+      }
+    }
+  }
+}

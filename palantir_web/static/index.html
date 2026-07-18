@@ -1059,17 +1059,6 @@ function conectarDeteccionesElectricas(){
 }
 
 // === BUSCADOR ===
-function buscar(){
-  var q = document.getElementById('search-input').value.toLowerCase();
-  for(var id in markers){
-    if(markers[id]._data && markers[id]._data.nombre.toLowerCase().includes(q)){
-      map.flyTo(markers[id].getLatLng(),12,{duration:1});
-      markers[id].openPopup();
-      return;
-    }
-  }
-}
-document.getElementById('search-input').addEventListener('keydown',e=>{if(e.key==='Enter')buscar();});
 
 // === DETECCIONES GUARDADAS (de escaneos anteriores, persisten al reiniciar) ===
 fetch('/api/detecciones').then(r=>r.json()).then(dets=>{

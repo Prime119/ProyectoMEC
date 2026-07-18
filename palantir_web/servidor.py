@@ -432,16 +432,36 @@ async def handle_estado(request):
     tick_simulador()
 
     # Enriquecer el resumen con datos de CENACE (reales o estimados por hora)
+    # O con datos SCADA si está configurado (prioridad: SCADA > CENACE > estimado)
     try:
-        from palantir_web.cenace import obtener_datos_cenace
-        cenace = obtener_datos_cenace()
-        ultimo_estado["resumen"]["generacion_total_mw"] = cenace["generacion_mw"]
-        ultimo_estado["resumen"]["demanda_estimada_mw"] = cenace["demanda_mw"]
-        ultimo_estado["resumen"]["frecuencia_sistema"] = cenace["frecuencia_hz"]
-        ultimo_estado["resumen"]["fuente_datos"] = cenace["fuente"]
-        ultimo_estado["resumen"]["mix_generacion"] = cenace["por_tipo"]
+        from palantir_web.scada_connector import leer_datos_scada, esta_configurado
+        if esta_configurado():
+            scada = leer_datos_scada()
+            if scada:
+                if "generacion_mw" in scada:
+                    ultimo_estado["resumen"]["generacion_total_mw"] = scada["generacion_mw"]
+                if "demanda_mw" in scada:
+                    ultimo_estado["resumen"]["demanda_estimada_mw"] = scada["demanda_mw"]
+                if "frecuencia_hz" in scada:
+                    ultimo_estado["resumen"]["frecuencia_sistema"] = scada["frecuencia_hz"]
+                ultimo_estado["resumen"]["fuente_datos"] = scada.get("fuente", "scada")
+                print("[SCADA] Datos reales recibidos")
+            else:
+                raise Exception("SCADA no respondió, usando CENACE")
+        else:
+            raise Exception("SCADA no configurado")
     except Exception:
-        pass
+        # Fallback: datos de CENACE/estimados
+        try:
+            from palantir_web.cenace import obtener_datos_cenace
+            cenace = obtener_datos_cenace()
+            ultimo_estado["resumen"]["generacion_total_mw"] = cenace["generacion_mw"]
+            ultimo_estado["resumen"]["demanda_estimada_mw"] = cenace["demanda_mw"]
+            ultimo_estado["resumen"]["frecuencia_sistema"] = cenace["frecuencia_hz"]
+            ultimo_estado["resumen"]["fuente_datos"] = cenace["fuente"]
+            ultimo_estado["resumen"]["mix_generacion"] = cenace["por_tipo"]
+        except Exception:
+            pass
 
     # Generar alertas inteligentes
     try:
