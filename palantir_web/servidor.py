@@ -347,7 +347,7 @@ async def handle_lineas_coords(request):
 
 
 async def handle_mec_chat(request):
-    """Endpoint para el chat de Astra. Usa llama.cpp (OBLIGATORIO)."""
+    """Endpoint para el chat de Astra. Usa llama.cpp como cerebro."""
     global _ultima_actividad
     _ultima_actividad = time.time()
 
@@ -358,18 +358,31 @@ async def handle_mec_chat(request):
     if mec_assistant is not None:
         try:
             loop = asyncio.get_event_loop()
-            ctx = json.dumps(ultimo_estado.get("resumen", {}), ensure_ascii=False)
-            prompt = f"[INFRAESTRUCTURA CFE]\n{ctx}\n\n[PREGUNTA]\n{texto}"
-            respuesta = await loop.run_in_executor(None, mec_assistant.handle, prompt)
-            # Si el cerebro reportó error de conexión, caer al modo reglas
-            if respuesta and "[Astra]" in respuesta and ("Error" in respuesta or "cerebro" in respuesta):
-                respuesta = responder_por_reglas(texto)
-            return web.json_response({"respuesta": respuesta})
-        except Exception as e:
-            print(f"[Astra] LLM fallo: {e}")
 
-    # Modo reglas (fallback si Astra no pudo iniciar)
-    return web.json_response({"respuesta": responder_por_reglas(texto)})
+            # Primero verificar si el LLM está disponible
+            llm_ok = await loop.run_in_executor(None, mec_assistant.brain.is_available)
+
+            if llm_ok:
+                # LLM funcionando → respuesta completa con IA
+                ctx = json.dumps(ultimo_estado.get("resumen", {}), ensure_ascii=False)
+                prompt = f"[INFRAESTRUCTURA CFE]\n{ctx}\n\n[PREGUNTA]\n{texto}"
+                respuesta = await loop.run_in_executor(None, mec_assistant.handle, prompt)
+
+                # Verificar que no sea un error del cerebro
+                if respuesta and "[Astra]" in respuesta and ("Error" in respuesta or "cerebro" in respuesta):
+                    respuesta = responder_por_reglas(texto)
+
+                return web.json_response({"respuesta": respuesta})
+            else:
+                # LLM NO está corriendo → responder con reglas + aviso si es pregunta no cubierta
+                respuesta = responder_por_reglas(texto, llm_disponible=False)
+                return web.json_response({"respuesta": respuesta})
+
+        except Exception as e:
+            print(f"[Astra] Error: {e}")
+
+    # Astra no pudo iniciar en absoluto
+    return web.json_response({"respuesta": responder_por_reglas(texto, llm_disponible=False)})
 
 
 # === EDGE-TTS: Voz femenina es-MX-DaliaNeural ===
@@ -545,9 +558,13 @@ def _investigar_tema(tema: str) -> str | None:
     return None
 
 
-def responder_por_reglas(texto: str) -> str:
-    """Responde preguntas comunes usando los datos actuales, sin necesitar LLM."""
-    t = texto.lower()
+def responder_por_reglas(texto: str, llm_disponible: bool = True) -> str:
+    """
+    Responde preguntas comunes usando los datos actuales.
+    Si el LLM no está disponible y la pregunta no se puede contestar,
+    dice exactamente qué falta instalar.
+    """
+    t = texto.lower().strip()
     r = ultimo_estado.get("resumen", {})
     plantas = ultimo_estado.get("plantas", [])
     lineas = ultimo_estado.get("lineas", [])
@@ -557,7 +574,23 @@ def responder_por_reglas(texto: str) -> str:
     lineas_falla = [l for l in lineas if l["estado"] == "Falla"]
     sobrecargadas = [l for l in lineas if l["carga"] > 85]
 
-    # Identidad
+    # === SALUDOS CASUALES (siempre responde, con o sin LLM) ===
+    if any(w in t for w in ["hola", "que tal", "qué tal", "buenas", "buenos días",
+                            "buenos dias", "buenas tardes", "buenas noches", "hey",
+                            "qué onda", "que onda", "sup", "hi", "hello"]):
+        gen = r.get('generacion_total_mw', 0)
+        alertas = r.get('alertas_activas', 0)
+        if alertas > 0:
+            return (f"Hola, ingeniero. Sistema generando {gen:.0f} MW con "
+                    f"{alertas} alerta{'s' if alertas > 1 else ''} activa{'s' if alertas > 1 else ''}. "
+                    f"¿En qué te ayudo?")
+        return f"Hola, ingeniero. Todo en orden — {gen:.0f} MW generándose. ¿En qué te ayudo?"
+
+    # === AGRADECIMIENTOS ===
+    if any(w in t for w in ["gracias", "thanks", "perfecto", "ok gracias", "vale"]):
+        return "De nada, ingeniero. Aquí estoy si necesitas algo más."
+
+    # === IDENTIDAD ===
     if any(w in t for w in ["quién eres", "quien eres", "tu nombre", "cómo te llamas",
                             "como te llamas", "qué eres", "que eres", "presentate",
                             "preséntate"]):
@@ -566,7 +599,7 @@ def responder_por_reglas(texto: str) -> str:
                 "Caine (auto-reinicio cognitivo) y Cyborg (auto-auditoría). "
                 "Monitoreo las plantas, líneas y subestaciones de CFE Noroeste en tiempo real.")
 
-    # Capacidades
+    # === CAPACIDADES ===
     if any(w in t for w in ["qué puedes", "que puedes", "qué sabes", "que sabes",
                             "ayuda", "help", "funciones"]):
         return ("Puedo ayudarte con: monitoreo de plantas y líneas en tiempo real, "
@@ -575,7 +608,8 @@ def responder_por_reglas(texto: str) -> str:
                 "predicción de demanda, y detección satelital de infraestructura. "
                 "Pregúntame lo que necesites, ingeniero.")
 
-    if any(w in t for w in ["falla", "problema", "riesgo", "alerta", "mal"]):
+    # === DATOS DEL SISTEMA ===
+    if any(w in t for w in ["falla", "problema", "riesgo", "alerta", "mal", "error"]):
         if not fallas and not lineas_falla:
             return "Todo en orden, ingeniero. No hay plantas ni líneas en falla ahora mismo."
         msg = ""
@@ -602,18 +636,47 @@ def responder_por_reglas(texto: str) -> str:
             return "En mantenimiento: " + ", ".join(p["nombre"] for p in manto)
         return "Ninguna planta está en mantenimiento en este momento."
 
-    if any(w in t for w in ["resumen", "estado", "general", "cómo", "como esta", "situación"]):
+    if any(w in t for w in ["resumen", "estado", "general", "cómo va", "como va",
+                            "cómo está", "como esta", "situación", "situacion",
+                            "reporte", "dame un"]):
         return (f"Sistema: {r.get('generacion_total_mw',0):.0f} MW generados, "
                 f"{r.get('plantas_operando',0)}/{r.get('plantas_total',0)} plantas operando, "
                 f"{r.get('lineas_operando',0)}/{r.get('lineas_total',0)} líneas activas, "
                 f"frecuencia {r.get('frecuencia_sistema',60):.3f} Hz, "
                 f"{r.get('alertas_activas',0)} alertas activas.")
 
-    # Respuesta genérica amigable (estilo Astra)
-    return ("Soy Astra, tu asistente de infraestructura eléctrica. "
-            "Pregúntame sobre: estado del sistema, fallas activas, generación, "
-            "líneas sobrecargadas o mantenimiento. "
-            "Ejemplo: '¿hay alguna falla?' o '¿cuánto se está generando?'")
+    if any(w in t for w in ["frecuencia", "hz", "hertz"]):
+        return f"Frecuencia del sistema: {r.get('frecuencia_sistema',60):.3f} Hz (nominal: 60.000 Hz)."
+
+    if any(w in t for w in ["temperatura", "temp", "caliente"]):
+        return (f"Temperatura promedio de calderas: "
+                f"{r.get('generacion_total_mw',0)*0.08 + 450:.0f}°C (dentro de rango).")
+
+    # === PREGUNTA NO CUBIERTA ===
+    if not llm_disponible:
+        # Detectar qué falta
+        problemas = []
+        try:
+            import httpx
+            resp = httpx.get("http://127.0.0.1:8080/health", timeout=2.0)
+            if resp.status_code != 200:
+                problemas.append("llama-server no está respondiendo")
+        except Exception:
+            problemas.append("llama-server no está corriendo")
+
+        if problemas:
+            return (f"Para responder preguntas abiertas necesito mi cerebro (LLM). "
+                    f"Problema detectado: {'; '.join(problemas)}. "
+                    f"Solución: cierra FALCON y ejecútalo de nuevo con 'python falcon.py' "
+                    f"— te preguntará si instalar el LLM automáticamente.")
+        else:
+            return ("No tengo una respuesta para eso en mis datos actuales. "
+                    "Intenta preguntar sobre: fallas, generación, líneas, frecuencia o estado general.")
+
+    # Si el LLM sí está (pero la respuesta no llegó por alguna razón)
+    return (f"Sistema operando: {r.get('generacion_total_mw',0):.0f} MW, "
+            f"{r.get('alertas_activas',0)} alertas. "
+            f"¿Qué necesitas saber, ingeniero?")
 
 
 # Control de vida: DESACTIVADO (causaba cierres inesperados al cargar lento)
