@@ -2,7 +2,7 @@
 Capa 2 — Cerebro cognitivo de Astra (llama.cpp).
 
 Usa llama-server.exe como backend (API compatible con OpenAI).
-Puerto: 8080 (en vez de Ollama en 11434).
+Puerto: 8081 (FALCON web usa 8080, llama-server usa 8081).
 
 Optimizado para VELOCIDAD:
 - max_tokens limitado por defecto (200) para respuestas rápidas
@@ -18,7 +18,7 @@ Message = dict[str, str]
 
 @dataclass
 class BrainConfig:
-    local_endpoint: str = "http://127.0.0.1:8080"
+    local_endpoint: str = "http://127.0.0.1:8081"
     temperature: float = 0.3
     timeout_s: float = 45.0
     max_tokens: int = 200
@@ -35,7 +35,7 @@ class Brain:
     @classmethod
     def from_app_config(cls, cfg, system_prompt: str) -> "Brain":
         bc = BrainConfig(
-            local_endpoint=cfg.get("brain", "local_endpoint", default="http://127.0.0.1:8080"),
+            local_endpoint=cfg.get("brain", "local_endpoint", default="http://127.0.0.1:8081"),
             temperature=float(cfg.get("brain", "temperature", default=0.3)),
             timeout_s=float(cfg.get("brain", "timeout_s", default=45.0)),
             max_tokens=int(cfg.get("brain", "max_tokens", default=200)),
@@ -65,8 +65,8 @@ class Brain:
         if not self.is_available():
             return (
                 "[Astra] No encuentro mi cerebro (llama-server). "
-                "Verifica que esté corriendo en http://127.0.0.1:8080. "
-                "Ejecuta: llama-server.exe -m modelo.gguf -c 2048 --port 8080"
+                "Verifica que esté corriendo en http://127.0.0.1:8081. "
+                "Ejecuta: llama-server.exe -m modelo.gguf -c 2048 --port 8081"
             )
 
         messages: list[Message] = [{"role": "system", "content": self.system_prompt}]

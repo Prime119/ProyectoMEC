@@ -12,7 +12,7 @@ Se llama "Astra" y fusiona 4 inteligencias artificiales:
 Arquitectura:
   Capa 0: Constitución (valores Optimus Prime + reglas industriales)
   Capa 1: Auditor (poder de veto + auto-auditoría Cyborg)
-  Capa 2: Cerebro (LLM local vía llama.cpp — puerto 8080)
+  Capa 2: Cerebro (LLM local vía llama.cpp — puerto 8081)
   Capa 3: Personalidad (4 IAs, modos dinámicos)
   Capa 4: Memoria (SQLite para eventos + conversación)
   Capa 5: Voz (STT faster-whisper + TTS piper, ambos offline)
@@ -21,7 +21,7 @@ Arquitectura:
 
 Cambios vs mec_assistant:
 - Nombre: "Astra" en vez de "MEC"
-- Cerebro: llama.cpp (puerto 8080) en vez de Ollama (puerto 11434)
+- Cerebro: llama.cpp (puerto 8081) en vez de Ollama (puerto 11434)
 - Personalidad: 4 IAs en vez de 3 (se agrega Cyborg)
 - Respuestas: optimizadas para velocidad (max_tokens limitados)
 """

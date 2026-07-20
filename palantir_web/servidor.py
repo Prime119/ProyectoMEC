@@ -354,7 +354,7 @@ async def handle_mec_chat(request):
     data = await request.json()
     texto = data.get("texto", "")
 
-    # Usar Astra con LLM (llama.cpp en puerto 8080)
+    # Usar Astra con LLM (llama.cpp en puerto 8081)
     if mec_assistant is not None:
         try:
             loop = asyncio.get_event_loop()
@@ -658,7 +658,7 @@ def responder_por_reglas(texto: str, llm_disponible: bool = True) -> str:
         problemas = []
         try:
             import httpx
-            resp = httpx.get("http://127.0.0.1:8080/health", timeout=2.0)
+            resp = httpx.get("http://127.0.0.1:8081/health", timeout=2.0)
             if resp.status_code != 200:
                 problemas.append("llama-server no está respondiendo")
         except Exception:

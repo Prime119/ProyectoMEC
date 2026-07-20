@@ -9,7 +9,7 @@ Flujo de inicio:
      - Si no existe → pregunta si descargar (Recomendado)
   2. Busca un modelo .gguf disponible
      - Si no existe → pregunta si descargar (Recomendado)
-  3. Arranca llama-server en puerto 8080 (background)
+  3. Arranca llama-server en puerto 8081 (background)
   4. Espera a que el servidor LLM esté listo
   5. Arranca el servidor web de FALCON (abre navegador)
 
@@ -59,7 +59,7 @@ MODELO_URL = "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/
 MODELO_NOMBRE = "qwen2.5-3b-instruct-q4_k_m.gguf"
 
 # Configuración del servidor LLM
-LLAMA_PORT = 8080
+LLAMA_PORT = 8081  # Puerto 8081 para NO chocar con FALCON web (8080)
 LLAMA_CONTEXT = 2048
 LLAMA_THREADS = 0  # 0 = auto-detectar
 
@@ -235,7 +235,7 @@ def arrancar_llama_server(exe_path: Path, model_path: Path) -> bool:
 
 
 def esperar_llama_server(timeout: float = 30.0) -> bool:
-    """Espera a que llama-server responda en el puerto 8080."""
+    """Espera a que llama-server responda en el puerto 8081."""
     import urllib.request
     import urllib.error
 
@@ -289,7 +289,7 @@ def _matar_llama_server():
 
 
 def verificar_puerto_ocupado() -> bool:
-    """Verifica si ya hay algo en el puerto 8080 (quizás llama-server ya corre)."""
+    """Verifica si ya hay algo en el puerto 8081 (quizás llama-server ya corre)."""
     import urllib.request
     import urllib.error
 
