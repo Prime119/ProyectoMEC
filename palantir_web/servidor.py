@@ -877,9 +877,16 @@ async def handle_historial(request):
 
 
 async def handle_reporte(request):
-    """Genera un reporte HTML completo descargable (imprimible como PDF)."""
+    """Genera un reporte HTML contextual (filtrado por zoom/ubicación)."""
     from datetime import datetime
     from palantir_web.cenace import obtener_datos_cenace
+
+    # Obtener contexto del zoom
+    contexto = request.query.get("contexto", "global")
+    lat = float(request.query.get("lat", 28.0))
+    lon = float(request.query.get("lon", -110.0))
+    zoom = int(request.query.get("zoom", 6))
+    nombre = request.query.get("nombre", "Global")
 
     cenace = obtener_datos_cenace()
     historial = motor_alertas.get_historial(50)
@@ -889,9 +896,38 @@ async def handle_reporte(request):
     lineas_data = ultimo_estado.get("lineas", [])
     resumen = ultimo_estado.get("resumen", {})
 
-    # Generar HTML del reporte
+    # Filtrar datos según contexto
+    if contexto == "estructura" and zoom >= 17:
+        radio = 0.05
+        titulo_region = f"Estructura: {nombre}"
+    elif contexto == "ciudad" and zoom >= 11:
+        radio = 0.3
+        titulo_region = f"Ciudad: {nombre}"
+    elif contexto == "estado" and zoom >= 8:
+        radio = 1.5
+        titulo_region = f"Estado: {nombre}"
+    else:
+        radio = 999
+        titulo_region = "Noroeste de México (BC, BCS, Sonora, Chihuahua, Sinaloa)"
+
+    # Filtrar plantas y líneas por cercanía
+    if radio < 999:
+        plantas_filtradas = [p for p in plantas_data
+                           if abs(p.get("lat", 0) - lat) < radio and abs(p.get("lon", 0) - lon) < radio]
+        if not plantas_filtradas:
+            plantas_filtradas = plantas_data
+    else:
+        plantas_filtradas = plantas_data
+
+    # Recalcular resumen para el contexto filtrado
+    gen_total = sum(p.get("gen_mw", 0) for p in plantas_filtradas)
+    cap_total = sum(p.get("cap_mw", 0) for p in plantas_filtradas)
+    fc = (gen_total / cap_total * 100) if cap_total > 0 else 0
+    plantas_op = sum(1 for p in plantas_filtradas if p.get("estado") == "Operando")
+    plantas_falla = sum(1 for p in plantas_filtradas if p.get("estado") == "Falla")
+
     html = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
-<title>Reporte FALCON CFE — {datetime.now().strftime('%d/%m/%Y %H:%M')}</title>
+<title>Reporte FALCON CFE — {nombre} — {datetime.now().strftime('%d/%m/%Y %H:%M')}</title>
 <style>
 body{{font-family:'Segoe UI',sans-serif;max-width:900px;margin:0 auto;padding:20px;color:#222;}}
 h1{{color:#1a5276;border-bottom:3px solid #1a5276;padding-bottom:10px;}}
@@ -906,35 +942,40 @@ tr:hover td{{background:#f5f5f5;}}
 .kpi .label{{font-size:11px;color:#666;text-transform:uppercase;}}
 .alerta-crit{{color:#c0392b;font-weight:bold;}}
 .alerta-alta{{color:#e67e22;}}
+.contexto{{background:#e8f4fd;border:1px solid #b8daff;border-radius:8px;padding:12px;margin:10px 0;}}
 .footer{{margin-top:40px;color:#999;font-size:10px;text-align:center;border-top:1px solid #eee;padding-top:10px;}}
 @media print{{body{{margin:0;}} .no-print{{display:none;}}}}
 </style></head><body>
 <h1>🦅 FALCON CFE — Reporte de Infraestructura</h1>
-<p><b>Fecha:</b> {datetime.now().strftime('%d de %B de %Y, %H:%M hrs')}<br>
-<b>Región:</b> Noroeste de México (BC, BCS, Sonora, Chihuahua, Sinaloa)<br>
-<b>Fuente de datos:</b> {cenace.get('fuente','estimado')}</p>
-
-<h2>Resumen del Sistema</h2>
-<div class="kpi-grid">
-<div class="kpi"><div class="valor">{resumen.get('generacion_total_mw',0):.0f} MW</div><div class="label">Generación</div></div>
-<div class="kpi"><div class="valor">{resumen.get('demanda_estimada_mw',0):.0f} MW</div><div class="label">Demanda</div></div>
-<div class="kpi"><div class="valor">{resumen.get('factor_carga_sistema',0):.1f}%</div><div class="label">Factor Carga</div></div>
-<div class="kpi"><div class="valor">{resumen.get('plantas_operando',0)}/{resumen.get('plantas_total',0)}</div><div class="label">Plantas Operando</div></div>
-<div class="kpi"><div class="valor">{resumen.get('lineas_operando',0)}/{resumen.get('lineas_total',0)}</div><div class="label">Líneas Operando</div></div>
-<div class="kpi"><div class="valor">{resumen.get('frecuencia_sistema',60):.3f} Hz</div><div class="label">Frecuencia</div></div>
+<div class="contexto">
+<b>📍 Contexto:</b> {titulo_region}<br>
+<b>Fecha:</b> {datetime.now().strftime('%d de %B de %Y, %H:%M hrs')}<br>
+<b>Nivel:</b> {contexto.title()} (Zoom {zoom})<br>
+<b>Fuente de datos:</b> {cenace.get('fuente','estimado')}
 </div>
 
-<h2>Mix de Generación</h2>
-<table><tr><th>Tipo</th><th>Generación (MW)</th></tr>"""
+<h2>Resumen — {nombre}</h2>
+<div class="kpi-grid">
+<div class="kpi"><div class="valor">{gen_total:.0f} MW</div><div class="label">Generación</div></div>
+<div class="kpi"><div class="valor">{gen_total*0.95:.0f} MW</div><div class="label">Demanda Est.</div></div>
+<div class="kpi"><div class="valor">{fc:.1f}%</div><div class="label">Factor Carga</div></div>
+<div class="kpi"><div class="valor">{plantas_op}/{len(plantas_filtradas)}</div><div class="label">Plantas Operando</div></div>
+<div class="kpi"><div class="valor">{resumen.get('lineas_operando',0)}/{resumen.get('lineas_total',0)}</div><div class="label">Líneas Operando</div></div>
+<div class="kpi"><div class="valor">{resumen.get('frecuencia_sistema',60):.3f} Hz</div><div class="label">Frecuencia</div></div>
+</div>"""
 
+    if plantas_falla > 0:
+        html += f'<p class="alerta-crit">⚠️ {plantas_falla} planta(s) en FALLA en esta zona</p>'
+
+    html += "<h2>Plantas en la Zona</h2><table><tr><th>Planta</th><th>Estado</th><th>Tipo</th><th>Gen MW</th><th>Cap MW</th><th>Temp</th></tr>"
+    for p in plantas_filtradas:
+        color = 'alerta-crit' if p.get('estado') == 'Falla' else ''
+        html += f"<tr class='{color}'><td>{p.get('nombre','')}</td><td>{p.get('estado','')}</td><td>{p.get('tipo','')}</td><td>{p.get('gen_mw',0):.0f}</td><td>{p.get('cap_mw',0)}</td><td>{p.get('temp',0):.0f}°C</td></tr>"
+
+    html += "</table><h2>Mix de Generación</h2><table><tr><th>Tipo</th><th>Generación (MW)</th></tr>"
     mix = cenace.get("por_tipo", {})
     for tipo, mw in sorted(mix.items(), key=lambda x: -x[1]):
         html += f"<tr><td>{tipo.replace('_',' ').title()}</td><td>{mw} MW</td></tr>"
-
-    html += "</table><h2>Estado de Plantas</h2><table><tr><th>Planta</th><th>Estado</th><th>Tipo</th><th>Gen MW</th><th>Cap MW</th><th>Temp</th></tr>"
-    for p in plantas_data[:28]:
-        color = 'alerta-crit' if p.get('estado')=='Falla' else ''
-        html += f"<tr class='{color}'><td>{p.get('nombre','')}</td><td>{p.get('estado','')}</td><td>{p.get('tipo','')}</td><td>{p.get('gen_mw',0):.0f}</td><td>{p.get('cap_mw',0)}</td><td>{p.get('temp',0):.0f}°C</td></tr>"
 
     html += "</table><h2>Últimas Alertas</h2><table><tr><th>Fecha</th><th>Severidad</th><th>Mensaje</th></tr>"
     for a in historial[-20:]:

@@ -418,9 +418,6 @@ fetch('/api/interconexiones').then(r=>r.json()).then(inter=>{
     L.polyline(l.coords,{color:'#bd854f',weight:2,opacity:0.8,dashArray:'7,6'})
       .bindPopup('<b style="color:#bd854f">🔗 '+l.nombre+'</b><br>'+l.tension+'<br><span style="color:#68788a">Interconexión CFE ↔ EE.UU. (CAISO/WECC)</span>')
       .addTo(map);
-
-// Cargar coordenadas de líneas de transmisión monitoreadas (para navegación por clic)
-fetch('/api/lineas').then(r=>r.json()).then(function(data){ window._lineasCoords = data; }).catch(function(){});
     // Marcador en el punto de EE.UU.
     var pUS = l.coords[l.coords.length-1];
     L.circleMarker(pUS,{radius:3.5,color:'#bd854f',weight:1.5,fillColor:'#bd854f44',fillOpacity:0.6})
@@ -428,6 +425,9 @@ fetch('/api/lineas').then(r=>r.json()).then(function(data){ window._lineasCoords
       .addTo(map);
   });
 }).catch(e=>console.error('Error interconexiones:',e));
+
+// Cargar coordenadas de líneas de transmisión monitoreadas (para navegación por clic)
+fetch('/api/lineas').then(r=>r.json()).then(function(data){ window._lineasCoords = data; }).catch(function(){});
 
 // Leyenda
 document.getElementById('leyenda').innerHTML = `
@@ -845,13 +845,13 @@ function actualizarTablaLineas(lineas){
   });
   document.querySelector('#tbl-lineas tbody').innerHTML=html;
 }
-// Navegar a una línea en el mapa (mantiene zoom actual)
+// Navegar a una línea en el mapa (zoom 16)
 function irALinea(lineaId){
   if(window._lineasCoords){
     var linea = window._lineasCoords.find(function(l){return l.id === lineaId;});
     if(linea && linea.coords && linea.coords.length >= 2){
       var mid = [(linea.coords[0][0]+linea.coords[1][0])/2, (linea.coords[0][1]+linea.coords[1][1])/2];
-      map.flyTo(mid, map.getZoom(), {duration:1.5});
+      map.flyTo(mid, 16, {duration:1.5});
       return;
     }
   }
@@ -876,7 +876,7 @@ function actualizarAlertas(plantas,lineas){
     div.textContent=a.msg;
     div.style.cursor='pointer';
     div.onclick=function(){
-      if(a.lat && a.lon) irA(a.lat, a.lon);
+      if(a.lat && a.lon) irA(a.lat, a.lon, 16);
       else if(a.tipo==='linea' && a.id) irALinea(a.id);
     };
     alertasFeed.prepend(div);
@@ -1174,9 +1174,9 @@ var alarmaActiva = false;
 var alarmaAudio = null;
 var alarmaLat = 0, alarmaLon = 0;
 
-// Función para volar a una coordenada (mantiene el zoom actual)
+// Función para volar a una coordenada (zoom 16 por defecto)
 function irA(lat, lon, zoom){
-  map.flyTo([lat, lon], zoom || map.getZoom(), {duration:1.5});
+  map.flyTo([lat, lon], zoom || 16, {duration:1.5});
 }
 
 function activarAlarma(mensaje, lat, lon){
