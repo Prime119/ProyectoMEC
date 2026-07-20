@@ -34,13 +34,16 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI','Inter',syste
 #map{width:100%;height:100%;}
 #right-panel{width:540px;position:absolute;right:0;top:0;height:100%;background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:transform .3s;z-index:50;}
 #right-panel.oculto{transform:translateX(100%);}
-#panel-tab{position:absolute;right:540px;top:50%;transform:translateY(-50%);z-index:100;
+#panel-tab{position:absolute;top:50%;transform:translateY(-50%);right:100%;z-index:51;
   background:var(--panel);border:1px solid var(--border);border-right:none;
-  border-radius:6px 0 0 6px;padding:12px 4px;cursor:pointer;color:#4fc3f7;
-  font-size:11px;writing-mode:vertical-rl;letter-spacing:2px;transition:right .3s;}
-#panel-tab:hover{background:rgba(79,195,247,.05);}
-.panel-cerrado #panel-tab{right:0px;}
-#zoom-info{position:absolute;bottom:90px;right:14px;z-index:1000;background:rgba(14,22,38,.9);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:9px;color:var(--text);font-family:var(--mono);line-height:1.6;}
+  border-radius:6px 0 0 6px;padding:14px 5px;cursor:pointer;color:#4fc3f7;
+  font-size:12px;transition:.2s;}
+#panel-tab:hover{background:rgba(79,195,247,.08);}
+#zoom-info{position:absolute;bottom:90px;right:554px;z-index:1000;background:rgba(14,22,38,.9);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:9px;color:var(--text);font-family:var(--mono);line-height:1.6;transition:right .3s;}
+.panel-cerrado #zoom-info{right:14px;}
+/* Leaflet zoom control positioning */
+.leaflet-bottom.leaflet-right{right:554px !important;transition:right .3s;}
+.panel-cerrado .leaflet-bottom.leaflet-right{right:14px !important;}
 /* KPIs */
 #kpis-wrapper .kpi{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 10px;position:relative;overflow:hidden;transition:.2s;}
 #kpis-wrapper .kpi::before{content:'';position:absolute;top:0;left:0;width:100%;height:2px;background:var(--border2);}
@@ -204,8 +207,8 @@ body.presentacion #main{height:100vh;}
     <div id="zoom-info"></div>
   </div>
   <!-- RIGHT PANEL -->
-  <div id="panel-tab" onclick="togglePanel()" title="Abrir/Cerrar panel">◀</div>
   <div id="right-panel">
+    <div id="panel-tab" onclick="togglePanel()" title="Abrir/Cerrar panel">◀</div>
     <div id="kpis-wrapper" style="position:relative;border-bottom:1px solid var(--border);background:linear-gradient(180deg,#0c1424,#0a111e);padding:8px 12px;">
       <button id="kpi-prev" onclick="kpiNav(-1)" style="position:absolute;left:4px;top:50%;transform:translateY(-50%);background:rgba(79,195,247,.1);border:1px solid rgba(79,195,247,.15);color:#4fc3f7;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;z-index:2;display:flex;align-items:center;justify-content:center;">‹</button>
       <button id="kpi-next" onclick="kpiNav(1)" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);background:rgba(79,195,247,.1);border:1px solid rgba(79,195,247,.15);color:#4fc3f7;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;z-index:2;display:flex;align-items:center;justify-content:center;">›</button>
@@ -227,16 +230,8 @@ body.presentacion #main{height:100vh;}
           <div class="kpi"><div class="label">Temperatura (°C)</div><div class="value" id="kpi-temp" style="color:#bd6a5a">—</div></div>
           <div class="kpi"><div class="label">RMS Global</div><div class="value" id="kpi-rms" style="color:#5b8fb0">—</div></div>
         </div>
-        <div id="kpi-page-3" class="kpi-page" style="display:none;">
-          <div id="kpi-graphs" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-            <canvas id="graph-potencia" width="200" height="80" style="background:var(--panel);border-radius:6px;border:1px solid var(--border);width:100%;"></canvas>
-            <canvas id="graph-oscilograma" width="200" height="80" style="background:var(--panel);border-radius:6px;border:1px solid var(--border);width:100%;"></canvas>
-            <canvas id="graph-armonicos" width="200" height="80" style="background:var(--panel);border-radius:6px;border:1px solid var(--border);width:100%;"></canvas>
-            <canvas id="graph-tendencias" width="200" height="80" style="background:var(--panel);border-radius:6px;border:1px solid var(--border);width:100%;"></canvas>
-          </div>
-        </div>
       </div>
-      <div style="text-align:center;margin-top:4px;"><span id="kpi-dots" style="font-size:8px;color:#4fc3f7;letter-spacing:3px;">● ○ ○</span></div>
+      <div style="text-align:center;margin-top:4px;"><span id="kpi-dots" style="font-size:8px;color:#4fc3f7;letter-spacing:3px;">● ○</span></div>
     </div>
     <!-- Alarma de emergencia (solo visible cuando se activa) -->
     <div id="alarma-emergencia" style="display:none;background:#3a0a0a;border:2px solid #c15f5f;border-radius:8px;padding:8px 14px;margin:0 12px 8px;display:none;align-items:center;gap:10px;animation:parpadeo 1s infinite;">
@@ -493,9 +488,11 @@ var fallosSeguidos = 0;
 function togglePanel(){
   var panel = document.getElementById('right-panel');
   var tab = document.getElementById('panel-tab');
+  var main = document.getElementById('main');
   panel.classList.toggle('oculto');
+  main.classList.toggle('panel-cerrado', panel.classList.contains('oculto'));
   tab.textContent = panel.classList.contains('oculto') ? '▶' : '◀';
-  // Don't resize map - panel overlays it
+  // Map doesn't move - panel overlays it
 }
 
 // Indicador de zoom + qué aparece en cada nivel
@@ -638,8 +635,9 @@ function actualizarKPIs(r){
   document.getElementById('kpi-al').style.color = r.alertas_activas>0?'#c15f5f':'#5a9e78';
   // Fuente de datos (CENACE real o estimado)
   if(r.fuente_datos) document.getElementById('ubicacion').title = 'Datos: '+r.fuente_datos;
-  // Guardar mix de generación para la pestaña STATS
+  // Guardar datos para la pestaña STATS
   window._mixGeneracion = r.mix_generacion || {};
+  window._lastResumen = r;
 }
 
 // === KPI CAROUSEL NAVIGATION ===
@@ -653,22 +651,22 @@ function kpiNav(dir){
   var dots = '';
   for(var i=0;i<pages.length;i++) dots += i===kpiCurrentPage?'● ':'○ ';
   document.getElementById('kpi-dots').textContent = dots.trim();
-  // Draw graphs if on page 3
-  if(kpiCurrentPage === 2) dibujarGraficasKPI();
 }
-function dibujarGraficasKPI(){
+
+// Gráficas funcionales para la pestaña STATS (estilo Consola MEC)
+function dibujarGraficasStats(){
   // Power triangle
   var c1 = document.getElementById('graph-potencia');
-  if(c1){var ctx=c1.getContext('2d');ctx.clearRect(0,0,c1.width,c1.height);ctx.strokeStyle='#4fc3f7';ctx.lineWidth=1.5;ctx.font='9px Consolas';ctx.fillStyle='#68788a';ctx.fillText('Triángulo de Potencia',4,12);ctx.beginPath();ctx.moveTo(30,70);ctx.lineTo(170,70);ctx.lineTo(170,20);ctx.closePath();ctx.stroke();ctx.fillStyle='#4fc3f7';ctx.fillText('P',95,68);ctx.fillStyle='#c2a24e';ctx.fillText('S',175,45);ctx.fillStyle='#bd854f';ctx.fillText('Q',175,18);}
-  // Oscillogram
+  if(c1){var ctx=c1.getContext('2d');ctx.clearRect(0,0,c1.width,c1.height);ctx.strokeStyle='#4fc3f7';ctx.lineWidth=1.5;ctx.font='9px Consolas';ctx.fillStyle='#68788a';ctx.fillText('TRIÁNGULO DE POTENCIA',4,12);var r=window._lastResumen||{};var pMW=r.generacion_total_mw||5200;var pf=0.88;var sVA=pMW/pf;var qVAr=Math.sqrt(sVA*sVA-pMW*pMW);ctx.beginPath();ctx.moveTo(20,70);ctx.lineTo(180,70);ctx.lineTo(180,20);ctx.closePath();ctx.stroke();ctx.fillStyle='#4fc3f7';ctx.fillText('P='+Math.round(pMW)+' MW',70,68);ctx.fillStyle='#c2a24e';ctx.fillText('S='+Math.round(sVA)+' MVA',130,42);ctx.fillStyle='#bd854f';ctx.fillText('Q='+Math.round(qVAr)+' MVAr',140,18);}
+  // Oscillogram (animated sine waves based on frequency)
   var c2 = document.getElementById('graph-oscilograma');
-  if(c2){var ctx=c2.getContext('2d');ctx.clearRect(0,0,c2.width,c2.height);ctx.strokeStyle='#5a9e78';ctx.lineWidth=1;ctx.font='9px Consolas';ctx.fillStyle='#68788a';ctx.fillText('Oscilograma',4,12);ctx.beginPath();for(var x=0;x<200;x++){var y=40+Math.sin(x*0.1)*25;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();ctx.strokeStyle='#c2a24e';ctx.beginPath();for(var x=0;x<200;x++){var y=40+Math.sin(x*0.1+1)*18;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();}
-  // Harmonics
+  if(c2){var ctx=c2.getContext('2d');ctx.clearRect(0,0,c2.width,c2.height);ctx.font='9px Consolas';ctx.fillStyle='#68788a';ctx.fillText('OSCILOGRAMA',4,12);var t=Date.now()*0.003;ctx.strokeStyle='#5a9e78';ctx.lineWidth=1.2;ctx.beginPath();for(var x=0;x<240;x++){var y=48+Math.sin((x+t)*0.105)*28;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();ctx.strokeStyle='#c2a24e';ctx.lineWidth=1;ctx.beginPath();for(var x=0;x<240;x++){var y=48+Math.sin((x+t)*0.105+1.2)*20;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();ctx.fillStyle='#5a9e78';ctx.fillText('Tensión (V)',150,12);ctx.fillStyle='#c2a24e';ctx.fillText('Corriente (A)',150,22);}
+  // Harmonics spectrum
   var c3 = document.getElementById('graph-armonicos');
-  if(c3){var ctx=c3.getContext('2d');ctx.clearRect(0,0,c3.width,c3.height);ctx.font='9px Consolas';ctx.fillStyle='#68788a';ctx.fillText('Espectro Armónico',4,12);var bars=[60,25,15,8,5,3,2];bars.forEach(function(h,i){ctx.fillStyle=i===0?'#4fc3f7':'#c2a24e';ctx.fillRect(20+i*25,78-h,18,h);});}
-  // Trends
+  if(c3){var ctx=c3.getContext('2d');ctx.clearRect(0,0,c3.width,c3.height);ctx.font='9px Consolas';ctx.fillStyle='#68788a';ctx.fillText('ESPECTRO ARMÓNICO (THD)',4,12);var r=window._lastResumen||{};var thd=r.factor_carga_sistema?3.5+r.factor_carga_sistema*0.02:4.5;var bars=[100,thd*5,thd*3,thd*1.5,thd*0.8,thd*0.4,thd*0.2];bars.forEach(function(h,i){var bh=h*0.6;ctx.fillStyle=i===0?'#4fc3f7':(bh>15?'#c2a24e':'#5a9e78');ctx.fillRect(15+i*32,80-bh,24,bh);ctx.fillStyle='#68788a';ctx.fillText(i===0?'F':(i*2+1)+'°',20+i*32,92);});}
+  // Trends (historical data from last 60 ticks)
   var c4 = document.getElementById('graph-tendencias');
-  if(c4){var ctx=c4.getContext('2d');ctx.clearRect(0,0,c4.width,c4.height);ctx.font='9px Consolas';ctx.fillStyle='#68788a';ctx.fillText('Tendencias',4,12);ctx.strokeStyle='#5f9bad';ctx.lineWidth=1;ctx.beginPath();for(var x=0;x<200;x++){var y=50+Math.sin(x*0.05)*15+Math.random()*3;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();ctx.strokeStyle='#bd854f';ctx.beginPath();for(var x=0;x<200;x++){var y=35+Math.cos(x*0.03)*10+Math.random()*2;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();}
+  if(c4){var ctx=c4.getContext('2d');ctx.clearRect(0,0,c4.width,c4.height);ctx.font='9px Consolas';ctx.fillStyle='#68788a';ctx.fillText('TENDENCIAS HISTÓRICAS',4,12);if(!window._trendData)window._trendData={v:[],i:[],vib:[]};var r=window._lastResumen||{};window._trendData.v.push(230+Math.random()*2);window._trendData.i.push((r.generacion_total_mw||5200)/0.23/1.732);window._trendData.vib.push(1.5+(r.alertas_activas||0)*0.3+Math.random()*0.2);if(window._trendData.v.length>60){window._trendData.v.shift();window._trendData.i.shift();window._trendData.vib.shift();}var drawLine=function(data,color,minV,maxV){ctx.strokeStyle=color;ctx.lineWidth=1;ctx.beginPath();for(var x=0;x<data.length;x++){var y=85-(data[x]-minV)/(maxV-minV)*65;if(x===0)ctx.moveTo(x*4,y);else ctx.lineTo(x*4,y);}ctx.stroke();};drawLine(window._trendData.v,'#897eab',225,240);drawLine(window._trendData.vib,'#bd854f',0,5);ctx.fillStyle='#897eab';ctx.fillText('V',150,22);ctx.fillStyle='#bd854f';ctx.fillText('Vib',170,22);}
 }
 
 function actualizarMapa(plantas){
@@ -792,6 +790,13 @@ function actualizarStats(){
   var subsZona = todasLasSubs.filter(s=>Math.abs(s.lat-c.lat)<radio&&Math.abs(s.lon-c.lng)<radio).length;
 
   var html = '<h3 style="color:var(--text-h);margin:0 0 12px 0;">📊 Estadísticas — '+(ub.ciudad||ub.estado||'Región')+'</h3>';
+  // === GRÁFICAS FUNCIONALES (estilo Consola MEC) ===
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:14px;">';
+  html += '<canvas id="graph-potencia" width="240" height="100" style="background:var(--panel);border-radius:6px;border:1px solid var(--border);width:100%;"></canvas>';
+  html += '<canvas id="graph-oscilograma" width="240" height="100" style="background:var(--panel);border-radius:6px;border:1px solid var(--border);width:100%;"></canvas>';
+  html += '<canvas id="graph-armonicos" width="240" height="100" style="background:var(--panel);border-radius:6px;border:1px solid var(--border);width:100%;"></canvas>';
+  html += '<canvas id="graph-tendencias" width="240" height="100" style="background:var(--panel);border-radius:6px;border:1px solid var(--border);width:100%;"></canvas>';
+  html += '</div>';
   html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
   html += '<div style="background:var(--panel);padding:10px;border-radius:6px;border:1px solid var(--border);">Subestaciones zona<br><b style="font-size:18px;color:var(--text-h);">'+subsZona+'</b></div>';
   html += '<div style="background:var(--panel);padding:10px;border-radius:6px;border:1px solid var(--border);">Total subestaciones<br><b style="font-size:18px;color:var(--text-h);">'+nSubs+'</b></div>';
@@ -888,6 +893,9 @@ function actualizarStats(){
     document.getElementById('vehiculos-container').innerHTML=vhtml;
   }).catch(e=>{document.getElementById('vehiculos-container').textContent='Error cargando vehículos';});
   document.getElementById('stats-content').innerHTML = html;
+  // Dibujar gráficas después de insertar el HTML
+  window._lastResumen = ultimo_estado.resumen || {};
+  setTimeout(dibujarGraficasStats, 50);
 }
 
 // Tabla de subestaciones (del CSV + OSM, filtrada por zona visible)
