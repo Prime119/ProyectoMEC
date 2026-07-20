@@ -13,8 +13,8 @@ tensorflow>=2.15
 keras>=3.0
 scikit-learn>=1.3
 
-# --- Asistente MEC (cerebro LLM + utilidades) ---
-httpx>=0.27            # cliente HTTP para Ollama (cerebro LLM local)
+# --- Asistente Astra (cerebro LLM + utilidades) ---
+httpx>=0.27            # cliente HTTP para llama.cpp (cerebro LLM local)
 psutil>=5.9            # detección de hardware (RAM/CPU)
 
 # --- Voz de MEC (STT + TTS, ambos offline) ---
@@ -45,6 +45,7 @@ PyQt6-WebEngine>=6.5   # navegador embebido para el mapa Leaflet estilo OSINT
 
 # --- Palantir CFE: Versión Web (recomendada — se abre en el navegador) ---
 aiohttp>=3.9           # servidor web async + WebSocket para datos en tiempo real
+edge-tts>=6.1          # voz femenina Astra (es-MX-DaliaNeural) — Microsoft Edge TTS
 
 
 # --- Detección IA en FALCON web (para usar tu modelo entrenado) ---

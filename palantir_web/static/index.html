@@ -70,7 +70,7 @@ tbody tr:hover{background:rgba(34,211,238,.07);cursor:pointer;}
 .alerta-crit{border-left-color:var(--red);color:#ffd5dd;background:rgba(255,77,109,.08);}
 .alerta-warn{border-left-color:var(--amber);color:#ffe9bd;background:rgba(255,194,75,.06);}
 .alerta-info{border-left-color:var(--cyan);color:#cdeef7;}
-/* MEC CHAT */
+/* ASTRA CHAT */
 #mec-panel{display:flex;flex-direction:column;height:100%;}
 #mec-messages{flex:1;overflow-y:auto;font-size:12px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;line-height:1.5;}
 #mec-messages > div{margin-bottom:10px;padding:8px 12px;border-radius:10px;max-width:92%;}
@@ -83,10 +83,11 @@ tbody tr:hover{background:rgba(34,211,238,.07);cursor:pointer;}
 #mec-input:focus{border-color:var(--purple);box-shadow:0 0 0 3px rgba(177,123,255,.15);}
 #mec-send{background:var(--purple);color:#fff;border:none;padding:10px 18px;border-radius:8px;font-weight:700;cursor:pointer;font-size:11px;letter-spacing:.5px;transition:.15s;}
 #mec-send:hover{filter:brightness(1.15);}
-#mec-mic,#mec-voz{background:var(--panel);border:1px solid var(--border2);color:var(--purple);padding:10px 12px;border-radius:8px;cursor:pointer;font-size:15px;transition:.15s;}
-#mec-mic:hover,#mec-voz:hover{border-color:var(--purple);}
+#mec-mic,#mec-voz,#mec-tts{background:var(--panel);border:1px solid var(--border2);color:var(--purple);padding:10px 12px;border-radius:8px;cursor:pointer;font-size:15px;transition:.15s;}
+#mec-mic:hover,#mec-voz:hover,#mec-tts:hover{border-color:var(--purple);}
 #mec-mic.grabando{background:var(--red);border-color:var(--red);color:#fff;animation:latido 1s infinite;}
 #mec-voz.on{background:rgba(34,224,138,.15);border-color:var(--green);color:var(--green);}
+#mec-tts.on{background:rgba(34,224,138,.15);border-color:var(--green);color:var(--green);}
 /* MAP CONTROLS */
 #map-search{position:absolute;top:14px;left:14px;z-index:1000;display:flex;gap:8px;}
 #map-search button{background:var(--cyan);color:#0a1017;border:none;padding:10px 16px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;transition:.15s;}
@@ -201,7 +202,7 @@ body.presentacion #main{height:100vh;}
       <div class="tab" onclick="openTab('lineas')">〰️ LÍNEAS</div>
       <div class="tab" onclick="openTab('alertas')">🚨 ALERTAS</div>
       <div class="tab" onclick="openTab('stats')">📊 STATS</div>
-      <div class="tab" onclick="openTab('mec')">🤖 MEC</div>
+      <div class="tab" onclick="openTab('mec')">🤖 ASTRA</div>
     </div>
     <div id="tab-content">
       <div id="pane-plantas" class="tab-pane active"><table id="tbl-plantas"><thead><tr><th>Planta</th><th>Estado</th><th>Tipo</th><th>Gen MW</th><th>Cap MW</th><th>%</th><th>Temp</th><th>Vib</th></tr></thead><tbody></tbody></table></div>
@@ -209,7 +210,7 @@ body.presentacion #main{height:100vh;}
       <div id="pane-lineas" class="tab-pane"><table id="tbl-lineas"><thead><tr><th>Línea</th><th>Tensión</th><th>Carga%</th><th>Flujo MW</th><th>Corriente</th><th>Temp</th><th>Estado</th></tr></thead><tbody></tbody></table></div>
       <div id="pane-alertas" class="tab-pane"><div id="alertas-feed"></div></div>
       <div id="pane-stats" class="tab-pane"><div id="stats-content" style="padding:8px;font-family:var(--mono);font-size:11px;color:var(--text-h);line-height:2;"></div></div>
-      <div id="pane-mec" class="tab-pane"><div id="mec-panel"><div id="mec-messages"></div><div id="mec-input-bar"><button id="mec-mic" onclick="mecEscuchar()" title="Hablar">🎙️</button><input id="mec-input" placeholder="Pregunta o habla..." /><button id="mec-send" onclick="mecSend()">ENVIAR</button><button id="mec-voz" onclick="mecToggleVoz()" title="Voz de MEC" class="on">🔊</button></div></div></div>
+      <div id="pane-mec" class="tab-pane"><div id="mec-panel"><div id="mec-messages"></div><div id="mec-input-bar"><button id="mec-mic" onclick="mecEscuchar()" title="Hablar">🎙️</button><input id="mec-input" placeholder="Pregunta a Astra..." /><button id="mec-send" onclick="mecSend()">ENVIAR</button><button id="mec-tts" onclick="mecToggleTTS()" title="Voz Astra (edge-tts)" class="on">🎧</button><button id="mec-voz" onclick="mecToggleVoz()" title="Voz navegador" class="">🔊</button></div></div></div>
     </div>
   </div>
 </div>
@@ -513,7 +514,7 @@ function pedirEstado(){
     actualizarTabla(data.plantas);
     actualizarTablaLineas(data.lineas);
     actualizarAlertas(data.plantas, data.lineas);
-    // Alertas inteligentes con voz (MEC anuncia las críticas)
+    // Alertas inteligentes con voz (Astra anuncia las críticas)
     if(data.alertas_nuevas && data.alertas_nuevas.length > 0){
       data.alertas_nuevas.forEach(a=>{
         // Mostrar en el feed de alertas
@@ -522,11 +523,18 @@ function pedirEstado(){
         div.className = 'alerta '+cls;
         div.textContent = a.mensaje;
         if(alertasFeed) alertasFeed.prepend(div);
-        // MEC lo dice en voz alta (solo críticas y altas)
-        if((a.severidad==='critica'||a.severidad==='alta') && vozActiva && window.speechSynthesis){
-          var u = new SpeechSynthesisUtterance(a.mensaje.replace(/[🚨⚠️🔥⚡🔧]/g,''));
-          u.lang='es-MX'; u.rate=1.1;
-          speechSynthesis.speak(u);
+        // Astra lo dice en voz alta (solo críticas y altas)
+        if((a.severidad==='critica'||a.severidad==='alta') && (ttsActivo||vozActiva)){
+          if(ttsActivo){
+            fetch('/api/tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({texto:a.mensaje.replace(/[🚨⚠️🔥⚡🔧]/g,'')})})
+              .then(r=>r.ok?r.blob():null).then(blob=>{
+                if(blob){var url=URL.createObjectURL(blob);var au=new Audio(url);au.play();au.onended=function(){URL.revokeObjectURL(url);};}
+              }).catch(()=>{});
+          } else if(vozActiva && window.speechSynthesis){
+            var u = new SpeechSynthesisUtterance(a.mensaje.replace(/[🚨⚠️🔥⚡🔧]/g,''));
+            u.lang='es-MX'; u.rate=1.1;
+            speechSynthesis.speak(u);
+          }
         }
         // ALARMA SONORA para casos EXTREMOS (solo críticas: fallas de planta, frecuencia baja)
         if(a.severidad==='critica' && (a.tipo==='falla_planta'||a.tipo==='frecuencia'||a.tipo==='falla_linea')){
@@ -1231,7 +1239,7 @@ function detectarIA(){
   });
 }
 
-// === MEC CHAT ===
+// === ASTRA CHAT ===
 var mecMsgs = document.getElementById('mec-messages');
 function mecAppend(sender,text,cls){
   var ts = new Date().toLocaleTimeString();
@@ -1244,11 +1252,11 @@ function mecSend(){
   input.value='';
   mecAppend('Tú',texto,'msg-user');
   fetch('/api/mec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({texto:texto})})
-    .then(r=>r.json()).then(d=>{ mecAppend('MEC',d.respuesta,'msg-mec'); mecHablar(d.respuesta); })
+    .then(r=>r.json()).then(d=>{ mecAppend('Astra',d.respuesta,'msg-mec'); mecHablar(d.respuesta); })
     .catch(e=>mecAppend('Sistema','Error: '+e,'msg-sys'));
 }
 document.getElementById('mec-input').addEventListener('keydown',e=>{if(e.key==='Enter')mecSend();});
-mecAppend('MEC','Listo, ingeniero. Tengo vista de toda la infraestructura del Noroeste. Pregúntame por texto o con el micrófono 🎙️.','msg-mec');
+mecAppend('Astra','Listo, ingeniero. Tengo vista de toda la infraestructura del Noroeste. Pregúntame por texto o con el micrófono 🎙️.','msg-mec');
 
 // === VOZ: Reconocimiento (STT) con la API del navegador ===
 var reconocimiento = null;
@@ -1275,16 +1283,47 @@ function mecEscuchar(){
   reconocimiento.start();
 }
 
-// === VOZ: Síntesis (TTS) — MEC habla sus respuestas ===
-var vozActiva = true;
+// === VOZ: Síntesis (TTS) — Astra habla sus respuestas ===
+// Edge-TTS (servidor, voz femenina es-MX-DaliaNeural) — prioridad
+var ttsActivo = true;
+// Browser TTS (fallback local)
+var vozActiva = false;
+function mecToggleTTS(){
+  ttsActivo = !ttsActivo;
+  document.getElementById('mec-tts').classList.toggle('on', ttsActivo);
+}
 function mecToggleVoz(){
   vozActiva = !vozActiva;
   document.getElementById('mec-voz').classList.toggle('on', vozActiva);
   if(!vozActiva && window.speechSynthesis) speechSynthesis.cancel();
 }
 function mecHablar(texto){
-  if(!vozActiva || !window.speechSynthesis) return;
-  // Limpiar emojis/símbolos para que no los lea
+  // Prioridad 1: Edge-TTS (servidor genera MP3 con voz femenina)
+  if(ttsActivo){
+    fetch('/api/tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({texto:texto})})
+      .then(r=>{
+        if(!r.ok) throw new Error('TTS no disponible');
+        return r.blob();
+      })
+      .then(blob=>{
+        var url = URL.createObjectURL(blob);
+        var audio = new Audio(url);
+        audio.playbackRate = 1.05;
+        audio.play().catch(e=>console.error('Error reproduciendo TTS:',e));
+        audio.onended = function(){ URL.revokeObjectURL(url); };
+      })
+      .catch(e=>{
+        console.warn('[TTS] Edge-TTS fallback a navegador:',e);
+        // Fallback a browser TTS si edge-tts falla
+        mecHablarNavegador(texto);
+      });
+    return;
+  }
+  // Prioridad 2: Browser TTS (si está habilitado)
+  if(vozActiva) mecHablarNavegador(texto);
+}
+function mecHablarNavegador(texto){
+  if(!window.speechSynthesis) return;
   var limpio = texto.replace(/[🚨⚡🔌🗼📍🏭🌊🌀☀️⚛️⚫🔲🔢🏢🏬🎫🎓🏧📦●🔄]/g,'').trim();
   var u = new SpeechSynthesisUtterance(limpio);
   u.lang = 'es-MX'; u.rate = 1.05; u.pitch = 1.0;

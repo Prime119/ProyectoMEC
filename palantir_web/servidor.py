@@ -4,6 +4,8 @@ Servidor web para Palantir CFE — Backend con datos en tiempo real.
 - Sirve el frontend (HTML/CSS/JS)
 - WebSocket: envía telemetría cada 2 segundos a todos los clientes
 - REST: endpoints para el chat Astra y datos estáticos
+- TTS: edge-tts con voz femenina es-MX-DaliaNeural
+- Auto-aprendizaje: investiga en segundo plano sobre ingeniería eléctrica
 
 Ejecutar:
     python palantir_web/servidor.py
@@ -19,6 +21,7 @@ import signal
 import sys
 import threading
 import time
+import tempfile
 import webbrowser
 from pathlib import Path
 
@@ -344,26 +347,202 @@ async def handle_lineas_coords(request):
 
 
 async def handle_mec_chat(request):
-    """Endpoint para el chat de Astra. Usa llama.cpp si está disponible; si no, modo reglas."""
+    """Endpoint para el chat de Astra. Usa llama.cpp (OBLIGATORIO)."""
+    global _ultima_actividad
+    _ultima_actividad = time.time()
+
     data = await request.json()
     texto = data.get("texto", "")
 
-    # Intentar con el LLM (llama.cpp) si Astra está disponible
+    # Usar Astra con LLM (llama.cpp en puerto 8080)
     if mec_assistant is not None:
         try:
             loop = asyncio.get_event_loop()
             ctx = json.dumps(ultimo_estado.get("resumen", {}), ensure_ascii=False)
             prompt = f"[INFRAESTRUCTURA CFE]\n{ctx}\n\n[PREGUNTA]\n{texto}"
             respuesta = await loop.run_in_executor(None, mec_assistant.handle, prompt)
-            # Si el cerebro reportó error, caer al modo reglas
+            # Si el cerebro reportó error de conexión, caer al modo reglas
             if respuesta and "[Astra]" in respuesta and ("Error" in respuesta or "cerebro" in respuesta):
                 respuesta = responder_por_reglas(texto)
             return web.json_response({"respuesta": respuesta})
         except Exception as e:
             print(f"[Astra] LLM fallo: {e}")
 
-    # Modo reglas (sin Ollama): responde con los datos del sistema
+    # Modo reglas (fallback si Astra no pudo iniciar)
     return web.json_response({"respuesta": responder_por_reglas(texto)})
+
+
+# === EDGE-TTS: Voz femenina es-MX-DaliaNeural ===
+async def handle_tts(request):
+    """Genera audio MP3 con edge-tts (voz femenina mexicana)."""
+    try:
+        data = await request.json()
+        texto = data.get("texto", "")
+        if not texto:
+            return web.Response(status=400, text="Falta texto")
+
+        # Limpiar emojis y símbolos
+        import re
+        texto_limpio = re.sub(r'[^\w\s.,;:!?¿¡\-()áéíóúñüÁÉÍÓÚÑÜ]', '', texto).strip()
+        if not texto_limpio:
+            return web.Response(status=400, text="Texto vacío después de limpiar")
+
+        # Limitar longitud para respuestas rápidas
+        if len(texto_limpio) > 500:
+            texto_limpio = texto_limpio[:500]
+
+        loop = asyncio.get_event_loop()
+        mp3_bytes = await loop.run_in_executor(None, _generar_tts, texto_limpio)
+
+        if mp3_bytes is None:
+            return web.Response(status=503, text="edge-tts no disponible")
+
+        return web.Response(
+            body=mp3_bytes,
+            content_type="audio/mpeg",
+            headers={"Cache-Control": "no-store"}
+        )
+    except Exception as e:
+        print(f"[TTS] Error: {e}")
+        return web.Response(status=500, text=str(e))
+
+
+def _generar_tts(texto: str) -> bytes | None:
+    """Genera audio MP3 con edge-tts (síncrono, para run_in_executor)."""
+    try:
+        import edge_tts
+        import asyncio as _asyncio
+
+        async def _gen():
+            communicate = edge_tts.Communicate(texto, "es-MX-DaliaNeural")
+            # Recolectar todos los chunks de audio
+            chunks = []
+            async for chunk in communicate.stream():
+                if chunk["type"] == "audio":
+                    chunks.append(chunk["data"])
+            return b"".join(chunks)
+
+        # Crear nuevo event loop para este hilo
+        loop = _asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(_gen())
+        finally:
+            loop.close()
+    except ImportError:
+        print("[TTS] edge-tts no instalado. Instala con: pip install edge-tts")
+        return None
+    except Exception as e:
+        print(f"[TTS] Error generando audio: {e}")
+        return None
+
+
+# === AUTO-APRENDIZAJE EN SEGUNDO PLANO ===
+# Investiga sobre ingeniería eléctrica cuando el usuario lleva >10 min sin interactuar
+_ultima_actividad: float = time.time()
+_auto_learn_running: bool = False
+
+TEMAS_INVESTIGACION = [
+    "IEEE 519 armónicos límites THD",
+    "ISO 10816 vibración máquinas rotativas",
+    "NOM-001-SEDE norma instalaciones eléctricas México",
+    "NEMA MG-1 motores eléctricos especificaciones",
+    "NFPA 70E seguridad eléctrica arco eléctrico",
+    "mantenimiento predictivo motores eléctricos",
+    "factor de potencia corrección capacitores",
+    "protección diferencial transformadores",
+    "coordinación de protecciones sistemas eléctricos",
+    "análisis de aceite transformadores",
+    "termografía infrarroja mantenimiento eléctrico",
+    "calidad de energía eléctrica CFE México",
+    "sistemas SCADA redes eléctricas",
+    "energía renovable integración red eléctrica",
+    "subestaciones eléctricas diseño operación",
+    "cables de potencia subterráneos",
+    "generación distribuida regulación México",
+    "smart grid redes inteligentes eléctricas",
+    "detección de fallas líneas transmisión",
+    "eficiencia energética motores industriales",
+]
+
+
+def _auto_learn_worker():
+    """Hilo de auto-aprendizaje: investiga cuando el usuario está inactivo."""
+    global _auto_learn_running
+    import random
+
+    _auto_learn_running = True
+    tema_idx = 0
+
+    while _auto_learn_running:
+        time.sleep(30)  # Revisar cada 30 segundos
+
+        # Solo investigar si lleva >10 min sin interactuar
+        inactivo = time.time() - _ultima_actividad
+        if inactivo < 600:  # 10 minutos
+            continue
+
+        # Investigar un tema
+        tema = TEMAS_INVESTIGACION[tema_idx % len(TEMAS_INVESTIGACION)]
+        tema_idx += 1
+
+        try:
+            conocimiento = _investigar_tema(tema)
+            if conocimiento and mec_assistant is not None:
+                # Guardar en la memoria de Astra
+                mec_assistant.memory.log_event(
+                    "auto_aprendizaje",
+                    f"Tema: {tema}\n{conocimiento}",
+                    severity="info"
+                )
+                print(f"[Auto-Learn] Aprendido: {tema[:50]}...")
+        except Exception as e:
+            print(f"[Auto-Learn] Error investigando '{tema}': {e}")
+
+        # Esperar 5 minutos entre investigaciones para no saturar
+        time.sleep(300)
+
+
+def _investigar_tema(tema: str) -> str | None:
+    """Busca información sobre un tema en DuckDuckGo/Wikipedia."""
+    import urllib.request
+    import urllib.parse
+
+    conocimiento_parts = []
+
+    # 1. Intentar Wikipedia en español
+    try:
+        wiki_query = urllib.parse.quote(tema.split()[0] + " " + tema.split()[1] if len(tema.split()) > 1 else tema)
+        wiki_url = f"https://es.wikipedia.org/api/rest_v1/page/summary/{wiki_query}"
+        req = urllib.request.Request(wiki_url, headers={"User-Agent": "FalconCFE/1.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            extracto = data.get("extract", "")
+            if extracto and len(extracto) > 50:
+                conocimiento_parts.append(f"[Wikipedia] {extracto[:500]}")
+    except Exception:
+        pass
+
+    # 2. Intentar DuckDuckGo Instant Answer
+    try:
+        ddg_query = urllib.parse.quote(tema)
+        ddg_url = f"https://api.duckduckgo.com/?q={ddg_query}&format=json&no_html=1&skip_disambig=1"
+        req = urllib.request.Request(ddg_url, headers={"User-Agent": "FalconCFE/1.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            abstract = data.get("AbstractText", "")
+            if abstract and len(abstract) > 30:
+                conocimiento_parts.append(f"[DuckDuckGo] {abstract[:500]}")
+            # También tomar temas relacionados
+            related = data.get("RelatedTopics", [])
+            for r in related[:3]:
+                if isinstance(r, dict) and r.get("Text"):
+                    conocimiento_parts.append(f"  - {r['Text'][:200]}")
+    except Exception:
+        pass
+
+    if conocimiento_parts:
+        return "\n".join(conocimiento_parts)
+    return None
 
 
 def responder_por_reglas(texto: str) -> str:
@@ -413,13 +592,12 @@ def responder_por_reglas(texto: str) -> str:
                 f"{r.get('alertas_activas',0)} alertas activas.")
 
     return ("Puedo responder sobre: generación, fallas, líneas sobrecargadas, "
-            "mantenimiento o un resumen del sistema. Para respuestas más completas, "
-            "instala Ollama (ollama.com) y descarga el modelo qwen2.5:3b-instruct.")
+            "mantenimiento o un resumen del sistema. Para respuestas más detalladas, "
+            "asegúrate de que llama-server esté corriendo (se inicia automáticamente con falcon.py).")
 
 
 # Control de vida: DESACTIVADO (causaba cierres inesperados al cargar lento)
 # El usuario cierra el servidor manualmente con Ctrl+C.
-_ultima_actividad = 0.0
 _hubo_actividad = False
 SEGUNDOS_SIN_PAGINA = 9999  # efectivamente desactivado
 
@@ -754,6 +932,9 @@ async def on_startup(app):
     tick_simulador()
     # Vigilar si la página se cierra (para apagar el servidor solo)
     asyncio.create_task(vigilar_pagina(app))
+    # Iniciar auto-aprendizaje en segundo plano
+    threading.Thread(target=_auto_learn_worker, daemon=True).start()
+    print("🧠 Auto-aprendizaje en segundo plano activado (investiga tras 10 min de inactividad)")
     # Abrir navegador después de 1.5 segundos
     loop = asyncio.get_event_loop()
     loop.call_later(1.5, lambda: webbrowser.open("http://localhost:8080"))
@@ -780,11 +961,16 @@ def main():
     app.router.add_get("/api/cfe/buscar", handle_buscar_cfe)
     app.router.add_get("/api/cfe/manual", handle_cfe_manual)
     app.router.add_post("/api/mec", handle_mec_chat)
+    app.router.add_post("/api/tts", handle_tts)
     app.router.add_get("/static/{name}", handle_static)
 
     print("=" * 60)
-    print("  🦅 FALCON CFE — Versión Web")
+    print("  🦅 FALCON CFE — Versión Web + IA Astra")
     print("  Abriendo en http://localhost:8080")
+    print("")
+    print("  🤖 Astra (4 IAs): JARVIS + Optimus + Caine + Cyborg")
+    print("  🎧 Voz: edge-tts (es-MX-DaliaNeural)")
+    print("  🧠 Auto-aprendizaje: activo tras 10 min de inactividad")
     print("")
     # Mostrar IP de red local para que otros se conecten
     try:

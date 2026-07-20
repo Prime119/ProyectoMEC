@@ -754,7 +754,7 @@ class PalantirCFE(QMainWindow):
         self._mec_msg("TÚ", text)
 
         if not self.mec_assistant:
-            self._mec_msg("SISTEMA", "MEC no disponible. Instala Ollama y ejecuta un modelo.")
+            self._mec_msg("SISTEMA", "Astra no disponible. Ejecuta: python llama-cpp/setup.py")
             return
 
         # Inyectar contexto de infraestructura
