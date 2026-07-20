@@ -608,6 +608,21 @@ def responder_por_reglas(texto: str, llm_disponible: bool = True) -> str:
                 "predicción de demanda, y detección satelital de infraestructura. "
                 "Pregúntame lo que necesites, ingeniero.")
 
+    # === EXPORTAR / REPORTE ===
+    if any(w in t for w in ["excel", "exportar", "csv", "reporte", "descargar", "pdf"]):
+        return ("Claro, ingeniero. Puedo exportar datos en varios formatos:\n"
+                "• Detecciones IA → /api/exportar/csv\n"
+                "• Historial de alertas → /api/historial?formato=csv\n"
+                "• Reporte completo (HTML/PDF) → /api/reporte\n"
+                "Usa los botones en la pestaña STATS o haz clic en los enlaces.")
+
+    # === ANALIZAR / ESCANEAR CIUDAD ===
+    if any(w in t for w in ["analiza", "analizar", "escanea", "escanear", "ciudad",
+                            "infraestructura", "detecta", "detectar", "busca", "buscar"]):
+        return ("Para analizar una ciudad, usa el botón '🏙️ ESCANEAR CIUDAD' en el mapa. "
+                "Acércate a zoom 12+ sobre la zona que quieres analizar y presiona el botón. "
+                "La IA detectará subestaciones, torres y líneas de transmisión en el área visible.")
+
     # === DATOS DEL SISTEMA ===
     if any(w in t for w in ["falla", "problema", "riesgo", "alerta", "mal", "error"]):
         if not fallas and not lineas_falla:
@@ -652,30 +667,24 @@ def responder_por_reglas(texto: str, llm_disponible: bool = True) -> str:
         return (f"Temperatura promedio de calderas: "
                 f"{r.get('generacion_total_mw',0)*0.08 + 450:.0f}°C (dentro de rango).")
 
-    # === PREGUNTA NO CUBIERTA ===
+    # === PREGUNTA NO CUBIERTA — intentar responder de forma general ===
+    # Dar un resumen del sistema como respuesta genérica (siempre útil)
+    gen = r.get('generacion_total_mw', 0)
+    alertas = r.get('alertas_activas', 0)
+    plantas_op = r.get('plantas_operando', 0)
+    plantas_tot = r.get('plantas_total', 0)
+
     if not llm_disponible:
-        # Detectar qué falta
-        problemas = []
-        try:
-            import httpx
-            resp = httpx.get("http://127.0.0.1:8081/health", timeout=2.0)
-            if resp.status_code != 200:
-                problemas.append("llama-server no está respondiendo")
-        except Exception:
-            problemas.append("llama-server no está corriendo")
+        # Sin LLM: dar respuesta contextual basada en datos
+        return (f"Actualmente el sistema genera {gen:.0f} MW con "
+                f"{plantas_op}/{plantas_tot} plantas operando y "
+                f"{alertas} alerta{'s' if alertas != 1 else ''} activa{'s' if alertas != 1 else ''}. "
+                f"Para respuestas conversacionales completas, ejecuta 'python falcon.py' "
+                f"que iniciará mi cerebro (LLM) automáticamente.")
 
-        if problemas:
-            return (f"Para responder preguntas abiertas necesito mi cerebro (LLM). "
-                    f"Problema detectado: {'; '.join(problemas)}. "
-                    f"Solución: cierra FALCON y ejecútalo de nuevo con 'python falcon.py' "
-                    f"— te preguntará si instalar el LLM automáticamente.")
-        else:
-            return ("No tengo una respuesta para eso en mis datos actuales. "
-                    "Intenta preguntar sobre: fallas, generación, líneas, frecuencia o estado general.")
-
-    # Si el LLM sí está (pero la respuesta no llegó por alguna razón)
-    return (f"Sistema operando: {r.get('generacion_total_mw',0):.0f} MW, "
-            f"{r.get('alertas_activas',0)} alertas. "
+    # Si el LLM sí está pero cayó aquí por error
+    return (f"Sistema operando: {gen:.0f} MW, "
+            f"{alertas} alertas. "
             f"¿Qué necesitas saber, ingeniero?")
 
 
