@@ -31,15 +31,15 @@ from sklearn.preprocessing import MinMaxScaler
 import warnings
 warnings.filterwarnings('ignore')
 
-# MEC ASSISTANT: Asistente cognitivo industrial (JARVIS + Optimus + Caine)
+# ASTRA ASSISTANT: IA industrial con 4 personalidades (JARVIS + Optimus + Caine + Cyborg)
 try:
-    from mec_assistant import MECAssistant, VoiceIO, VoiceConfig
+    from astra_assistant import AstraAssistant, VoiceIO, VoiceConfig
     MEC_AVAILABLE = True
 except ImportError:
     MEC_AVAILABLE = False
     VoiceIO = None
     VoiceConfig = None
-    print("⚠️ mec_assistant no disponible. El chat IA estará deshabilitado.")
+    print("⚠️ astra_assistant no disponible. El chat IA estará deshabilitado.")
 
 pg.setConfigOption('background', '#0B0F19')
 pg.setConfigOption('foreground', '#9CA3AF')
@@ -180,7 +180,7 @@ class TensorFlowBrain:
             self.estado    = "APRENDIENDO"
             self.confianza = pct
             return self._make_result(
-                f"⚙️ TF-IA: Recolectando datos base... {pct:.1f}% ({len(self.training_buf)}/{self.MIN_SAMPLES} muestras)"
+                f"⚙️ Astra: Recolectando datos base... {pct:.1f}% ({len(self.training_buf)}/{self.MIN_SAMPLES} muestras)"
             )
 
         # FASE 2: ENTRENAMIENTO INICIAL
@@ -274,23 +274,23 @@ class TensorFlowBrain:
         if ae_anomaly and iso_anomaly:
             self.n_anomalias += 1
             self.estado = "ANOMALÍA CRÍTICA"
-            msg = (f"🚨 TF-CRÍTICO: AE-Loss={ae_loss:.4f} (umbral={self.threshold_ae:.4f}) | "
+            msg = (f"🚨 CRÍTICO: AE-Loss={ae_loss:.4f} (umbral={self.threshold_ae:.4f}) | "
                    f"IF=-1 | Salud predicha={pred_salud:.1f}% | Anomalías acum.={self.n_anomalias}")
         elif ae_anomaly:
             self.estado = "ANOMALÍA AE"
-            msg = (f"⚠️ TF-AE: Error de reconstrucción elevado ({ae_loss:.4f}). "
+            msg = (f"⚠️ AE: Error de reconstrucción elevado ({ae_loss:.4f}). "
                    f"La firma eléctrica se desvía del patrón aprendido.")
         elif iso_anomaly:
             self.estado = "ANOMALÍA IF"
-            msg = (f"⚠️ TF-IF: IsolationForest detectó outlier (score={iso_score:.3f}). "
+            msg = (f"⚠️ IF: IsolationForest detectó outlier (score={iso_score:.3f}). "
                    f"Salud predicha LSTM={pred_salud:.1f}%")
         elif leve:
             self.estado = "PREVENCIÓN"
-            msg = (f"⚡ TF-AVISO: Desviación leve (σ={anomaly_score:.2f}). "
+            msg = (f"⚡ AVISO: Desviación leve (σ={anomaly_score:.2f}). "
                    f"Salud predicha={pred_salud:.1f}%. Monitorear evolución.")
         else:
             self.estado = "NOMINAL"
-            msg = (f"✅ TF-NOMINAL: AE-Loss={ae_loss:.5f} | σ={anomaly_score:.2f} | "
+            msg = (f"✅ NOMINAL: AE-Loss={ae_loss:.5f} | σ={anomaly_score:.2f} | "
                    f"Salud LSTM predicha={pred_salud:.1f}%")
 
         return self._make_result(msg)
@@ -615,8 +615,8 @@ class BarWidget(QWidget):
 class ConsolaCFE(QMainWindow):
     def __init__(self):
         super().__init__()
-        print("¡El código está iniciando con TensorFlow integrado!")
-        self.setWindowTitle("MEC Industrial Analytics Pro — TensorFlow AI Engine")
+        print("¡El código está iniciando con IA Astra integrada!")
+        self.setWindowTitle("FALCON — Sistema de Monitoreo Industrial CFE")
         self.resize(1200, 750)
         self.setMinimumSize(1100, 700)
         self._center_window()
@@ -627,7 +627,7 @@ class ConsolaCFE(QMainWindow):
         self.MAX_THD   = 30.0
 
         # Último resultado TF (para el log)
-        self.tf_result = self.tf_brain._make_result("> Inicializando TensorFlow AI Engine...")
+        self.tf_result = self.tf_brain._make_result("> Inicializando IA Astra...")
 
         self.serial_port  = None
         self.buffer_serial = ""
@@ -649,31 +649,31 @@ class ConsolaCFE(QMainWindow):
         self.timer = QTimer(); self.timer.timeout.connect(self._loop_fast); self.timer.start(16)
         self.timer_slow = QTimer(); self.timer_slow.timeout.connect(self._loop_slow); self.timer_slow.start(1000)
 
-        # MEC ASSISTANT: Inicializar asistente cognitivo (JARVIS + Optimus + Caine)
+        # ASTRA ASSISTANT: Inicializar IA industrial (4 IAs: JARVIS + Optimus + Caine + Cyborg)
         self.mec_assistant = None
         self.mec_voice = None
         self._mec_listening = False
         if MEC_AVAILABLE:
             try:
-                self.mec_assistant = MECAssistant.boot()
-                print(f"🤖 Asistente MEC iniciado (tier: {self.mec_assistant.config.hardware.tier})")
+                self.mec_assistant = AstraAssistant.boot()
+                print(f"🤖 Astra iniciada (tier: {self.mec_assistant.config.hardware.tier})")
                 # Inicializar voz
                 try:
                     voice_cfg = VoiceConfig()
                     self.mec_voice = VoiceIO(voice_cfg)
                     stt_status = "✅" if self.mec_voice.stt_available else "❌"
                     tts_status = "✅" if self.mec_voice.tts_available else "❌"
-                    print(f"🎙️ Voz MEC: STT={stt_status} TTS={tts_status}")
+                    print(f"🎙️ Voz Astra: STT={stt_status} TTS={tts_status}")
                 except Exception as e:
-                    print(f"⚠️ Voz MEC no disponible: {e}")
+                    print(f"⚠️ Voz Astra no disponible: {e}")
                     self.mec_voice = None
-                self._mec_append_msg("MEC",
-                    "Buenos días, ingeniero. Soy MEC — tu copiloto de monitoreo industrial. "
+                self._mec_append_msg("ASTRA",
+                    "Buenos días, ingeniero. Soy Astra — tu copiloto de monitoreo industrial. "
                     "Conozco cada norma, cada armónico y cada vibración sospechosa de tu motor. "
                     "Pregúntame lo que quieras, o presiona ⚡ para un diagnóstico rápido. "
-                    "Ah, y si algo se pone feo... seré el primero en avisarte.")
+                    "Ah, y si algo se pone feo... seré la primera en avisarte.")
             except Exception as e:
-                print(f"⚠️ Error al iniciar MEC Assistant: {e}")
+                print(f"⚠️ Error al iniciar Astra: {e}")
                 self._mec_append_msg("SISTEMA", f"Error al iniciar asistente: {e}")
 
         self.watcher = QFileSystemWatcher([os.path.abspath(__file__)])
@@ -719,8 +719,8 @@ class ConsolaCFE(QMainWindow):
         bar.setStyleSheet(f"background:{C_PANEL}; border-bottom:1px solid {C_BORDER};")
         lay = QHBoxLayout(bar); lay.setContentsMargins(16,0,16,0)
         lbl_logo  = QLabel("CFE"); lbl_logo.setStyleSheet(f"color:{C_GOOD}; font-size:16px; font-weight:900; font-style:italic; letter-spacing:1px;")
-        lbl_title = QLabel(" / INDUSTRIAL ANALYTICS — TensorFlow AI"); lbl_title.setStyleSheet(f"color:{C_TEXT_M}; font-size:12px; font-weight:600; letter-spacing:1px;")
-        self.lbl_tf_estado = QLabel("🤖 TF: INICIALIZANDO")
+        lbl_title = QLabel(" / FALCON — IA Astra"); lbl_title.setStyleSheet(f"color:{C_TEXT_M}; font-size:12px; font-weight:600; letter-spacing:1px;")
+        self.lbl_tf_estado = QLabel("🤖 Astra: INICIALIZANDO")
         self.lbl_tf_estado.setStyleSheet(f"color:{C_ACCENT}; font-size:10px; font-weight:bold;")
         dot_g = QLabel("● EN LÍNEA"); dot_g.setStyleSheet(f"color:{C_GOOD}; font-size:10px; font-weight:bold; letter-spacing:1px;")
         lay.addWidget(lbl_logo); lay.addWidget(lbl_title); lay.addStretch()
@@ -750,7 +750,7 @@ class ConsolaCFE(QMainWindow):
         sep1.setStyleSheet(f"color:{C_BORDER};"); lay.addWidget(sep1)
 
         # KPIs de TF en sidebar
-        self.lbl_tf_info = QLabel("🤖 TF-AI\nInicializando...")
+        self.lbl_tf_info = QLabel("🤖 IA Astra\nInicializando...")
         self.lbl_tf_info.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.lbl_tf_info.setWordWrap(True)
         self.lbl_tf_info.setStyleSheet(f"""
@@ -1014,7 +1014,7 @@ class ConsolaCFE(QMainWindow):
     def _build_reporte_ia(self):
         w = QWidget(); w.setStyleSheet(f"background:{C_PANEL}; border:1px solid {C_MAIN}; border-radius:4px;")
         lay = QVBoxLayout(w); lay.setContentsMargins(10,10,10,10); lay.setSpacing(4)
-        lay.addWidget(self._lbl("Log del Sistema Experto — TensorFlow AI", C_TEXT_H))
+        lay.addWidget(self._lbl("Log del Sistema Experto — IA Astra", C_TEXT_H))
 
         # Estilo base
         txt_style = (f"background:#0B0F19; color:{C_WHITE}; border:none; border-left:2px solid {{color}};"
@@ -1046,14 +1046,14 @@ class ConsolaCFE(QMainWindow):
         return w
 
     def _build_mec_chat_panel(self):
-        """Panel de chat con el asistente MEC (JARVIS + Optimus + Caine)."""
+        """Panel de chat con el asistente Astra (4 IAs: JARVIS + Optimus + Caine + Cyborg)."""
         w = QWidget(); w.setStyleSheet(f"background:{C_PANEL}; border:1px solid {C_PURPLE}; border-radius:4px;")
         w.setFixedHeight(240)
         lay = QVBoxLayout(w); lay.setContentsMargins(10,8,10,8); lay.setSpacing(4)
 
         # Header del chat
         header_lay = QHBoxLayout(); header_lay.setSpacing(8)
-        lbl_title = QLabel("MEC — ASISTENTE INDUSTRIAL INTELIGENTE")
+        lbl_title = QLabel("ASTRA — ASISTENTE INDUSTRIAL INTELIGENTE")
         lbl_title.setStyleSheet(f"color:{C_PURPLE}; font-size:11px; font-weight:bold; letter-spacing:0.5px; border:none;")
         self.lbl_mec_status = QLabel("● LISTO")
         self.lbl_mec_status.setStyleSheet(f"color:{C_GOOD}; font-size:9px; font-weight:bold; border:none;")
@@ -1105,7 +1105,7 @@ class ConsolaCFE(QMainWindow):
         self.btn_mec_mic.clicked.connect(self._mec_toggle_listen)
         
         self.input_mec = QLineEdit()
-        self.input_mec.setPlaceholderText("Habla con MEC... (Ej: '¿por qué sube la vibración?', '¿estamos dentro de norma?')")
+        self.input_mec.setPlaceholderText("Habla con Astra... (Ej: '¿por qué sube la vibración?', '¿estamos dentro de norma?')")
         self.input_mec.setStyleSheet(f"""
             QLineEdit {{
                 background:#0d0d1a; border:1px solid {C_PURPLE}; color:{C_WHITE};
@@ -1144,13 +1144,13 @@ class ConsolaCFE(QMainWindow):
         return w
 
     def _mec_append_msg(self, sender: str, text: str):
-        """Agrega un mensaje al chat del asistente MEC."""
+        """Agrega un mensaje al chat del asistente Astra."""
         if not hasattr(self, 'txt_mec_chat'):
             return
         ts = datetime.now().strftime("%H:%M:%S")
-        if sender == "MEC":
+        if sender == "ASTRA":
             color = C_PURPLE
-            prefix = "🤖 MEC"
+            prefix = "🤖 Astra"
         elif sender == "TÚ":
             color = C_MAIN
             prefix = "👤 Tú"
@@ -1192,17 +1192,16 @@ class ConsolaCFE(QMainWindow):
         self.mec_assistant.handle_async(text, on_response)
 
     def _mec_on_response(self, response: str):
-        """Callback cuando el asistente MEC responde (en hilo principal)."""
-        # Detectar si hubo reinicio Caine
+        """Callback cuando Astra responde."""
         if response.startswith("🔄"):
             parts = response.split("\n\n", 1)
             self._mec_append_msg("CAINE", parts[0].replace("🔄 ", ""))
             if len(parts) > 1:
-                self._mec_append_msg("MEC", parts[1])
+                self._mec_append_msg("ASTRA", parts[1])
                 self._mec_speak(parts[1])
             self._update_caine_indicator()
         else:
-            self._mec_append_msg("MEC", response)
+            self._mec_append_msg("ASTRA", response)
             self._mec_speak(response)
 
         self.lbl_mec_status.setText("● LISTO")
@@ -1278,7 +1277,7 @@ class ConsolaCFE(QMainWindow):
         """Limpia el historial del chat."""
         if hasattr(self, 'txt_mec_chat'):
             self.txt_mec_chat.clear()
-            self._mec_append_msg("MEC", "Pizarra limpia. ¿Qué necesitas, ingeniero?")
+            self._mec_append_msg("ASTRA", "Pizarra limpia. ¿Qué necesitas, ingeniero?")
         if self.mec_assistant:
             self.mec_assistant.history.clear()
 
@@ -1509,7 +1508,7 @@ class ConsolaCFE(QMainWindow):
             "PREVENCIÓN": C_ORANGE, "ANOMALÍA AE": C_CRIT,
             "ANOMALÍA IF": C_CRIT, "ANOMALÍA CRÍTICA": C_CRIT,
         }.get(tf_r['estado'], C_TEXT_M)
-        self.lbl_tf_estado.setText(f"🤖 TF: {tf_r['estado']} | Confianza: {tf_r['confianza']:.0f}%")
+        self.lbl_tf_estado.setText(f"🤖 Astra: {tf_r['estado']} | Confianza: {tf_r['confianza']:.0f}%")
         self.lbl_tf_estado.setStyleSheet(f"color:{estado_color}; font-size:10px; font-weight:bold;")
 
         # Actualizar sidebar TF
@@ -1527,7 +1526,7 @@ class ConsolaCFE(QMainWindow):
         nivel_sal = "❌" if sal_val < 40 else ("⚠️" if sal_val < 75 else "✅")
 
         texto_cuadro = (
-            f"🤖 TensorFlow MEC\n"
+            f"🤖 IA Astra (FALCON)\n"
             f"{'─'*24}\n"
             f"Estado   : {tf_r['estado']}\n"
             f"Muestras : {tf_r['samples']}\n"
@@ -1574,7 +1573,7 @@ class ConsolaCFE(QMainWindow):
                 d_esp.append([str([1,2,3,4,5,6,7,8][idx]), f"{mag:.1f}%", f"{cont:.2f}"])
         self._fill_table(self.tbl_espectro, d_esp)
 
-        # LOG DEL SISTEMA EXPERTO (TF)
+        # LOG DEL SISTEMA EXPERTO (IA Astra)
         torque   = (p / (2*np.pi*freq)) if freq > 0 else 0
         mtbf_est = max(0, 8000*(salud**2) - (temp*15))
         tipo_corriente = "ALTERNA (AC)" if freq > 0 else "DIRECTA (DC)"
@@ -1779,7 +1778,7 @@ class ConsolaCFE(QMainWindow):
 
         # Sección 1: Estado + Métricas unificados
         sec_estado_metricas = (
-            f"Hora: {ts} | TensorFlow MEC [{tipo_corriente}]\n"
+            f"Hora: {ts} | FALCON — IA Astra [{tipo_corriente}]\n"
             f"ESTADO: {tf_r['estado']} | Confianza: {tf_r['confianza']:.0f}% | Muestras: {tf_r['samples']}\n"
             f"─────────────────────────────────────────\n"
             f"ANOMALÍAS ACTIVAS:\n"
@@ -1806,7 +1805,7 @@ class ConsolaCFE(QMainWindow):
 
         # Sección 2: Análisis narrativo IA
         analisis_narrativo = (
-            f"🤖 HABLA LA IA — ANÁLISIS EN TIEMPO REAL\n"
+            f"🤖 ASTRA — ANÁLISIS EN TIEMPO REAL\n"
             f"─────────────────────────────────────────\n"
             f"{analisis_tf}"
         )
@@ -1855,11 +1854,11 @@ class ConsolaCFE(QMainWindow):
         tf_fill     = PatternFill("solid", fgColor="EDE7F6")
 
         ws.merge_cells("A1:Z1")
-        ws["A1"].value = "MEC INDUSTRIAL ANALYTICS PRO — REPORTE TÉCNICO (TensorFlow AI Engine)"
+        ws["A1"].value = "FALCON — REPORTE TÉCNICO (IA Astra)"
         ws["A1"].font = title_font; ws["A1"].alignment = center_align; ws["A1"].fill = header_fill
         ws.merge_cells("A2:Z2")
         fecha_h = datetime.now().strftime('%d/%m/%Y %I:%M:%S %p')
-        ws["A2"].value = f"EQUIPO: MEC-01 | GENERADO: {fecha_h} | REGISTROS: {len(idx_list)} | TF-Estado: {self.tf_result['estado']} | Anomalías: {self.tf_result['n_anomalias']}"
+        ws["A2"].value = f"EQUIPO: FALCON-01 | GENERADO: {fecha_h} | REGISTROS: {len(idx_list)} | Astra: {self.tf_result['estado']} | Anomalías: {self.tf_result['n_anomalias']}"
         ws["A2"].font = meta_font; ws["A2"].alignment = center_align; ws["A2"].fill = header_fill
 
         HEADERS = ["Timestamp","Tensión(V)","Corr(A)","P.Act(W)","P.Rea(VAr)","P.Apa(VA)","F.P.","THD(%)","Vib(mm/s)","Freq(Hz)","Temp(°C)","f_RMS","Salud(%)","H1(%)","H3(%)","H5(%)","H7(%)","H9(%)"]
@@ -1896,7 +1895,7 @@ class ConsolaCFE(QMainWindow):
         # Sección IA / TF
         col_ia_start = 20; col_ia_end = 23
         ws.merge_cells(start_row=4, start_column=col_ia_start, end_row=4, end_column=col_ia_end)
-        header_ia = ws.cell(row=4, column=col_ia_start, value="ANÁLISIS DEL SISTEMA EXPERTO — TENSORFLOW AI")
+        header_ia = ws.cell(row=4, column=col_ia_start, value="ANÁLISIS DEL SISTEMA EXPERTO — IA ASTRA")
         header_ia.font = ia_title_f; header_ia.alignment = center_align; header_ia.fill = tf_fill
         ia_end_row = max(row_num, 56)
         ws.merge_cells(start_row=5, start_column=col_ia_start, end_row=ia_end_row, end_column=col_ia_end)

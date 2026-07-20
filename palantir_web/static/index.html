@@ -29,27 +29,40 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI','Inter',syste
 @keyframes latido{0%,100%{opacity:1;}50%{opacity:.4;}}
 .clock{color:var(--text-h);font-family:var(--mono);font-size:13px;letter-spacing:.5px;}
 /* LAYOUT */
-#main{display:flex;height:calc(100vh - 50px);}
-#map-panel{flex:1;position:relative;}
-#map{width:100%;height:100%;}
-#right-panel{width:540px;background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:width .3s,opacity .3s;}
-#right-panel.oculto{width:0;opacity:0;overflow:hidden;border:none;padding:0;}
-#zoom-info{position:absolute;bottom:90px;right:14px;z-index:1000;background:rgba(14,22,38,.9);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:9px;color:var(--text);font-family:var(--mono);line-height:1.6;}
+#main{display:flex;height:calc(100vh - 50px);position:relative;overflow:hidden;}
+#map-panel{width:100%;height:100%;position:relative;}
+#map{width:100%;height:100%;z-index:1;}
+#right-panel{width:540px;position:absolute;right:0;top:0;height:100%;background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;transition:transform .3s;z-index:50;overflow:visible;}
+#right-panel.oculto{transform:translateX(100%);}
+#right-panel > *:not(#panel-tab){overflow:hidden;}
+#panel-tab{position:absolute;top:50%;transform:translateY(-50%);left:-24px;z-index:51;
+  background:var(--panel);border:1px solid var(--border);border-right:none;
+  border-radius:6px 0 0 6px;padding:14px 5px;cursor:pointer;color:#4fc3f7;
+  font-size:12px;transition:.2s;width:24px;text-align:center;}
+#panel-tab:hover{background:rgba(79,195,247,.08);}
+#zoom-info{position:absolute;bottom:90px;right:554px;z-index:40;background:rgba(14,22,38,.9);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:9px;color:var(--text);font-family:var(--mono);line-height:1.6;transition:right .3s;}
+.panel-cerrado #zoom-info{right:14px;}
+/* Leaflet zoom control positioning */
+.leaflet-bottom.leaflet-right{right:554px !important;transition:right .3s;}
+.panel-cerrado .leaflet-bottom.leaflet-right{right:14px !important;}
 /* KPIs */
-#kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,#0c1424,#0a111e);}
+#kpis-wrapper .kpi{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 10px;position:relative;overflow:hidden;transition:.2s;}
+#kpis-wrapper .kpi::before{content:'';position:absolute;top:0;left:0;width:100%;height:2px;background:var(--border2);}
+#kpis-wrapper .kpi:hover{border-color:var(--border2);transform:translateY(-1px);}
 .kpi{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 10px;position:relative;overflow:hidden;transition:.2s;}
 .kpi::before{content:'';position:absolute;top:0;left:0;width:100%;height:2px;background:var(--border2);}
 .kpi:hover{border-color:var(--border2);transform:translateY(-1px);}
 .kpi .label{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:600;}
 .kpi .value{font-size:17px;font-weight:700;font-family:var(--mono);color:var(--green);margin-top:1px;line-height:1.1;}
+.kpi-page{animation:aparecer .25s ease;}
 @keyframes parpadeo{0%,100%{opacity:1;}50%{opacity:0.4;}}
 /* TABS */
 #tabs{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);padding:0 8px;}
 .tab{padding:12px 16px;font-size:12px;font-weight:600;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:.15s;letter-spacing:.3px;}
 .tab.active{color:var(--cyan);border-bottom-color:var(--cyan);background:linear-gradient(180deg,rgba(34,211,238,.08),transparent);}
 .tab:hover{color:var(--text-h);}
-#tab-content{flex:1;overflow-y:auto;padding:12px;}
-.tab-pane{display:none;animation:aparecer .25s ease;}
+#tab-content{flex:1;overflow-y:auto;overflow-x:hidden;padding:12px;display:flex;flex-direction:column;min-height:0;}
+.tab-pane{display:none;animation:aparecer .25s ease;overflow-y:auto;}
 .tab-pane.active{display:block;}
 @keyframes aparecer{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
 /* TABLE */
@@ -70,23 +83,46 @@ tbody tr:hover{background:rgba(34,211,238,.07);cursor:pointer;}
 .alerta-crit{border-left-color:var(--red);color:#ffd5dd;background:rgba(255,77,109,.08);}
 .alerta-warn{border-left-color:var(--amber);color:#ffe9bd;background:rgba(255,194,75,.06);}
 .alerta-info{border-left-color:var(--cyan);color:#cdeef7;}
-/* MEC CHAT */
-#mec-panel{display:flex;flex-direction:column;height:100%;}
-#mec-messages{flex:1;overflow-y:auto;font-size:12px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;line-height:1.5;}
-#mec-messages > div{margin-bottom:10px;padding:8px 12px;border-radius:10px;max-width:92%;}
-.msg-mec{color:#e6d9ff;background:rgba(177,123,255,.1);border:1px solid rgba(177,123,255,.25);}
-.msg-user{color:#cdeef7;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.25);margin-left:auto;}
-.msg-sys{color:var(--muted);font-size:10px;font-style:italic;}
-#mec-messages b{opacity:.75;font-size:10px;text-transform:uppercase;letter-spacing:.5px;}
-#mec-input-bar{display:flex;gap:6px;}
-#mec-input{flex:1;background:var(--panel);border:1px solid var(--border2);color:var(--text-h);padding:10px 12px;border-radius:8px;font-size:12px;outline:none;transition:.15s;}
-#mec-input:focus{border-color:var(--purple);box-shadow:0 0 0 3px rgba(177,123,255,.15);}
-#mec-send{background:var(--purple);color:#fff;border:none;padding:10px 18px;border-radius:8px;font-weight:700;cursor:pointer;font-size:11px;letter-spacing:.5px;transition:.15s;}
-#mec-send:hover{filter:brightness(1.15);}
-#mec-mic,#mec-voz{background:var(--panel);border:1px solid var(--border2);color:var(--purple);padding:10px 12px;border-radius:8px;cursor:pointer;font-size:15px;transition:.15s;}
-#mec-mic:hover,#mec-voz:hover{border-color:var(--purple);}
-#mec-mic.grabando{background:var(--red);border-color:var(--red);color:#fff;animation:latido 1s infinite;}
-#mec-voz.on{background:rgba(34,224,138,.15);border-color:var(--green);color:var(--green);}
+/* ASTRA CHAT */
+#pane-mec.active{display:flex !important;flex-direction:column;height:100%;}
+#mec-panel{display:flex;flex-direction:column;height:100%;overflow:hidden;}
+#mec-messages{flex:1;overflow-y:auto;min-height:0;padding:14px;background:linear-gradient(180deg,#020509,#0a1018);
+  border:1px solid rgba(79,195,247,.06);border-radius:12px;margin-bottom:10px;
+  display:flex;flex-direction:column;gap:10px;}
+#mec-messages::-webkit-scrollbar{width:2px;}
+#mec-messages::-webkit-scrollbar-thumb{background:rgba(79,195,247,.1);border-radius:2px;}
+#mec-messages > div{padding:10px 14px;border-radius:14px;max-width:92%;font-size:12.5px;
+  line-height:1.6;animation:msgAstraIn .3s cubic-bezier(.16,1,.3,1);letter-spacing:.2px;}
+@keyframes msgAstraIn{from{opacity:0;transform:translateY(8px) scale(.98);}to{opacity:1;transform:none;}}
+.msg-mec{align-self:flex-start;color:#d0dce8;background:rgba(6,14,24,.85);
+  border:1px solid rgba(79,195,247,.08);border-bottom-left-radius:4px;
+  backdrop-filter:blur(6px);box-shadow:0 2px 16px rgba(0,0,0,.3);}
+.msg-user{align-self:flex-end;color:#e0eaf4;background:rgba(79,195,247,.07);
+  border:1px solid rgba(79,195,247,.12);border-bottom-right-radius:4px;margin-left:auto;}
+.msg-sys{align-self:center;font-size:9px;opacity:.4;font-style:italic;color:#5a7a90;
+  padding:4px 10px !important;border:none !important;background:transparent !important;}
+#mec-messages b{color:#4fc3f7;font-size:9px;font-weight:600;letter-spacing:1.5px;
+  text-transform:uppercase;opacity:.7;}
+#mec-input-bar{flex-shrink:0;display:flex;gap:6px;align-items:center;}
+#mec-input{flex:1;background:rgba(8,16,28,.8);border:1px solid rgba(79,195,247,.08);
+  color:#e0eaf4;padding:12px 16px;border-radius:12px;font-size:12.5px;outline:none;
+  transition:.3s;letter-spacing:.3px;}
+#mec-input:focus{border-color:rgba(79,195,247,.25);box-shadow:0 0 0 3px rgba(79,195,247,.05);
+  background:rgba(8,16,28,.95);}
+#mec-input::placeholder{color:#3a5a70;}
+#mec-send{background:linear-gradient(135deg,#4fc3f7 0%,#0288d1 100%);color:#fff;border:none;
+  padding:12px 18px;border-radius:10px;font-weight:700;cursor:pointer;font-size:11px;
+  letter-spacing:.8px;transition:.2s;box-shadow:0 3px 14px rgba(79,195,247,.15);}
+#mec-send:hover{transform:translateY(-1px);box-shadow:0 5px 20px rgba(79,195,247,.25);}
+#mec-mic,#mec-voz,#mec-tts{background:rgba(8,16,28,.6);border:1px solid rgba(79,195,247,.08);
+  color:#4fc3f7;width:38px;height:38px;border-radius:10px;cursor:pointer;font-size:14px;
+  display:flex;align-items:center;justify-content:center;transition:.2s;padding:0;}
+#mec-mic:hover,#mec-voz:hover,#mec-tts:hover{border-color:rgba(79,195,247,.25);
+  background:rgba(79,195,247,.04);}
+#mec-mic.grabando{background:rgba(255,50,50,.2);border-color:rgba(255,50,50,.4);
+  color:#ff6b6b;animation:latido 1s infinite;}
+#mec-voz.on{background:rgba(79,195,247,.08);border-color:rgba(79,195,247,.2);color:#4fc3f7;}
+#mec-tts.on{background:rgba(79,195,247,.08);border-color:rgba(79,195,247,.2);color:#4fc3f7;}
 /* MAP CONTROLS */
 #map-search{position:absolute;top:14px;left:14px;z-index:1000;display:flex;gap:8px;}
 #map-search button{background:var(--cyan);color:#0a1017;border:none;padding:10px 16px;border-radius:8px;font-weight:700;cursor:pointer;font-size:12px;transition:.15s;}
@@ -155,7 +191,6 @@ body.presentacion #main{height:100vh;}
     <span id="zoom-nivel" style="color:#5b8fb0;font-size:10px;font-family:var(--mono);">Z:6</span>
     <span class="freq" id="freq">60.000 Hz</span>
     <span class="clock" id="clock">--</span>
-    <button id="btn-panel" onclick="togglePanel()" style="background:var(--panel);border:1px solid var(--border2);color:var(--text-h);padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">◀ Panel</button>
   </div>
 </div>
 <!-- MAIN -->
@@ -175,19 +210,29 @@ body.presentacion #main{height:100vh;}
   </div>
   <!-- RIGHT PANEL -->
   <div id="right-panel">
-    <div id="kpis">
-      <div class="kpi"><div class="label">Generación</div><div class="value" id="kpi-gen">—</div></div>
-      <div class="kpi"><div class="label">Demanda</div><div class="value" id="kpi-dem" style="color:#5b8fb0">—</div></div>
-      <div class="kpi"><div class="label">Factor Carga</div><div class="value" id="kpi-fc" style="color:#c2a24e">—</div></div>
-      <div class="kpi"><div class="label">Corriente (A)</div><div class="value" id="kpi-corriente" style="color:#5f9bad">—</div></div>
-      <div class="kpi"><div class="label">Voltaje (kV)</div><div class="value" id="kpi-voltaje" style="color:#897eab">—</div></div>
-      <div class="kpi"><div class="label">Frecuencia (Hz)</div><div class="value" id="kpi-freq" style="color:#5a9e78">—</div></div>
-      <div class="kpi"><div class="label">RMS Global</div><div class="value" id="kpi-rms" style="color:#5b8fb0">—</div></div>
-      <div class="kpi"><div class="label">Vibración (mm/s)</div><div class="value" id="kpi-vib" style="color:#bd854f">—</div></div>
-      <div class="kpi"><div class="label">THD (%)</div><div class="value" id="kpi-thd" style="color:#c2a24e">—</div></div>
-      <div class="kpi"><div class="label">Temperatura (°C)</div><div class="value" id="kpi-temp" style="color:#bd6a5a">—</div></div>
-      <div class="kpi"><div class="label">Plantas / Líneas Op.</div><div class="value" id="kpi-op" style="color:#5a9e78">—</div></div>
-      <div class="kpi"><div class="label">Alertas</div><div class="value" id="kpi-al" style="color:#c15f5f">—</div></div>
+    <div id="panel-tab" onclick="togglePanel()" title="Abrir/Cerrar panel">◀</div>
+    <div id="kpis-wrapper" style="position:relative;border-bottom:1px solid var(--border);background:linear-gradient(180deg,#0c1424,#0a111e);padding:8px 12px;">
+      <button id="kpi-prev" onclick="kpiNav(-1)" style="position:absolute;left:4px;top:50%;transform:translateY(-50%);background:rgba(79,195,247,.1);border:1px solid rgba(79,195,247,.15);color:#4fc3f7;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;z-index:2;display:flex;align-items:center;justify-content:center;">‹</button>
+      <button id="kpi-next" onclick="kpiNav(1)" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);background:rgba(79,195,247,.1);border:1px solid rgba(79,195,247,.15);color:#4fc3f7;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px;z-index:2;display:flex;align-items:center;justify-content:center;">›</button>
+      <div id="kpi-pages" style="overflow:hidden;">
+        <div id="kpi-page-1" class="kpi-page" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+          <div class="kpi"><div class="label">Generación</div><div class="value" id="kpi-gen">—</div></div>
+          <div class="kpi"><div class="label">Demanda</div><div class="value" id="kpi-dem" style="color:#5b8fb0">—</div></div>
+          <div class="kpi"><div class="label">Factor Carga</div><div class="value" id="kpi-fc" style="color:#c2a24e">—</div></div>
+          <div class="kpi"><div class="label">Plantas Op.</div><div class="value" id="kpi-plantas-op" style="color:#5a9e78">—</div></div>
+          <div class="kpi"><div class="label">Líneas Op.</div><div class="value" id="kpi-lineas-op" style="color:#5a9e78">—</div></div>
+          <div class="kpi"><div class="label">Alertas</div><div class="value" id="kpi-al" style="color:#c15f5f">—</div></div>
+        </div>
+        <div id="kpi-page-2" class="kpi-page" style="display:none;grid-template-columns:repeat(3,1fr);gap:6px;">
+          <div class="kpi"><div class="label">Corriente</div><div class="value" id="kpi-corriente" style="color:#5f9bad">— <span style="font-size:10px;opacity:.6">A</span></div></div>
+          <div class="kpi"><div class="label">Voltaje</div><div class="value" id="kpi-voltaje" style="color:#897eab">— <span style="font-size:10px;opacity:.6">kV</span></div></div>
+          <div class="kpi"><div class="label">Vibración</div><div class="value" id="kpi-vib" style="color:#bd854f">— <span style="font-size:10px;opacity:.6">mm/s</span></div></div>
+          <div class="kpi"><div class="label">Frecuencia / THD</div><div class="value"><span id="kpi-freq" style="color:#5a9e78">—</span><span style="font-size:10px;opacity:.6"> Hz</span> <span style="font-size:11px;color:#68788a">/</span> <span id="kpi-thd" style="color:#c2a24e">—</span><span style="font-size:10px;opacity:.6">%</span></div></div>
+          <div class="kpi"><div class="label">Temperatura</div><div class="value" id="kpi-temp" style="color:#bd6a5a">— <span style="font-size:10px;opacity:.6">°C</span></div></div>
+          <div class="kpi"><div class="label">RMS Global</div><div class="value" id="kpi-rms" style="color:#5b8fb0">—</div></div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:4px;"><span id="kpi-dots" style="font-size:8px;color:#4fc3f7;letter-spacing:3px;">● ○</span></div>
     </div>
     <!-- Alarma de emergencia (solo visible cuando se activa) -->
     <div id="alarma-emergencia" style="display:none;background:#3a0a0a;border:2px solid #c15f5f;border-radius:8px;padding:8px 14px;margin:0 12px 8px;display:none;align-items:center;gap:10px;animation:parpadeo 1s infinite;">
@@ -201,7 +246,7 @@ body.presentacion #main{height:100vh;}
       <div class="tab" onclick="openTab('lineas')">〰️ LÍNEAS</div>
       <div class="tab" onclick="openTab('alertas')">🚨 ALERTAS</div>
       <div class="tab" onclick="openTab('stats')">📊 STATS</div>
-      <div class="tab" onclick="openTab('mec')">🤖 MEC</div>
+      <div class="tab" onclick="openTab('mec')">🤖 ASTRA</div>
     </div>
     <div id="tab-content">
       <div id="pane-plantas" class="tab-pane active"><table id="tbl-plantas"><thead><tr><th>Planta</th><th>Estado</th><th>Tipo</th><th>Gen MW</th><th>Cap MW</th><th>%</th><th>Temp</th><th>Vib</th></tr></thead><tbody></tbody></table></div>
@@ -209,7 +254,7 @@ body.presentacion #main{height:100vh;}
       <div id="pane-lineas" class="tab-pane"><table id="tbl-lineas"><thead><tr><th>Línea</th><th>Tensión</th><th>Carga%</th><th>Flujo MW</th><th>Corriente</th><th>Temp</th><th>Estado</th></tr></thead><tbody></tbody></table></div>
       <div id="pane-alertas" class="tab-pane"><div id="alertas-feed"></div></div>
       <div id="pane-stats" class="tab-pane"><div id="stats-content" style="padding:8px;font-family:var(--mono);font-size:11px;color:var(--text-h);line-height:2;"></div></div>
-      <div id="pane-mec" class="tab-pane"><div id="mec-panel"><div id="mec-messages"></div><div id="mec-input-bar"><button id="mec-mic" onclick="mecEscuchar()" title="Hablar">🎙️</button><input id="mec-input" placeholder="Pregunta o habla..." /><button id="mec-send" onclick="mecSend()">ENVIAR</button><button id="mec-voz" onclick="mecToggleVoz()" title="Voz de MEC" class="on">🔊</button></div></div></div>
+      <div id="pane-mec" class="tab-pane"><div id="mec-panel"><div id="mec-messages"></div><div id="mec-input-bar"><button id="mec-mic" onclick="mecEscuchar()" title="Hablar">🎙️</button><input id="mec-input" placeholder="Pregunta a Astra..." /><button id="mec-send" onclick="mecSend()">ENVIAR</button><button id="mec-tts" onclick="mecToggleTTS()" title="Voz Astra (edge-tts)" class="on">🎧</button><button id="mec-voz" onclick="mecToggleVoz()" title="Voz navegador" class="">🔊</button></div></div></div>
     </div>
   </div>
 </div>
@@ -224,11 +269,11 @@ body.presentacion #main{height:100vh;}
 var map = L.map('map',{
   center:[28.0,-110],
   zoom:6,
-  minZoom:6,          // no dejar alejar más que la vista regional
+  minZoom:4,          // permite alejarse más para vista global
   maxZoom:21,         // permite acercarse mucho más (para separar puntos pegados)
   zoomControl:false,  // lo agregamos manualmente a la derecha (abajo)
-  maxBounds:[[13.0,-126.0],[38.5,-95.0]],  // permite mover hacia la frontera/EEUU
-  maxBoundsViscosity:0.4,
+  maxBounds:[[10.0,-130.0],[40.0,-90.0]],  // región amplia (México + frontera)
+  maxBoundsViscosity:0.3,
   preferCanvas:true,   // RENDIMIENTO: dibuja marcadores en Canvas, no DOM (10x más rápido)
   renderer: L.canvas({padding:0.5})
 });
@@ -381,6 +426,9 @@ fetch('/api/interconexiones').then(r=>r.json()).then(inter=>{
   });
 }).catch(e=>console.error('Error interconexiones:',e));
 
+// Cargar coordenadas de líneas de transmisión monitoreadas (para navegación por clic)
+fetch('/api/lineas').then(r=>r.json()).then(function(data){ window._lineasCoords = data; }).catch(function(){});
+
 // Leyenda
 document.getElementById('leyenda').innerHTML = `
   <b>FALCON — INFRAESTRUCTURA CFE</b><br>
@@ -443,10 +491,12 @@ var fallosSeguidos = 0;
 // Panel retráctil
 function togglePanel(){
   var panel = document.getElementById('right-panel');
-  var btn = document.getElementById('btn-panel');
+  var tab = document.getElementById('panel-tab');
+  var main = document.getElementById('main');
   panel.classList.toggle('oculto');
-  btn.textContent = panel.classList.contains('oculto') ? '▶ Panel' : '◀ Panel';
-  setTimeout(()=>map.invalidateSize(), 350); // recalcular tamaño del mapa
+  main.classList.toggle('panel-cerrado', panel.classList.contains('oculto'));
+  tab.textContent = panel.classList.contains('oculto') ? '▶' : '◀';
+  // Map doesn't move - panel overlays it
 }
 
 // Indicador de zoom + qué aparece en cada nivel
@@ -485,35 +535,47 @@ var ciudadesGeo = [
 ];
 function detectarUbicacion(){
   var c = map.getCenter();
+  var z = map.getZoom();
   var ciudad = '', estado = '';
-  var mejorDist = 999;
-  ciudadesGeo.forEach(ci=>{
-    var d = Math.sqrt(Math.pow(c.lat-ci.lat,2)+Math.pow(c.lng-ci.lon,2));
-    if(d < mejorDist && d < 0.5){ mejorDist=d; ciudad=ci.nombre; }
-  });
-  estadosGeo.forEach(es=>{
-    var d = Math.sqrt(Math.pow(c.lat-es.lat,2)+Math.pow(c.lng-es.lon,2));
-    if(d < es.radio){ estado=es.nombre; }
-  });
+  
+  // Zoom 11+: detectar ciudad
+  if(z >= 11){
+    var mejorDist = 999;
+    ciudadesGeo.forEach(ci=>{
+      var d = Math.sqrt(Math.pow(c.lat-ci.lat,2)+Math.pow(c.lng-ci.lon,2));
+      if(d < mejorDist && d < 0.5){ mejorDist=d; ciudad=ci.nombre; }
+    });
+  }
+  // Zoom 8-10: detectar estado
+  if(z >= 8){
+    estadosGeo.forEach(es=>{
+      var d = Math.sqrt(Math.pow(c.lat-es.lat,2)+Math.pow(c.lng-es.lon,2));
+      if(d < es.radio){ estado=es.nombre; }
+    });
+  }
+  
   var txt = '';
   if(ciudad) txt = '📍 '+ciudad;
   else if(estado) txt = '📍 '+estado;
+  else txt = '🌐 Global';
   document.getElementById('ubicacion').textContent = txt;
   return {ciudad:ciudad, estado:estado};
 }
 map.on('moveend', detectarUbicacion);
 map.on('moveend', function(){ if(document.getElementById('pane-subs').classList.contains('active')) actualizarTablaSubs(); });
+map.on('moveend', function(){ if(document.getElementById('pane-stats').classList.contains('active')) actualizarStats(); });
+map.on('zoomend', function(){ if(document.getElementById('pane-stats').classList.contains('active')) actualizarStats(); });
 detectarUbicacion();
 function pedirEstado(){
   fetch('/api/estado').then(r=>r.json()).then(data=>{
     fallosSeguidos = 0;
-    actualizarKPIs(data.resumen);
+    actualizarKPIs(data.resumen, data.plantas, data.lineas);
     actualizarMapa(data.plantas);
     actualizarLineas(data.lineas);
     actualizarTabla(data.plantas);
     actualizarTablaLineas(data.lineas);
     actualizarAlertas(data.plantas, data.lineas);
-    // Alertas inteligentes con voz (MEC anuncia las críticas)
+    // Alertas inteligentes con voz (Astra anuncia las críticas)
     if(data.alertas_nuevas && data.alertas_nuevas.length > 0){
       data.alertas_nuevas.forEach(a=>{
         // Mostrar en el feed de alertas
@@ -522,11 +584,13 @@ function pedirEstado(){
         div.className = 'alerta '+cls;
         div.textContent = a.mensaje;
         if(alertasFeed) alertasFeed.prepend(div);
-        // MEC lo dice en voz alta (solo críticas y altas)
-        if((a.severidad==='critica'||a.severidad==='alta') && vozActiva && window.speechSynthesis){
-          var u = new SpeechSynthesisUtterance(a.mensaje.replace(/[🚨⚠️🔥⚡🔧]/g,''));
-          u.lang='es-MX'; u.rate=1.1;
-          speechSynthesis.speak(u);
+        // Astra lo dice en voz alta INMEDIATAMENTE (usa navegador para alertas — más rápido)
+        if((a.severidad==='critica'||a.severidad==='alta') && (ttsActivo||vozActiva)){
+          if(window.speechSynthesis){
+            var u = new SpeechSynthesisUtterance(a.mensaje.replace(/[🚨⚠️🔥⚡🔧]/g,''));
+            u.lang='es-MX'; u.rate=1.15; u.pitch=1.0;
+            speechSynthesis.speak(u);
+          }
         }
         // ALARMA SONORA para casos EXTREMOS (solo críticas: fallas de planta, frecuencia baja)
         if(a.severidad==='critica' && (a.tipo==='falla_planta'||a.tipo==='frecuencia'||a.tipo==='falla_linea')){
@@ -548,6 +612,20 @@ function pedirEstado(){
 pedirEstado();                 // primera carga inmediata
 setInterval(pedirEstado, 2000); // refrescar cada 2 segundos (mantiene vivo el servidor)
 
+// Pre-cargar datos de tendencias en segundo plano (para que las gráficas estén listas)
+setInterval(function(){
+  if(!window._trendData) window._trendData={v:[],i:[],vib:[]};
+  var r = window._lastResumen || {};
+  if(r.generacion_total_mw){
+    window._trendData.v.push(230 + Math.random()*2);
+    window._trendData.i.push((r.generacion_total_mw)/0.23/1.732/1000);
+    window._trendData.vib.push(1.5 + (r.alertas_activas||0)*0.3 + Math.random()*0.2);
+    if(window._trendData.v.length > 60){
+      window._trendData.v.shift(); window._trendData.i.shift(); window._trendData.vib.shift();
+    }
+  }
+}, 2000);
+
 function servidorDetenido(){
   var ov = document.getElementById('server-down');
   if(ov.classList.contains('show')) return;
@@ -555,33 +633,137 @@ function servidorDetenido(){
   try { window.close(); } catch(e){}  // funciona si la abrió el script
 }
 
-function actualizarKPIs(r){
+function actualizarKPIs(r, plantas, lineas){
   if(!r) return;
-  document.getElementById('kpi-gen').textContent = Math.round(r.generacion_total_mw)+' MW';
-  document.getElementById('kpi-dem').textContent = Math.round(r.demanda_estimada_mw)+' MW';
+  
+  // === Función para formatear valores con submúltiplos ===
+  function fmtMW(val){
+    if(val >= 1) return Math.round(val)+' MW';
+    if(val >= 0.001) return (val*1000).toFixed(0)+' kW';
+    return (val*1e6).toFixed(0)+' W';
+  }
+  function fmtA(val){
+    if(val >= 1) return val.toFixed(0);
+    if(val >= 0.001) return (val*1000).toFixed(0)+' mA';
+    return '0';
+  }
+  
+  // Filtrar datos según nivel de zoom (como las estadísticas)
+  var z = map.getZoom();
+  var genMW = r.generacion_total_mw;
+  var demMW = r.demanda_estimada_mw;
+  var plantasOp = r.plantas_operando;
+  var plantasTot = r.plantas_total;
+  var plantasFalla = r.plantas_falla || 0;
+  var lineasOp = r.lineas_operando;
+  var lineasTot = r.lineas_total;
+  var lineasFalla = r.lineas_falla || 0;
+  var alertas = r.alertas_activas;
   var fc = r.factor_carga_sistema;
+  
+  // Si estamos acercados (zoom >= 8), filtrar plantas por cercanía
+  if(z >= 8 && plantas && plantas.length > 0){
+    var c = map.getCenter();
+    var radio = z >= 11 ? 0.3 : 1.5; // ciudad vs estado
+    var cercanas = plantas.filter(function(p){
+      return Math.abs(p.lat-c.lat)<radio && Math.abs(p.lon-c.lng)<radio;
+    });
+    if(cercanas.length > 0){
+      genMW = cercanas.reduce(function(s,p){return s+p.gen_mw;},0);
+      demMW = genMW * 0.95; // estimación local
+      plantasTot = cercanas.length;
+      plantasOp = cercanas.filter(function(p){return p.estado==='Operando';}).length;
+      plantasFalla = cercanas.filter(function(p){return p.estado==='Falla';}).length;
+      alertas = cercanas.reduce(function(s,p){return s+p.alertas.length;},0) + plantasFalla;
+      fc = plantasTot > 0 ? (genMW / cercanas.reduce(function(s,p){return s+p.cap_mw;},0) * 100) : 0;
+    }
+  }
+  
+  document.getElementById('kpi-gen').textContent = fmtMW(genMW);
+  document.getElementById('kpi-dem').textContent = fmtMW(demMW);
   document.getElementById('kpi-fc').textContent = fc.toFixed(1)+'%';
   document.getElementById('kpi-fc').style.color = fc>85?'#c15f5f':(fc>70?'#c2a24e':'#5a9e78');
   document.getElementById('freq').textContent = r.frecuencia_sistema.toFixed(3)+' Hz';
   document.getElementById('clock').textContent = r.timestamp;
   // Nuevos KPIs técnicos (promedios del sistema)
   document.getElementById('kpi-freq').textContent = r.frecuencia_sistema.toFixed(3);
-  document.getElementById('kpi-corriente').textContent = (r.generacion_total_mw / 0.23 / 1.732).toFixed(0);
-  document.getElementById('kpi-voltaje').textContent = '230';
-  document.getElementById('kpi-rms').textContent = Math.sqrt(r.generacion_total_mw * 0.8).toFixed(1);
-  document.getElementById('kpi-vib').textContent = (1.5 + r.alertas_activas * 0.3).toFixed(1);
-  document.getElementById('kpi-thd').textContent = (3.5 + r.factor_carga_sistema * 0.02).toFixed(1);
-  document.getElementById('kpi-temp').textContent = (480 + r.factor_carga_sistema * 0.8).toFixed(0);
-  // Plantas + Líneas en un solo KPI
-  document.getElementById('kpi-op').textContent = r.plantas_operando+'/'+r.plantas_total+' · '+r.lineas_operando+'/'+r.lineas_total;
-  document.getElementById('kpi-op').style.color = (r.plantas_falla>0||r.lineas_falla>0)?'#c15f5f':'#5a9e78';
+  var corriente = genMW / 0.23 / 1.732;
+  document.getElementById('kpi-corriente').innerHTML = fmtA(corriente)+' <span style="font-size:10px;opacity:.6">A</span>';
+  document.getElementById('kpi-voltaje').innerHTML = '230 <span style="font-size:10px;opacity:.6">kV</span>';
+  document.getElementById('kpi-rms').textContent = genMW > 0 ? Math.sqrt(genMW * 0.8).toFixed(1) : '0.0';
+  document.getElementById('kpi-vib').innerHTML = (1.5 + alertas * 0.3).toFixed(1)+' <span style="font-size:10px;opacity:.6">mm/s</span>';
+  document.getElementById('kpi-thd').textContent = (3.5 + fc * 0.02).toFixed(1);
+  document.getElementById('kpi-temp').innerHTML = (480 + fc * 0.8).toFixed(0)+' <span style="font-size:10px;opacity:.6">°C</span>';
+  // Plantas + Líneas en KPIs separados
+  document.getElementById('kpi-plantas-op').textContent = plantasOp+'/'+plantasTot;
+  document.getElementById('kpi-plantas-op').style.color = plantasFalla>0?'#c15f5f':'#5a9e78';
+  document.getElementById('kpi-lineas-op').textContent = lineasOp+'/'+lineasTot;
+  document.getElementById('kpi-lineas-op').style.color = lineasFalla>0?'#c15f5f':'#5a9e78';
   // Alertas
-  document.getElementById('kpi-al').textContent = r.alertas_activas;
-  document.getElementById('kpi-al').style.color = r.alertas_activas>0?'#c15f5f':'#5a9e78';
+  document.getElementById('kpi-al').textContent = alertas;
+  document.getElementById('kpi-al').style.color = alertas>0?'#c15f5f':'#5a9e78';
   // Fuente de datos (CENACE real o estimado)
   if(r.fuente_datos) document.getElementById('ubicacion').title = 'Datos: '+r.fuente_datos;
-  // Guardar mix de generación para la pestaña STATS
+  // Guardar datos para la pestaña STATS
   window._mixGeneracion = r.mix_generacion || {};
+  window._lastResumen = r;
+  window._lastPlantas = plantas || [];
+}
+
+// === KPI CAROUSEL NAVIGATION ===
+var kpiCurrentPage = 0;
+function kpiNav(dir){
+  var pages = document.querySelectorAll('.kpi-page');
+  pages[kpiCurrentPage].style.display = 'none';
+  kpiCurrentPage = (kpiCurrentPage + dir + pages.length) % pages.length;
+  pages[kpiCurrentPage].style.display = 'grid';
+  // Update dots
+  var dots = '';
+  for(var i=0;i<pages.length;i++) dots += i===kpiCurrentPage?'● ':'○ ';
+  document.getElementById('kpi-dots').textContent = dots.trim();
+}
+
+// Gráficas funcionales para la pestaña STATS (estilo Consola MEC) — HiDPI
+function setupHiDPICanvas(canvas){
+  var dpr = window.devicePixelRatio || 1;
+  var rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  var ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return {ctx:ctx, w:rect.width, h:rect.height};
+}
+function getZoomFilteredData(){
+  var r = window._lastResumen || {};
+  var genMW = r.generacion_total_mw || 5200;
+  var fc = r.factor_carga_sistema || 50;
+  var alertas = r.alertas_activas || 0;
+  var z = map.getZoom();
+  if(z >= 8 && window._lastPlantas && window._lastPlantas.length > 0){
+    var c = map.getCenter();
+    var radio = z >= 11 ? 0.3 : 1.5;
+    var cercanas = window._lastPlantas.filter(function(p){
+      return Math.abs(p.lat-c.lat)<radio && Math.abs(p.lon-c.lng)<radio;
+    });
+    if(cercanas.length > 0){
+      genMW = cercanas.reduce(function(s,p){return s+p.gen_mw;},0);
+      var capTotal = cercanas.reduce(function(s,p){return s+p.cap_mw;},0);
+      fc = capTotal > 0 ? (genMW / capTotal * 100) : 0;
+      alertas = cercanas.reduce(function(s,p){return s+p.alertas.length;},0);
+    }
+  }
+  return {genMW:genMW, fc:fc, alertas:alertas, freq:r.frecuencia_sistema||60};
+}
+function dibujarGraficasStats(){
+  var datos = getZoomFilteredData();
+  var c1 = document.getElementById('graph-potencia');
+  if(c1){var s=setupHiDPICanvas(c1);var ctx=s.ctx,w=s.w,h=s.h;ctx.strokeStyle='#4fc3f7';ctx.lineWidth=2;ctx.font='bold 11px Consolas';ctx.fillStyle='#93a1b0';ctx.fillText('TRIÁNGULO DE POTENCIA',8,16);var pMW=datos.genMW;var pf=0.88;var sVA=pMW/pf;var qVAr=Math.sqrt(Math.max(0,sVA*sVA-pMW*pMW));ctx.beginPath();ctx.moveTo(25,h-20);ctx.lineTo(w-50,h-20);ctx.lineTo(w-50,30);ctx.closePath();ctx.stroke();ctx.font='bold 10px Consolas';ctx.fillStyle='#4fc3f7';ctx.fillText('P='+Math.round(pMW)+' MW',w/3,h-8);ctx.fillStyle='#c2a24e';ctx.fillText('S='+Math.round(sVA)+' MVA',w/2+10,h/2+5);ctx.fillStyle='#bd854f';ctx.fillText('Q='+Math.round(qVAr)+' MVAr',w-130,24);}
+  var c2 = document.getElementById('graph-oscilograma');
+  if(c2){var s=setupHiDPICanvas(c2);var ctx=s.ctx,w=s.w,h=s.h;ctx.font='bold 11px Consolas';ctx.fillStyle='#93a1b0';ctx.fillText('OSCILOGRAMA',8,16);var t=Date.now()*0.003;var amp=Math.min(1,datos.genMW/5200);ctx.strokeStyle='#5a9e78';ctx.lineWidth=2;ctx.beginPath();for(var x=0;x<w;x++){var y=h/2+Math.sin((x+t)*0.08)*((h/2)-18)*amp;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();ctx.strokeStyle='#c2a24e';ctx.lineWidth=1.5;ctx.beginPath();for(var x=0;x<w;x++){var y=h/2+Math.sin((x+t)*0.08+1.2)*((h/2)-28)*amp;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();ctx.font='bold 10px Consolas';ctx.fillStyle='#5a9e78';ctx.fillText('V',w-35,16);ctx.fillStyle='#c2a24e';ctx.fillText('I',w-15,16);}
+  var c3 = document.getElementById('graph-armonicos');
+  if(c3){var s=setupHiDPICanvas(c3);var ctx=s.ctx,w=s.w,h=s.h;ctx.font='bold 11px Consolas';ctx.fillStyle='#93a1b0';ctx.fillText('ESPECTRO ARMÓNICO',8,16);var thd=3.5+datos.fc*0.02;var bars=[100,thd*5,thd*3,thd*1.5,thd*0.8,thd*0.4,thd*0.2];var bw=Math.floor((w-30)/bars.length)-3;bars.forEach(function(val,i){var bh=val*(h-35)/100;ctx.fillStyle=i===0?'#4fc3f7':(val>15?'#c2a24e':'#5a9e78');ctx.fillRect(15+i*(bw+3),h-8-bh,bw,bh);ctx.fillStyle='#68788a';ctx.font='9px Consolas';ctx.fillText(i===0?'F':(i*2+1)+'°',16+i*(bw+3),h-1);});}
+  var c4 = document.getElementById('graph-tendencias');
+  if(c4){var s=setupHiDPICanvas(c4);var ctx=s.ctx,w=s.w,h=s.h;ctx.font='bold 11px Consolas';ctx.fillStyle='#93a1b0';ctx.fillText('TENDENCIAS',8,16);var td=window._trendData||{v:[],vib:[]};if(td.v.length>1){var drawL=function(data,color,minV,maxV){ctx.strokeStyle=color;ctx.lineWidth=1.8;ctx.beginPath();for(var x=0;x<data.length;x++){var px=x*(w/60);var y=h-12-(data[x]-minV)/(maxV-minV)*(h-35);if(x===0)ctx.moveTo(px,y);else ctx.lineTo(px,y);}ctx.stroke();};drawL(td.v,'#897eab',225,235);drawL(td.vib,'#bd854f',0,5);}ctx.font='bold 10px Consolas';ctx.fillStyle='#897eab';ctx.fillText('V',w-35,16);ctx.fillStyle='#bd854f';ctx.fillText('Vib',w-15,16);}
 }
 
 function actualizarMapa(plantas){
@@ -651,15 +833,28 @@ function actualizarTabla(plantas){
   document.querySelector('#tbl-plantas tbody').innerHTML=html;
 }
 function actualizarTablaLineas(lineas){
+  // Store line data globally for click navigation
+  window._lineasData = lineas;
   var html='';
-  lineas.forEach(l=>{
+  lineas.forEach(function(l,idx){
     var cls=l.estado==='Falla'?'st-bad':(l.carga>85?'st-warn':'st-ok');
-    html+=`<tr><td>${l.nombre.substring(0,28)}</td><td>${l.tension}</td>
+    html+=`<tr onclick="irALinea('${l.id}')" style="cursor:pointer"><td>${l.nombre.substring(0,28)}</td><td>${l.tension}</td>
       <td class="${cls}">${l.carga.toFixed(0)}%</td><td>${l.flujo_mw.toFixed(0)}</td>
       <td>${l.corriente.toFixed(0)}A</td><td>${l.temp.toFixed(0)}°C</td>
       <td class="${l.estado==='Falla'?'st-bad':'st-ok'}">${l.estado}</td></tr>`;
   });
   document.querySelector('#tbl-lineas tbody').innerHTML=html;
+}
+// Navegar a una línea en el mapa (zoom 16)
+function irALinea(lineaId){
+  if(window._lineasCoords){
+    var linea = window._lineasCoords.find(function(l){return l.id === lineaId;});
+    if(linea && linea.coords && linea.coords.length >= 2){
+      var mid = [(linea.coords[0][0]+linea.coords[1][0])/2, (linea.coords[0][1]+linea.coords[1][1])/2];
+      map.flyTo(mid, 16, {duration:1.5});
+      return;
+    }
+  }
 }
 
 // === ALERTAS ===
@@ -668,17 +863,22 @@ function actualizarAlertas(plantas,lineas){
   var nuevas=[];
   var ts = new Date().toLocaleTimeString();
   plantas.forEach(p=>{
-    if(p.estado==='Falla') nuevas.push({cls:'alerta-crit',msg:`[${ts}] 🚨 FALLA: ${p.nombre}`});
-    p.alertas.forEach(a=> nuevas.push({cls:'alerta-warn',msg:`[${ts}] ⚡ ${p.nombre}: ${a}`}));
+    if(p.estado==='Falla') nuevas.push({cls:'alerta-crit',msg:`[${ts}] 🚨 FALLA: ${p.nombre}`,lat:p.lat,lon:p.lon});
+    p.alertas.forEach(a=> nuevas.push({cls:'alerta-warn',msg:`[${ts}] ⚡ ${p.nombre}: ${a}`,lat:p.lat,lon:p.lon}));
   });
   lineas.forEach(l=>{
-    if(l.estado==='Falla') nuevas.push({cls:'alerta-crit',msg:`[${ts}] 🔌 LÍNEA FUERA: ${l.nombre}`});
-    l.alertas.forEach(a=> nuevas.push({cls:'alerta-warn',msg:`[${ts}] ${l.nombre}: ${a}`}));
+    if(l.estado==='Falla') nuevas.push({cls:'alerta-crit',msg:`[${ts}] 🔌 LÍNEA FUERA: ${l.nombre}`,id:l.id,tipo:'linea'});
+    l.alertas.forEach(a=> nuevas.push({cls:'alerta-warn',msg:`[${ts}] ${l.nombre}: ${a}`,id:l.id,tipo:'linea'}));
   });
   nuevas.forEach(a=>{
     var div=document.createElement('div');
     div.className='alerta '+a.cls;
     div.textContent=a.msg;
+    div.style.cursor='pointer';
+    div.onclick=function(){
+      if(a.lat && a.lon) irA(a.lat, a.lon, 16);
+      else if(a.tipo==='linea' && a.id) irALinea(a.id);
+    };
     alertasFeed.prepend(div);
   });
   while(alertasFeed.children.length>200) alertasFeed.removeChild(alertasFeed.lastChild);
@@ -704,7 +904,14 @@ function actualizarStats(){
   var radio = 3.0 / Math.max(map.getZoom(),6);
   var subsZona = todasLasSubs.filter(s=>Math.abs(s.lat-c.lat)<radio&&Math.abs(s.lon-c.lng)<radio).length;
 
-  var html = '<h3 style="color:var(--text-h);margin:0 0 12px 0;">📊 Estadísticas — '+(ub.ciudad||ub.estado||'Región')+'</h3>';
+  var html = '<h3 style="color:var(--text-h);margin:0 0 12px 0;">📊 Estadísticas — '+(ub.ciudad||ub.estado||'Global')+'</h3>';
+  // === GRÁFICAS FUNCIONALES (estilo Consola MEC — alta resolución) ===
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:14px;">';
+  html += '<canvas id="graph-potencia" style="background:var(--panel);border-radius:6px;border:1px solid var(--border);width:100%;height:120px;"></canvas>';
+  html += '<canvas id="graph-oscilograma" style="background:var(--panel);border-radius:6px;border:1px solid var(--border);width:100%;height:120px;"></canvas>';
+  html += '<canvas id="graph-armonicos" style="background:var(--panel);border-radius:6px;border:1px solid var(--border);width:100%;height:120px;"></canvas>';
+  html += '<canvas id="graph-tendencias" style="background:var(--panel);border-radius:6px;border:1px solid var(--border);width:100%;height:120px;"></canvas>';
+  html += '</div>';
   html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
   html += '<div style="background:var(--panel);padding:10px;border-radius:6px;border:1px solid var(--border);">Subestaciones zona<br><b style="font-size:18px;color:var(--text-h);">'+subsZona+'</b></div>';
   html += '<div style="background:var(--panel);padding:10px;border-radius:6px;border:1px solid var(--border);">Total subestaciones<br><b style="font-size:18px;color:var(--text-h);">'+nSubs+'</b></div>';
@@ -765,7 +972,7 @@ function actualizarStats(){
   html += '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">';
   html += '<button onclick="window.open(\'/api/exportar/csv\')" style="background:var(--panel);border:1px solid var(--border2);color:var(--text-h);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:11px;">📥 Exportar detecciones (CSV)</button>';
   html += '<button onclick="window.open(\'/api/historial?formato=csv\')" style="background:var(--panel);border:1px solid var(--border2);color:var(--text-h);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:11px;">📋 Historial alertas (CSV)</button>';
-  html += '<button onclick="window.open(\'/api/reporte\')" style="background:#1a3a4a;border:1px solid #5b8fb0;color:#5b8fb0;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;">📄 EXPORTAR REPORTE</button>';
+  html += '<button onclick="exportarReporteContextual()" style="background:#1a3a4a;border:1px solid #5b8fb0;color:#5b8fb0;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;">📄 EXPORTAR REPORTE</button>';
   html += '</div>';
   // Predicción de demanda
   html += '<h4 style="margin:14px 0 8px 0;color:var(--text);">📈 Predicción de demanda (próximas 12h):</h4>';
@@ -801,17 +1008,38 @@ function actualizarStats(){
     document.getElementById('vehiculos-container').innerHTML=vhtml;
   }).catch(e=>{document.getElementById('vehiculos-container').textContent='Error cargando vehículos';});
   document.getElementById('stats-content').innerHTML = html;
+  // Dibujar gráficas — esperar a que el DOM esté completamente renderizado
+  requestAnimationFrame(function(){
+    setTimeout(function(){
+      dibujarGraficasStats();
+      // Re-dibujar cada 2 seg para animación del oscilograma
+      if(window._statsInterval) clearInterval(window._statsInterval);
+      window._statsInterval = setInterval(function(){
+        if(document.getElementById('pane-stats').classList.contains('active')) dibujarGraficasStats();
+        else { clearInterval(window._statsInterval); window._statsInterval=null; }
+      }, 2000);
+    }, 200);
+  });
 }
 
 // Tabla de subestaciones (del CSV + OSM, filtrada por zona visible)
 var todasLasSubs = [];  // se llena al cargar CSV y OSM
 function actualizarTablaSubs(){
   var c = map.getCenter();
-  var radio = 3.0 / Math.max(map.getZoom(), 6);
-  var cercanas = todasLasSubs.filter(s=>
-    Math.abs(s.lat-c.lat)<radio && Math.abs(s.lon-c.lng)<radio
-  );
-  if(cercanas.length===0) cercanas = todasLasSubs.slice(0,50);
+  var z = map.getZoom();
+  var cercanas;
+  
+  // Si estamos muy alejados (zoom < 8), mostrar TODAS las subestaciones
+  if(z < 8){
+    cercanas = todasLasSubs.slice(0, 100);
+  } else {
+    var radio = 3.0 / Math.max(z, 6);
+    cercanas = todasLasSubs.filter(s=>
+      Math.abs(s.lat-c.lat)<radio && Math.abs(s.lon-c.lng)<radio
+    );
+    if(cercanas.length===0) cercanas = todasLasSubs.slice(0,50);
+  }
+  
   var html='';
   cercanas.forEach(s=>{
     html+=`<tr onclick="irA(${s.lat},${s.lon})"><td>${(s.nombre||'Subestación').substring(0,30)}</td><td>${s.tipo||'subestacion'}</td><td>${s.ciudad||''}</td></tr>`;
@@ -946,9 +1174,9 @@ var alarmaActiva = false;
 var alarmaAudio = null;
 var alarmaLat = 0, alarmaLon = 0;
 
-// Función para volar a una coordenada (usada por tablas clicables y alarma)
+// Función para volar a una coordenada (zoom 16 por defecto)
 function irA(lat, lon, zoom){
-  map.flyTo([lat, lon], zoom||16, {duration:1.5});
+  map.flyTo([lat, lon], zoom || 16, {duration:1.5});
 }
 
 function activarAlarma(mensaje, lat, lon){
@@ -1231,24 +1459,80 @@ function detectarIA(){
   });
 }
 
-// === MEC CHAT ===
+// === EXPORTAR REPORTE CONTEXTUAL (según zoom) ===
+function exportarReporteContextual(){
+  var ub = detectarUbicacion();
+  var z = map.getZoom();
+  var c = map.getCenter();
+  var contexto = 'global';
+  if(z >= 17) contexto = 'estructura';
+  else if(z >= 11) contexto = 'ciudad';
+  else if(z >= 8) contexto = 'estado';
+  var url = '/api/reporte?contexto='+contexto+'&lat='+c.lat+'&lon='+c.lng+'&zoom='+z;
+  if(ub.ciudad) url += '&nombre='+encodeURIComponent(ub.ciudad);
+  else if(ub.estado) url += '&nombre='+encodeURIComponent(ub.estado);
+  else url += '&nombre=Global';
+  window.open(url);
+}
+
+// === ASTRA CHAT ===
 var mecMsgs = document.getElementById('mec-messages');
 function mecAppend(sender,text,cls){
-  var ts = new Date().toLocaleTimeString();
-  mecMsgs.innerHTML += `<div class="${cls}">[${ts}] <b>${sender}:</b> ${text}</div>`;
+  var div = document.createElement('div');
+  div.className = cls;
+  if(cls === 'msg-mec'){
+    div.innerHTML = '<b>ASTRA</b><br>';
+    mecMsgs.appendChild(div);
+    mecMsgs.scrollTop = mecMsgs.scrollHeight;
+    // Efecto typewriter
+    mecTypewriter(div, text);
+  } else if(cls === 'msg-user'){
+    div.textContent = text;
+    mecMsgs.appendChild(div);
+    mecMsgs.scrollTop = mecMsgs.scrollHeight;
+  } else {
+    div.textContent = text;
+    mecMsgs.appendChild(div);
+    mecMsgs.scrollTop = mecMsgs.scrollHeight;
+  }
+}
+function mecTypewriter(el, texto){
+  var i = 0;
+  var speed = Math.max(8, Math.min(25, 1200/texto.length));
+  function escribir(){
+    if(i < texto.length){
+      el.innerHTML = '<b>ASTRA</b><br>' + texto.substring(0, i+1);
+      i++;
+      mecMsgs.scrollTop = mecMsgs.scrollHeight;
+      setTimeout(escribir, speed);
+    }
+  }
+  escribir();
+}
+function mecShowTyping(){
+  var div = document.createElement('div');
+  div.className = 'astra-typing';
+  div.id = 'astra-typing-indicator';
+  div.innerHTML = '<span></span><span></span><span></span>';
+  mecMsgs.appendChild(div);
   mecMsgs.scrollTop = mecMsgs.scrollHeight;
+}
+function mecHideTyping(){
+  var el = document.getElementById('astra-typing-indicator');
+  if(el) el.remove();
 }
 function mecSend(){
   var input = document.getElementById('mec-input');
   var texto = input.value.trim(); if(!texto) return;
   input.value='';
   mecAppend('Tú',texto,'msg-user');
+  mecShowTyping();
   fetch('/api/mec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({texto:texto})})
-    .then(r=>r.json()).then(d=>{ mecAppend('MEC',d.respuesta,'msg-mec'); mecHablar(d.respuesta); })
-    .catch(e=>mecAppend('Sistema','Error: '+e,'msg-sys'));
+    .then(r=>r.json()).then(d=>{ mecHideTyping(); mecAppend('Astra',d.respuesta,'msg-mec'); mecHablar(d.respuesta); })
+    .catch(e=>{ mecHideTyping(); mecAppend('Sistema','Error de conexión','msg-sys'); });
 }
 document.getElementById('mec-input').addEventListener('keydown',e=>{if(e.key==='Enter')mecSend();});
-mecAppend('MEC','Listo, ingeniero. Tengo vista de toda la infraestructura del Noroeste. Pregúntame por texto o con el micrófono 🎙️.','msg-mec');
+mecAppend('Astra','Listo, ingeniero. Tengo vista de toda la infraestructura del Noroeste. Pregúntame por texto o con el micrófono.','msg-mec');
 
 // === VOZ: Reconocimiento (STT) con la API del navegador ===
 var reconocimiento = null;
@@ -1275,16 +1559,47 @@ function mecEscuchar(){
   reconocimiento.start();
 }
 
-// === VOZ: Síntesis (TTS) — MEC habla sus respuestas ===
-var vozActiva = true;
+// === VOZ: Síntesis (TTS) — Astra habla sus respuestas ===
+// Edge-TTS (servidor, voz femenina es-MX-DaliaNeural) — prioridad
+var ttsActivo = true;
+// Browser TTS (fallback local)
+var vozActiva = false;
+function mecToggleTTS(){
+  ttsActivo = !ttsActivo;
+  document.getElementById('mec-tts').classList.toggle('on', ttsActivo);
+}
 function mecToggleVoz(){
   vozActiva = !vozActiva;
   document.getElementById('mec-voz').classList.toggle('on', vozActiva);
   if(!vozActiva && window.speechSynthesis) speechSynthesis.cancel();
 }
 function mecHablar(texto){
-  if(!vozActiva || !window.speechSynthesis) return;
-  // Limpiar emojis/símbolos para que no los lea
+  // Prioridad 1: Edge-TTS (servidor genera MP3 con voz femenina)
+  if(ttsActivo){
+    fetch('/api/tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({texto:texto})})
+      .then(r=>{
+        if(!r.ok) throw new Error('TTS no disponible');
+        return r.blob();
+      })
+      .then(blob=>{
+        var url = URL.createObjectURL(blob);
+        var audio = new Audio(url);
+        audio.playbackRate = 1.05;
+        audio.play().catch(e=>console.error('Error reproduciendo TTS:',e));
+        audio.onended = function(){ URL.revokeObjectURL(url); };
+      })
+      .catch(e=>{
+        console.warn('[TTS] Edge-TTS fallback a navegador:',e);
+        // Fallback a browser TTS si edge-tts falla
+        mecHablarNavegador(texto);
+      });
+    return;
+  }
+  // Prioridad 2: Browser TTS (si está habilitado)
+  if(vozActiva) mecHablarNavegador(texto);
+}
+function mecHablarNavegador(texto){
+  if(!window.speechSynthesis) return;
   var limpio = texto.replace(/[🚨⚡🔌🗼📍🏭🌊🌀☀️⚛️⚫🔲🔢🏢🏬🎫🎓🏧📦●🔄]/g,'').trim();
   var u = new SpeechSynthesisUtterance(limpio);
   u.lang = 'es-MX'; u.rate = 1.05; u.pitch = 1.0;

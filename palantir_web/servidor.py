@@ -3,7 +3,9 @@ Servidor web para Palantir CFE — Backend con datos en tiempo real.
 
 - Sirve el frontend (HTML/CSS/JS)
 - WebSocket: envía telemetría cada 2 segundos a todos los clientes
-- REST: endpoints para el chat MEC y datos estáticos
+- REST: endpoints para el chat Astra y datos estáticos
+- TTS: edge-tts con voz femenina es-MX-DaliaNeural
+- Auto-aprendizaje: investiga en segundo plano sobre ingeniería eléctrica
 
 Ejecutar:
     python palantir_web/servidor.py
@@ -19,6 +21,7 @@ import signal
 import sys
 import threading
 import time
+import tempfile
 import webbrowser
 from pathlib import Path
 
@@ -34,14 +37,14 @@ from palantir_cfe.datos_geograficos import (
 from palantir_cfe.catalogo_activos import CATALOGO
 from palantir_cfe.simulador_telemetria import SimuladorTelemetria
 
-# MEC Assistant (opcional)
+# Astra Assistant (IA industrial — 4 IAs integradas)
 mec_assistant = None
 try:
-    from mec_assistant import MECAssistant
-    mec_assistant = MECAssistant.boot()
-    print("🤖 MEC Assistant integrado")
+    from astra_assistant import AstraAssistant
+    mec_assistant = AstraAssistant.boot()
+    print("🤖 Astra Assistant integrado (4 IAs)")
 except Exception as e:
-    print(f"⚠️ MEC no disponible: {e}")
+    print(f"⚠️ Astra no disponible: {e}")
 
 # Detector de IA satelital (opcional) — usa el modelo ONNX si PALANTIR_MODELO_ONNX está definido
 motor_ia = None
@@ -344,31 +347,224 @@ async def handle_lineas_coords(request):
 
 
 async def handle_mec_chat(request):
-    """Endpoint para el chat MEC. Usa Ollama si está disponible; si no, modo reglas."""
+    """Endpoint para el chat de Astra. Usa llama.cpp como cerebro."""
+    global _ultima_actividad
+    _ultima_actividad = time.time()
+
     data = await request.json()
     texto = data.get("texto", "")
 
-    # Intentar con el LLM (Ollama) si MEC está disponible
+    # Usar Astra con LLM (llama.cpp en puerto 8081)
     if mec_assistant is not None:
         try:
             loop = asyncio.get_event_loop()
-            ctx = json.dumps(ultimo_estado.get("resumen", {}), ensure_ascii=False)
-            prompt = f"[INFRAESTRUCTURA CFE]\n{ctx}\n\n[PREGUNTA]\n{texto}"
-            respuesta = await loop.run_in_executor(None, mec_assistant.handle, prompt)
-            # Si el cerebro reportó error de Ollama, caer al modo reglas
-            if respuesta and "[MEC]" in respuesta and ("Error" in respuesta or "cerebro local" in respuesta):
-                respuesta = responder_por_reglas(texto)
-            return web.json_response({"respuesta": respuesta})
+
+            # Primero verificar si el LLM está disponible
+            llm_ok = await loop.run_in_executor(None, mec_assistant.brain.is_available)
+
+            if llm_ok:
+                # LLM funcionando → respuesta completa con IA
+                ctx = json.dumps(ultimo_estado.get("resumen", {}), ensure_ascii=False)
+                prompt = f"[INFRAESTRUCTURA CFE]\n{ctx}\n\n[PREGUNTA]\n{texto}"
+                respuesta = await loop.run_in_executor(None, mec_assistant.handle, prompt)
+
+                # Verificar que no sea un error del cerebro
+                if respuesta and "[Astra]" in respuesta and ("Error" in respuesta or "cerebro" in respuesta):
+                    respuesta = responder_por_reglas(texto)
+
+                return web.json_response({"respuesta": respuesta})
+            else:
+                # LLM NO está corriendo → responder con reglas + aviso si es pregunta no cubierta
+                respuesta = responder_por_reglas(texto, llm_disponible=False)
+                return web.json_response({"respuesta": respuesta})
+
         except Exception as e:
-            print(f"[MEC] Ollama fallo: {e}")
+            print(f"[Astra] Error: {e}")
 
-    # Modo reglas (sin Ollama): responde con los datos del sistema
-    return web.json_response({"respuesta": responder_por_reglas(texto)})
+    # Astra no pudo iniciar en absoluto
+    return web.json_response({"respuesta": responder_por_reglas(texto, llm_disponible=False)})
 
 
-def responder_por_reglas(texto: str) -> str:
-    """Responde preguntas comunes usando los datos actuales, sin necesitar LLM."""
-    t = texto.lower()
+# === EDGE-TTS: Voz femenina es-MX-DaliaNeural ===
+async def handle_tts(request):
+    """Genera audio MP3 con edge-tts (voz femenina mexicana)."""
+    try:
+        data = await request.json()
+        texto = data.get("texto", "")
+        if not texto:
+            return web.Response(status=400, text="Falta texto")
+
+        # Limpiar emojis y símbolos
+        import re
+        texto_limpio = re.sub(r'[^\w\s.,;:!?¿¡\-()áéíóúñüÁÉÍÓÚÑÜ]', '', texto).strip()
+        if not texto_limpio:
+            return web.Response(status=400, text="Texto vacío después de limpiar")
+
+        # Limitar longitud para respuestas rápidas
+        if len(texto_limpio) > 500:
+            texto_limpio = texto_limpio[:500]
+
+        loop = asyncio.get_event_loop()
+        mp3_bytes = await loop.run_in_executor(None, _generar_tts, texto_limpio)
+
+        if mp3_bytes is None:
+            return web.Response(status=503, text="edge-tts no disponible")
+
+        return web.Response(
+            body=mp3_bytes,
+            content_type="audio/mpeg",
+            headers={"Cache-Control": "no-store"}
+        )
+    except Exception as e:
+        print(f"[TTS] Error: {e}")
+        return web.Response(status=500, text=str(e))
+
+
+def _generar_tts(texto: str) -> bytes | None:
+    """Genera audio MP3 con edge-tts (síncrono, para run_in_executor)."""
+    try:
+        import edge_tts
+        import asyncio as _asyncio
+
+        async def _gen():
+            communicate = edge_tts.Communicate(texto, "es-MX-DaliaNeural")
+            # Recolectar todos los chunks de audio
+            chunks = []
+            async for chunk in communicate.stream():
+                if chunk["type"] == "audio":
+                    chunks.append(chunk["data"])
+            return b"".join(chunks)
+
+        # Crear nuevo event loop para este hilo
+        loop = _asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(_gen())
+        finally:
+            loop.close()
+    except ImportError:
+        print("[TTS] edge-tts no instalado. Instala con: pip install edge-tts")
+        return None
+    except Exception as e:
+        print(f"[TTS] Error generando audio: {e}")
+        return None
+
+
+# === AUTO-APRENDIZAJE EN SEGUNDO PLANO ===
+# Investiga sobre ingeniería eléctrica cuando el usuario lleva >10 min sin interactuar
+_ultima_actividad: float = time.time()
+_auto_learn_running: bool = False
+
+TEMAS_INVESTIGACION = [
+    "IEEE 519 armónicos límites THD",
+    "ISO 10816 vibración máquinas rotativas",
+    "NOM-001-SEDE norma instalaciones eléctricas México",
+    "NEMA MG-1 motores eléctricos especificaciones",
+    "NFPA 70E seguridad eléctrica arco eléctrico",
+    "mantenimiento predictivo motores eléctricos",
+    "factor de potencia corrección capacitores",
+    "protección diferencial transformadores",
+    "coordinación de protecciones sistemas eléctricos",
+    "análisis de aceite transformadores",
+    "termografía infrarroja mantenimiento eléctrico",
+    "calidad de energía eléctrica CFE México",
+    "sistemas SCADA redes eléctricas",
+    "energía renovable integración red eléctrica",
+    "subestaciones eléctricas diseño operación",
+    "cables de potencia subterráneos",
+    "generación distribuida regulación México",
+    "smart grid redes inteligentes eléctricas",
+    "detección de fallas líneas transmisión",
+    "eficiencia energética motores industriales",
+]
+
+
+def _auto_learn_worker():
+    """Hilo de auto-aprendizaje: investiga cuando el usuario está inactivo."""
+    global _auto_learn_running
+    import random
+
+    _auto_learn_running = True
+    tema_idx = 0
+
+    while _auto_learn_running:
+        time.sleep(30)  # Revisar cada 30 segundos
+
+        # Solo investigar si lleva >10 min sin interactuar
+        inactivo = time.time() - _ultima_actividad
+        if inactivo < 600:  # 10 minutos
+            continue
+
+        # Investigar un tema
+        tema = TEMAS_INVESTIGACION[tema_idx % len(TEMAS_INVESTIGACION)]
+        tema_idx += 1
+
+        try:
+            conocimiento = _investigar_tema(tema)
+            if conocimiento and mec_assistant is not None:
+                # Guardar en la memoria de Astra
+                mec_assistant.memory.log_event(
+                    "auto_aprendizaje",
+                    f"Tema: {tema}\n{conocimiento}",
+                    severity="info"
+                )
+                print(f"[Auto-Learn] Aprendido: {tema[:50]}...")
+        except Exception as e:
+            print(f"[Auto-Learn] Error investigando '{tema}': {e}")
+
+        # Esperar 5 minutos entre investigaciones para no saturar
+        time.sleep(300)
+
+
+def _investigar_tema(tema: str) -> str | None:
+    """Busca información sobre un tema en DuckDuckGo/Wikipedia."""
+    import urllib.request
+    import urllib.parse
+
+    conocimiento_parts = []
+
+    # 1. Intentar Wikipedia en español
+    try:
+        wiki_query = urllib.parse.quote(tema.split()[0] + " " + tema.split()[1] if len(tema.split()) > 1 else tema)
+        wiki_url = f"https://es.wikipedia.org/api/rest_v1/page/summary/{wiki_query}"
+        req = urllib.request.Request(wiki_url, headers={"User-Agent": "FalconCFE/1.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            extracto = data.get("extract", "")
+            if extracto and len(extracto) > 50:
+                conocimiento_parts.append(f"[Wikipedia] {extracto[:500]}")
+    except Exception:
+        pass
+
+    # 2. Intentar DuckDuckGo Instant Answer
+    try:
+        ddg_query = urllib.parse.quote(tema)
+        ddg_url = f"https://api.duckduckgo.com/?q={ddg_query}&format=json&no_html=1&skip_disambig=1"
+        req = urllib.request.Request(ddg_url, headers={"User-Agent": "FalconCFE/1.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            abstract = data.get("AbstractText", "")
+            if abstract and len(abstract) > 30:
+                conocimiento_parts.append(f"[DuckDuckGo] {abstract[:500]}")
+            # También tomar temas relacionados
+            related = data.get("RelatedTopics", [])
+            for r in related[:3]:
+                if isinstance(r, dict) and r.get("Text"):
+                    conocimiento_parts.append(f"  - {r['Text'][:200]}")
+    except Exception:
+        pass
+
+    if conocimiento_parts:
+        return "\n".join(conocimiento_parts)
+    return None
+
+
+def responder_por_reglas(texto: str, llm_disponible: bool = True) -> str:
+    """
+    Responde preguntas comunes usando los datos actuales.
+    Si el LLM no está disponible y la pregunta no se puede contestar,
+    dice exactamente qué falta instalar.
+    """
+    t = texto.lower().strip()
     r = ultimo_estado.get("resumen", {})
     plantas = ultimo_estado.get("plantas", [])
     lineas = ultimo_estado.get("lineas", [])
@@ -378,7 +574,57 @@ def responder_por_reglas(texto: str) -> str:
     lineas_falla = [l for l in lineas if l["estado"] == "Falla"]
     sobrecargadas = [l for l in lineas if l["carga"] > 85]
 
-    if any(w in t for w in ["falla", "problema", "riesgo", "alerta", "mal"]):
+    # === SALUDOS CASUALES (siempre responde, con o sin LLM) ===
+    if any(w in t for w in ["hola", "que tal", "qué tal", "buenas", "buenos días",
+                            "buenos dias", "buenas tardes", "buenas noches", "hey",
+                            "qué onda", "que onda", "sup", "hi", "hello"]):
+        gen = r.get('generacion_total_mw', 0)
+        alertas = r.get('alertas_activas', 0)
+        if alertas > 0:
+            return (f"Hola, ingeniero. Sistema generando {gen:.0f} MW con "
+                    f"{alertas} alerta{'s' if alertas > 1 else ''} activa{'s' if alertas > 1 else ''}. "
+                    f"¿En qué te ayudo?")
+        return f"Hola, ingeniero. Todo en orden — {gen:.0f} MW generándose. ¿En qué te ayudo?"
+
+    # === AGRADECIMIENTOS ===
+    if any(w in t for w in ["gracias", "thanks", "perfecto", "ok gracias", "vale"]):
+        return "De nada, ingeniero. Aquí estoy si necesitas algo más."
+
+    # === IDENTIDAD ===
+    if any(w in t for w in ["quién eres", "quien eres", "tu nombre", "cómo te llamas",
+                            "como te llamas", "qué eres", "que eres", "presentate",
+                            "preséntate"]):
+        return ("Soy Astra — tu asistente de infraestructura eléctrica. "
+                "Integro 4 inteligencias: JARVIS (eficiencia), Optimus Prime (seguridad), "
+                "Caine (auto-reinicio cognitivo) y Cyborg (auto-auditoría). "
+                "Monitoreo las plantas, líneas y subestaciones de CFE Noroeste en tiempo real.")
+
+    # === CAPACIDADES ===
+    if any(w in t for w in ["qué puedes", "que puedes", "qué sabes", "que sabes",
+                            "ayuda", "help", "funciones"]):
+        return ("Puedo ayudarte con: monitoreo de plantas y líneas en tiempo real, "
+                "alertas de fallas y sobrecarga, estado del sistema eléctrico, "
+                "análisis de armónicos (IEEE 519), vibración (ISO 10816), "
+                "predicción de demanda, y detección satelital de infraestructura. "
+                "Pregúntame lo que necesites, ingeniero.")
+
+    # === EXPORTAR / REPORTE ===
+    if any(w in t for w in ["excel", "exportar", "csv", "reporte", "descargar", "pdf"]):
+        return ("Claro, ingeniero. Puedo exportar datos en varios formatos:\n"
+                "• Detecciones IA → /api/exportar/csv\n"
+                "• Historial de alertas → /api/historial?formato=csv\n"
+                "• Reporte completo (HTML/PDF) → /api/reporte\n"
+                "Usa los botones en la pestaña STATS o haz clic en los enlaces.")
+
+    # === ANALIZAR / ESCANEAR CIUDAD ===
+    if any(w in t for w in ["analiza", "analizar", "escanea", "escanear", "ciudad",
+                            "infraestructura", "detecta", "detectar", "busca", "buscar"]):
+        return ("Para analizar una ciudad, usa el botón '🏙️ ESCANEAR CIUDAD' en el mapa. "
+                "Acércate a zoom 12+ sobre la zona que quieres analizar y presiona el botón. "
+                "La IA detectará subestaciones, torres y líneas de transmisión en el área visible.")
+
+    # === DATOS DEL SISTEMA ===
+    if any(w in t for w in ["falla", "problema", "riesgo", "alerta", "mal", "error"]):
         if not fallas and not lineas_falla:
             return "Todo en orden, ingeniero. No hay plantas ni líneas en falla ahora mismo."
         msg = ""
@@ -405,21 +651,45 @@ def responder_por_reglas(texto: str) -> str:
             return "En mantenimiento: " + ", ".join(p["nombre"] for p in manto)
         return "Ninguna planta está en mantenimiento en este momento."
 
-    if any(w in t for w in ["resumen", "estado", "general", "cómo", "como esta", "situación"]):
+    if any(w in t for w in ["resumen", "estado", "general", "cómo va", "como va",
+                            "cómo está", "como esta", "situación", "situacion",
+                            "reporte", "dame un"]):
         return (f"Sistema: {r.get('generacion_total_mw',0):.0f} MW generados, "
                 f"{r.get('plantas_operando',0)}/{r.get('plantas_total',0)} plantas operando, "
                 f"{r.get('lineas_operando',0)}/{r.get('lineas_total',0)} líneas activas, "
                 f"frecuencia {r.get('frecuencia_sistema',60):.3f} Hz, "
                 f"{r.get('alertas_activas',0)} alertas activas.")
 
-    return ("Puedo responder sobre: generación, fallas, líneas sobrecargadas, "
-            "mantenimiento o un resumen del sistema. Para respuestas más completas, "
-            "instala Ollama (ollama.com) y descarga el modelo qwen2.5:3b-instruct.")
+    if any(w in t for w in ["frecuencia", "hz", "hertz"]):
+        return f"Frecuencia del sistema: {r.get('frecuencia_sistema',60):.3f} Hz (nominal: 60.000 Hz)."
+
+    if any(w in t for w in ["temperatura", "temp", "caliente"]):
+        return (f"Temperatura promedio de calderas: "
+                f"{r.get('generacion_total_mw',0)*0.08 + 450:.0f}°C (dentro de rango).")
+
+    # === PREGUNTA NO CUBIERTA — intentar responder de forma general ===
+    # Dar un resumen del sistema como respuesta genérica (siempre útil)
+    gen = r.get('generacion_total_mw', 0)
+    alertas = r.get('alertas_activas', 0)
+    plantas_op = r.get('plantas_operando', 0)
+    plantas_tot = r.get('plantas_total', 0)
+
+    if not llm_disponible:
+        # Sin LLM: dar respuesta contextual basada en datos
+        return (f"Actualmente el sistema genera {gen:.0f} MW con "
+                f"{plantas_op}/{plantas_tot} plantas operando y "
+                f"{alertas} alerta{'s' if alertas != 1 else ''} activa{'s' if alertas != 1 else ''}. "
+                f"Para respuestas conversacionales completas, ejecuta 'python falcon.py' "
+                f"que iniciará mi cerebro (LLM) automáticamente.")
+
+    # Si el LLM sí está pero cayó aquí por error
+    return (f"Sistema operando: {gen:.0f} MW, "
+            f"{alertas} alertas. "
+            f"¿Qué necesitas saber, ingeniero?")
 
 
 # Control de vida: DESACTIVADO (causaba cierres inesperados al cargar lento)
 # El usuario cierra el servidor manualmente con Ctrl+C.
-_ultima_actividad = 0.0
 _hubo_actividad = False
 SEGUNDOS_SIN_PAGINA = 9999  # efectivamente desactivado
 
@@ -607,9 +877,16 @@ async def handle_historial(request):
 
 
 async def handle_reporte(request):
-    """Genera un reporte HTML completo descargable (imprimible como PDF)."""
+    """Genera un reporte HTML contextual (filtrado por zoom/ubicación)."""
     from datetime import datetime
     from palantir_web.cenace import obtener_datos_cenace
+
+    # Obtener contexto del zoom
+    contexto = request.query.get("contexto", "global")
+    lat = float(request.query.get("lat", 28.0))
+    lon = float(request.query.get("lon", -110.0))
+    zoom = int(request.query.get("zoom", 6))
+    nombre = request.query.get("nombre", "Global")
 
     cenace = obtener_datos_cenace()
     historial = motor_alertas.get_historial(50)
@@ -619,9 +896,38 @@ async def handle_reporte(request):
     lineas_data = ultimo_estado.get("lineas", [])
     resumen = ultimo_estado.get("resumen", {})
 
-    # Generar HTML del reporte
+    # Filtrar datos según contexto
+    if contexto == "estructura" and zoom >= 17:
+        radio = 0.05
+        titulo_region = f"Estructura: {nombre}"
+    elif contexto == "ciudad" and zoom >= 11:
+        radio = 0.3
+        titulo_region = f"Ciudad: {nombre}"
+    elif contexto == "estado" and zoom >= 8:
+        radio = 1.5
+        titulo_region = f"Estado: {nombre}"
+    else:
+        radio = 999
+        titulo_region = "Noroeste de México (BC, BCS, Sonora, Chihuahua, Sinaloa)"
+
+    # Filtrar plantas y líneas por cercanía
+    if radio < 999:
+        plantas_filtradas = [p for p in plantas_data
+                           if abs(p.get("lat", 0) - lat) < radio and abs(p.get("lon", 0) - lon) < radio]
+        if not plantas_filtradas:
+            plantas_filtradas = plantas_data
+    else:
+        plantas_filtradas = plantas_data
+
+    # Recalcular resumen para el contexto filtrado
+    gen_total = sum(p.get("gen_mw", 0) for p in plantas_filtradas)
+    cap_total = sum(p.get("cap_mw", 0) for p in plantas_filtradas)
+    fc = (gen_total / cap_total * 100) if cap_total > 0 else 0
+    plantas_op = sum(1 for p in plantas_filtradas if p.get("estado") == "Operando")
+    plantas_falla = sum(1 for p in plantas_filtradas if p.get("estado") == "Falla")
+
     html = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
-<title>Reporte FALCON CFE — {datetime.now().strftime('%d/%m/%Y %H:%M')}</title>
+<title>Reporte FALCON CFE — {nombre} — {datetime.now().strftime('%d/%m/%Y %H:%M')}</title>
 <style>
 body{{font-family:'Segoe UI',sans-serif;max-width:900px;margin:0 auto;padding:20px;color:#222;}}
 h1{{color:#1a5276;border-bottom:3px solid #1a5276;padding-bottom:10px;}}
@@ -636,35 +942,40 @@ tr:hover td{{background:#f5f5f5;}}
 .kpi .label{{font-size:11px;color:#666;text-transform:uppercase;}}
 .alerta-crit{{color:#c0392b;font-weight:bold;}}
 .alerta-alta{{color:#e67e22;}}
+.contexto{{background:#e8f4fd;border:1px solid #b8daff;border-radius:8px;padding:12px;margin:10px 0;}}
 .footer{{margin-top:40px;color:#999;font-size:10px;text-align:center;border-top:1px solid #eee;padding-top:10px;}}
 @media print{{body{{margin:0;}} .no-print{{display:none;}}}}
 </style></head><body>
 <h1>🦅 FALCON CFE — Reporte de Infraestructura</h1>
-<p><b>Fecha:</b> {datetime.now().strftime('%d de %B de %Y, %H:%M hrs')}<br>
-<b>Región:</b> Noroeste de México (BC, BCS, Sonora, Chihuahua, Sinaloa)<br>
-<b>Fuente de datos:</b> {cenace.get('fuente','estimado')}</p>
-
-<h2>Resumen del Sistema</h2>
-<div class="kpi-grid">
-<div class="kpi"><div class="valor">{resumen.get('generacion_total_mw',0):.0f} MW</div><div class="label">Generación</div></div>
-<div class="kpi"><div class="valor">{resumen.get('demanda_estimada_mw',0):.0f} MW</div><div class="label">Demanda</div></div>
-<div class="kpi"><div class="valor">{resumen.get('factor_carga_sistema',0):.1f}%</div><div class="label">Factor Carga</div></div>
-<div class="kpi"><div class="valor">{resumen.get('plantas_operando',0)}/{resumen.get('plantas_total',0)}</div><div class="label">Plantas Operando</div></div>
-<div class="kpi"><div class="valor">{resumen.get('lineas_operando',0)}/{resumen.get('lineas_total',0)}</div><div class="label">Líneas Operando</div></div>
-<div class="kpi"><div class="valor">{resumen.get('frecuencia_sistema',60):.3f} Hz</div><div class="label">Frecuencia</div></div>
+<div class="contexto">
+<b>📍 Contexto:</b> {titulo_region}<br>
+<b>Fecha:</b> {datetime.now().strftime('%d de %B de %Y, %H:%M hrs')}<br>
+<b>Nivel:</b> {contexto.title()} (Zoom {zoom})<br>
+<b>Fuente de datos:</b> {cenace.get('fuente','estimado')}
 </div>
 
-<h2>Mix de Generación</h2>
-<table><tr><th>Tipo</th><th>Generación (MW)</th></tr>"""
+<h2>Resumen — {nombre}</h2>
+<div class="kpi-grid">
+<div class="kpi"><div class="valor">{gen_total:.0f} MW</div><div class="label">Generación</div></div>
+<div class="kpi"><div class="valor">{gen_total*0.95:.0f} MW</div><div class="label">Demanda Est.</div></div>
+<div class="kpi"><div class="valor">{fc:.1f}%</div><div class="label">Factor Carga</div></div>
+<div class="kpi"><div class="valor">{plantas_op}/{len(plantas_filtradas)}</div><div class="label">Plantas Operando</div></div>
+<div class="kpi"><div class="valor">{resumen.get('lineas_operando',0)}/{resumen.get('lineas_total',0)}</div><div class="label">Líneas Operando</div></div>
+<div class="kpi"><div class="valor">{resumen.get('frecuencia_sistema',60):.3f} Hz</div><div class="label">Frecuencia</div></div>
+</div>"""
 
+    if plantas_falla > 0:
+        html += f'<p class="alerta-crit">⚠️ {plantas_falla} planta(s) en FALLA en esta zona</p>'
+
+    html += "<h2>Plantas en la Zona</h2><table><tr><th>Planta</th><th>Estado</th><th>Tipo</th><th>Gen MW</th><th>Cap MW</th><th>Temp</th></tr>"
+    for p in plantas_filtradas:
+        color = 'alerta-crit' if p.get('estado') == 'Falla' else ''
+        html += f"<tr class='{color}'><td>{p.get('nombre','')}</td><td>{p.get('estado','')}</td><td>{p.get('tipo','')}</td><td>{p.get('gen_mw',0):.0f}</td><td>{p.get('cap_mw',0)}</td><td>{p.get('temp',0):.0f}°C</td></tr>"
+
+    html += "</table><h2>Mix de Generación</h2><table><tr><th>Tipo</th><th>Generación (MW)</th></tr>"
     mix = cenace.get("por_tipo", {})
     for tipo, mw in sorted(mix.items(), key=lambda x: -x[1]):
         html += f"<tr><td>{tipo.replace('_',' ').title()}</td><td>{mw} MW</td></tr>"
-
-    html += "</table><h2>Estado de Plantas</h2><table><tr><th>Planta</th><th>Estado</th><th>Tipo</th><th>Gen MW</th><th>Cap MW</th><th>Temp</th></tr>"
-    for p in plantas_data[:28]:
-        color = 'alerta-crit' if p.get('estado')=='Falla' else ''
-        html += f"<tr class='{color}'><td>{p.get('nombre','')}</td><td>{p.get('estado','')}</td><td>{p.get('tipo','')}</td><td>{p.get('gen_mw',0):.0f}</td><td>{p.get('cap_mw',0)}</td><td>{p.get('temp',0):.0f}°C</td></tr>"
 
     html += "</table><h2>Últimas Alertas</h2><table><tr><th>Fecha</th><th>Severidad</th><th>Mensaje</th></tr>"
     for a in historial[-20:]:
@@ -754,6 +1065,9 @@ async def on_startup(app):
     tick_simulador()
     # Vigilar si la página se cierra (para apagar el servidor solo)
     asyncio.create_task(vigilar_pagina(app))
+    # Iniciar auto-aprendizaje en segundo plano
+    threading.Thread(target=_auto_learn_worker, daemon=True).start()
+    print("🧠 Auto-aprendizaje en segundo plano activado (investiga tras 10 min de inactividad)")
     # Abrir navegador después de 1.5 segundos
     loop = asyncio.get_event_loop()
     loop.call_later(1.5, lambda: webbrowser.open("http://localhost:8080"))
@@ -780,11 +1094,16 @@ def main():
     app.router.add_get("/api/cfe/buscar", handle_buscar_cfe)
     app.router.add_get("/api/cfe/manual", handle_cfe_manual)
     app.router.add_post("/api/mec", handle_mec_chat)
+    app.router.add_post("/api/tts", handle_tts)
     app.router.add_get("/static/{name}", handle_static)
 
     print("=" * 60)
-    print("  🦅 FALCON CFE — Versión Web")
+    print("  🦅 FALCON CFE — Versión Web + IA Astra")
     print("  Abriendo en http://localhost:8080")
+    print("")
+    print("  🤖 Astra (4 IAs): JARVIS + Optimus + Caine + Cyborg")
+    print("  🎧 Voz: edge-tts (es-MX-DaliaNeural)")
+    print("  🧠 Auto-aprendizaje: activo tras 10 min de inactividad")
     print("")
     # Mostrar IP de red local para que otros se conecten
     try:

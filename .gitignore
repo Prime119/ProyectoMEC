@@ -191,3 +191,10 @@ mec_memory.db
 # FALCON: cache de OpenStreetMap
 palantir_web/cache_osm/
 palantir_web/static/_mapa_osint.html
+
+
+# llama-cpp: binarios y modelos (demasiado grandes para Git)
+llama-cpp/*.exe
+llama-cpp/*.dll
+llama-cpp/models/*.gguf
+llama-cpp/llama-cpp-download.zip
