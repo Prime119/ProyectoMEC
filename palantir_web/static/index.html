@@ -418,6 +418,9 @@ fetch('/api/interconexiones').then(r=>r.json()).then(inter=>{
     L.polyline(l.coords,{color:'#bd854f',weight:2,opacity:0.8,dashArray:'7,6'})
       .bindPopup('<b style="color:#bd854f">🔗 '+l.nombre+'</b><br>'+l.tension+'<br><span style="color:#68788a">Interconexión CFE ↔ EE.UU. (CAISO/WECC)</span>')
       .addTo(map);
+
+// Cargar coordenadas de líneas de transmisión monitoreadas (para navegación por clic)
+fetch('/api/lineas').then(r=>r.json()).then(function(data){ window._lineasCoords = data; }).catch(function(){});
     // Marcador en el punto de EE.UU.
     var pUS = l.coords[l.coords.length-1];
     L.circleMarker(pUS,{radius:3.5,color:'#bd854f',weight:1.5,fillColor:'#bd854f44',fillOpacity:0.6})
@@ -609,6 +612,20 @@ function pedirEstado(){
 pedirEstado();                 // primera carga inmediata
 setInterval(pedirEstado, 2000); // refrescar cada 2 segundos (mantiene vivo el servidor)
 
+// Pre-cargar datos de tendencias en segundo plano (para que las gráficas estén listas)
+setInterval(function(){
+  if(!window._trendData) window._trendData={v:[],i:[],vib:[]};
+  var r = window._lastResumen || {};
+  if(r.generacion_total_mw){
+    window._trendData.v.push(230 + Math.random()*2);
+    window._trendData.i.push((r.generacion_total_mw)/0.23/1.732/1000);
+    window._trendData.vib.push(1.5 + (r.alertas_activas||0)*0.3 + Math.random()*0.2);
+    if(window._trendData.v.length > 60){
+      window._trendData.v.shift(); window._trendData.i.shift(); window._trendData.vib.shift();
+    }
+  }
+}, 2000);
+
 function servidorDetenido(){
   var ov = document.getElementById('server-down');
   if(ov.classList.contains('show')) return;
@@ -618,6 +635,18 @@ function servidorDetenido(){
 
 function actualizarKPIs(r, plantas, lineas){
   if(!r) return;
+  
+  // === Función para formatear valores con submúltiplos ===
+  function fmtMW(val){
+    if(val >= 1) return Math.round(val)+' MW';
+    if(val >= 0.001) return (val*1000).toFixed(0)+' kW';
+    return (val*1e6).toFixed(0)+' W';
+  }
+  function fmtA(val){
+    if(val >= 1) return val.toFixed(0);
+    if(val >= 0.001) return (val*1000).toFixed(0)+' mA';
+    return '0';
+  }
   
   // Filtrar datos según nivel de zoom (como las estadísticas)
   var z = map.getZoom();
@@ -650,17 +679,18 @@ function actualizarKPIs(r, plantas, lineas){
     }
   }
   
-  document.getElementById('kpi-gen').textContent = Math.round(genMW)+' MW';
-  document.getElementById('kpi-dem').textContent = Math.round(demMW)+' MW';
+  document.getElementById('kpi-gen').textContent = fmtMW(genMW);
+  document.getElementById('kpi-dem').textContent = fmtMW(demMW);
   document.getElementById('kpi-fc').textContent = fc.toFixed(1)+'%';
   document.getElementById('kpi-fc').style.color = fc>85?'#c15f5f':(fc>70?'#c2a24e':'#5a9e78');
   document.getElementById('freq').textContent = r.frecuencia_sistema.toFixed(3)+' Hz';
   document.getElementById('clock').textContent = r.timestamp;
   // Nuevos KPIs técnicos (promedios del sistema)
   document.getElementById('kpi-freq').textContent = r.frecuencia_sistema.toFixed(3);
-  document.getElementById('kpi-corriente').innerHTML = (genMW / 0.23 / 1.732).toFixed(0)+' <span style="font-size:10px;opacity:.6">A</span>';
+  var corriente = genMW / 0.23 / 1.732;
+  document.getElementById('kpi-corriente').innerHTML = fmtA(corriente)+' <span style="font-size:10px;opacity:.6">A</span>';
   document.getElementById('kpi-voltaje').innerHTML = '230 <span style="font-size:10px;opacity:.6">kV</span>';
-  document.getElementById('kpi-rms').textContent = Math.sqrt(genMW * 0.8).toFixed(1);
+  document.getElementById('kpi-rms').textContent = genMW > 0 ? Math.sqrt(genMW * 0.8).toFixed(1) : '0.0';
   document.getElementById('kpi-vib').innerHTML = (1.5 + alertas * 0.3).toFixed(1)+' <span style="font-size:10px;opacity:.6">mm/s</span>';
   document.getElementById('kpi-thd').textContent = (3.5 + fc * 0.02).toFixed(1);
   document.getElementById('kpi-temp').innerHTML = (480 + fc * 0.8).toFixed(0)+' <span style="font-size:10px;opacity:.6">°C</span>';
@@ -784,15 +814,32 @@ function actualizarTabla(plantas){
   document.querySelector('#tbl-plantas tbody').innerHTML=html;
 }
 function actualizarTablaLineas(lineas){
+  // Store line data globally for click navigation
+  window._lineasData = lineas;
   var html='';
-  lineas.forEach(l=>{
+  lineas.forEach(function(l,idx){
     var cls=l.estado==='Falla'?'st-bad':(l.carga>85?'st-warn':'st-ok');
-    html+=`<tr><td>${l.nombre.substring(0,28)}</td><td>${l.tension}</td>
+    html+=`<tr onclick="irALinea('${l.id}')" style="cursor:pointer"><td>${l.nombre.substring(0,28)}</td><td>${l.tension}</td>
       <td class="${cls}">${l.carga.toFixed(0)}%</td><td>${l.flujo_mw.toFixed(0)}</td>
       <td>${l.corriente.toFixed(0)}A</td><td>${l.temp.toFixed(0)}°C</td>
       <td class="${l.estado==='Falla'?'st-bad':'st-ok'}">${l.estado}</td></tr>`;
   });
   document.querySelector('#tbl-lineas tbody').innerHTML=html;
+}
+// Navegar a una línea en el mapa
+function irALinea(lineaId){
+  // Buscar las coordenadas de la línea en las polylines del mapa
+  if(window._lineasCoords){
+    var linea = window._lineasCoords.find(function(l){return l.id === lineaId;});
+    if(linea && linea.coords && linea.coords.length >= 2){
+      // Ir al punto medio de la línea
+      var mid = [(linea.coords[0][0]+linea.coords[1][0])/2, (linea.coords[0][1]+linea.coords[1][1])/2];
+      map.flyTo(mid, 9, {duration:1.5});
+      return;
+    }
+  }
+  // Fallback: buscar en las polylines de OSM
+  console.log('Línea no encontrada en coords:', lineaId);
 }
 
 // === ALERTAS ===
@@ -801,17 +848,22 @@ function actualizarAlertas(plantas,lineas){
   var nuevas=[];
   var ts = new Date().toLocaleTimeString();
   plantas.forEach(p=>{
-    if(p.estado==='Falla') nuevas.push({cls:'alerta-crit',msg:`[${ts}] 🚨 FALLA: ${p.nombre}`});
-    p.alertas.forEach(a=> nuevas.push({cls:'alerta-warn',msg:`[${ts}] ⚡ ${p.nombre}: ${a}`}));
+    if(p.estado==='Falla') nuevas.push({cls:'alerta-crit',msg:`[${ts}] 🚨 FALLA: ${p.nombre}`,lat:p.lat,lon:p.lon});
+    p.alertas.forEach(a=> nuevas.push({cls:'alerta-warn',msg:`[${ts}] ⚡ ${p.nombre}: ${a}`,lat:p.lat,lon:p.lon}));
   });
   lineas.forEach(l=>{
-    if(l.estado==='Falla') nuevas.push({cls:'alerta-crit',msg:`[${ts}] 🔌 LÍNEA FUERA: ${l.nombre}`});
-    l.alertas.forEach(a=> nuevas.push({cls:'alerta-warn',msg:`[${ts}] ${l.nombre}: ${a}`}));
+    if(l.estado==='Falla') nuevas.push({cls:'alerta-crit',msg:`[${ts}] 🔌 LÍNEA FUERA: ${l.nombre}`,id:l.id,tipo:'linea'});
+    l.alertas.forEach(a=> nuevas.push({cls:'alerta-warn',msg:`[${ts}] ${l.nombre}: ${a}`,id:l.id,tipo:'linea'}));
   });
   nuevas.forEach(a=>{
     var div=document.createElement('div');
     div.className='alerta '+a.cls;
     div.textContent=a.msg;
+    div.style.cursor='pointer';
+    div.onclick=function(){
+      if(a.lat && a.lon) irA(a.lat, a.lon, 13);
+      else if(a.tipo==='linea' && a.id) irALinea(a.id);
+    };
     alertasFeed.prepend(div);
   });
   while(alertasFeed.children.length>200) alertasFeed.removeChild(alertasFeed.lastChild);
