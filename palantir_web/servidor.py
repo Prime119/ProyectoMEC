@@ -557,6 +557,24 @@ def responder_por_reglas(texto: str) -> str:
     lineas_falla = [l for l in lineas if l["estado"] == "Falla"]
     sobrecargadas = [l for l in lineas if l["carga"] > 85]
 
+    # Identidad
+    if any(w in t for w in ["quién eres", "quien eres", "tu nombre", "cómo te llamas",
+                            "como te llamas", "qué eres", "que eres", "presentate",
+                            "preséntate"]):
+        return ("Soy Astra — tu asistente de infraestructura eléctrica. "
+                "Integro 4 inteligencias: JARVIS (eficiencia), Optimus Prime (seguridad), "
+                "Caine (auto-reinicio cognitivo) y Cyborg (auto-auditoría). "
+                "Monitoreo las plantas, líneas y subestaciones de CFE Noroeste en tiempo real.")
+
+    # Capacidades
+    if any(w in t for w in ["qué puedes", "que puedes", "qué sabes", "que sabes",
+                            "ayuda", "help", "funciones"]):
+        return ("Puedo ayudarte con: monitoreo de plantas y líneas en tiempo real, "
+                "alertas de fallas y sobrecarga, estado del sistema eléctrico, "
+                "análisis de armónicos (IEEE 519), vibración (ISO 10816), "
+                "predicción de demanda, y detección satelital de infraestructura. "
+                "Pregúntame lo que necesites, ingeniero.")
+
     if any(w in t for w in ["falla", "problema", "riesgo", "alerta", "mal"]):
         if not fallas and not lineas_falla:
             return "Todo en orden, ingeniero. No hay plantas ni líneas en falla ahora mismo."
@@ -591,9 +609,11 @@ def responder_por_reglas(texto: str) -> str:
                 f"frecuencia {r.get('frecuencia_sistema',60):.3f} Hz, "
                 f"{r.get('alertas_activas',0)} alertas activas.")
 
-    return ("Puedo responder sobre: generación, fallas, líneas sobrecargadas, "
-            "mantenimiento o un resumen del sistema. Para respuestas más detalladas, "
-            "asegúrate de que llama-server esté corriendo (se inicia automáticamente con falcon.py).")
+    # Respuesta genérica amigable (estilo Astra)
+    return ("Soy Astra, tu asistente de infraestructura eléctrica. "
+            "Pregúntame sobre: estado del sistema, fallas activas, generación, "
+            "líneas sobrecargadas o mantenimiento. "
+            "Ejemplo: '¿hay alguna falla?' o '¿cuánto se está generando?'")
 
 
 # Control de vida: DESACTIVADO (causaba cierres inesperados al cargar lento)
