@@ -29,17 +29,17 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI','Inter',syste
 @keyframes latido{0%,100%{opacity:1;}50%{opacity:.4;}}
 .clock{color:var(--text-h);font-family:var(--mono);font-size:13px;letter-spacing:.5px;}
 /* LAYOUT */
-#main{display:flex;height:calc(100vh - 50px);position:relative;}
-#map-panel{flex:1;position:relative;}
-#map{width:100%;height:100%;}
+#main{display:flex;height:calc(100vh - 50px);position:relative;overflow:hidden;}
+#map-panel{width:100%;height:100%;position:relative;}
+#map{width:100%;height:100%;z-index:1;}
 #right-panel{width:540px;position:absolute;right:0;top:0;height:100%;background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:transform .3s;z-index:50;}
 #right-panel.oculto{transform:translateX(100%);}
-#panel-tab{position:absolute;top:50%;transform:translateY(-50%);right:100%;z-index:51;
+#panel-tab{position:absolute;top:50%;transform:translateY(-50%);left:-24px;z-index:51;
   background:var(--panel);border:1px solid var(--border);border-right:none;
   border-radius:6px 0 0 6px;padding:14px 5px;cursor:pointer;color:#4fc3f7;
-  font-size:12px;transition:.2s;}
+  font-size:12px;transition:.2s;width:24px;text-align:center;}
 #panel-tab:hover{background:rgba(79,195,247,.08);}
-#zoom-info{position:absolute;bottom:90px;right:554px;z-index:1000;background:rgba(14,22,38,.9);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:9px;color:var(--text);font-family:var(--mono);line-height:1.6;transition:right .3s;}
+#zoom-info{position:absolute;bottom:90px;right:554px;z-index:40;background:rgba(14,22,38,.9);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:9px;color:var(--text);font-family:var(--mono);line-height:1.6;transition:right .3s;}
 .panel-cerrado #zoom-info{right:14px;}
 /* Leaflet zoom control positioning */
 .leaflet-bottom.leaflet-right{right:554px !important;transition:right .3s;}
@@ -60,8 +60,8 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI','Inter',syste
 .tab{padding:12px 16px;font-size:12px;font-weight:600;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:.15s;letter-spacing:.3px;}
 .tab.active{color:var(--cyan);border-bottom-color:var(--cyan);background:linear-gradient(180deg,rgba(34,211,238,.08),transparent);}
 .tab:hover{color:var(--text-h);}
-#tab-content{flex:1;overflow-y:auto;padding:12px;}
-.tab-pane{display:none;animation:aparecer .25s ease;}
+#tab-content{flex:1;overflow-y:auto;overflow-x:hidden;padding:12px;display:flex;flex-direction:column;min-height:0;}
+.tab-pane{display:none;animation:aparecer .25s ease;overflow-y:auto;}
 .tab-pane.active{display:block;}
 @keyframes aparecer{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
 /* TABLE */
@@ -83,6 +83,7 @@ tbody tr:hover{background:rgba(34,211,238,.07);cursor:pointer;}
 .alerta-warn{border-left-color:var(--amber);color:#ffe9bd;background:rgba(255,194,75,.06);}
 .alerta-info{border-left-color:var(--cyan);color:#cdeef7;}
 /* ASTRA CHAT */
+#pane-mec.active{display:flex !important;flex-direction:column;height:100%;}
 #mec-panel{display:flex;flex-direction:column;height:100%;overflow:hidden;}
 #mec-messages{flex:1;overflow-y:auto;min-height:0;padding:14px;background:linear-gradient(180deg,#020509,#0a1018);
   border:1px solid rgba(79,195,247,.06);border-radius:12px;margin-bottom:10px;
@@ -222,12 +223,11 @@ body.presentacion #main{height:100vh;}
           <div class="kpi"><div class="label">Alertas</div><div class="value" id="kpi-al" style="color:#c15f5f">—</div></div>
         </div>
         <div id="kpi-page-2" class="kpi-page" style="display:none;grid-template-columns:repeat(3,1fr);gap:6px;">
-          <div class="kpi"><div class="label">Corriente (A)</div><div class="value" id="kpi-corriente" style="color:#5f9bad">—</div></div>
-          <div class="kpi"><div class="label">Voltaje (kV)</div><div class="value" id="kpi-voltaje" style="color:#897eab">—</div></div>
-          <div class="kpi"><div class="label">Vibración (mm/s)</div><div class="value" id="kpi-vib" style="color:#bd854f">—</div></div>
-          <div class="kpi"><div class="label">Frecuencia (Hz)</div><div class="value" id="kpi-freq" style="color:#5a9e78">—</div></div>
-          <div class="kpi"><div class="label">THD (%)</div><div class="value" id="kpi-thd" style="color:#c2a24e">—</div></div>
-          <div class="kpi"><div class="label">Temperatura (°C)</div><div class="value" id="kpi-temp" style="color:#bd6a5a">—</div></div>
+          <div class="kpi"><div class="label">Corriente</div><div class="value" id="kpi-corriente" style="color:#5f9bad">— <span style="font-size:10px;opacity:.6">A</span></div></div>
+          <div class="kpi"><div class="label">Voltaje</div><div class="value" id="kpi-voltaje" style="color:#897eab">— <span style="font-size:10px;opacity:.6">kV</span></div></div>
+          <div class="kpi"><div class="label">Vibración</div><div class="value" id="kpi-vib" style="color:#bd854f">— <span style="font-size:10px;opacity:.6">mm/s</span></div></div>
+          <div class="kpi"><div class="label">Frecuencia / THD</div><div class="value"><span id="kpi-freq" style="color:#5a9e78">—</span><span style="font-size:10px;opacity:.6"> Hz</span> <span style="font-size:11px;color:#68788a">/</span> <span id="kpi-thd" style="color:#c2a24e">—</span><span style="font-size:10px;opacity:.6">%</span></div></div>
+          <div class="kpi"><div class="label">Temperatura</div><div class="value" id="kpi-temp" style="color:#bd6a5a">— <span style="font-size:10px;opacity:.6">°C</span></div></div>
           <div class="kpi"><div class="label">RMS Global</div><div class="value" id="kpi-rms" style="color:#5b8fb0">—</div></div>
         </div>
       </div>
@@ -619,12 +619,12 @@ function actualizarKPIs(r){
   document.getElementById('clock').textContent = r.timestamp;
   // Nuevos KPIs técnicos (promedios del sistema)
   document.getElementById('kpi-freq').textContent = r.frecuencia_sistema.toFixed(3);
-  document.getElementById('kpi-corriente').textContent = (r.generacion_total_mw / 0.23 / 1.732).toFixed(0);
-  document.getElementById('kpi-voltaje').textContent = '230';
+  document.getElementById('kpi-corriente').innerHTML = (r.generacion_total_mw / 0.23 / 1.732).toFixed(0)+' <span style="font-size:10px;opacity:.6">A</span>';
+  document.getElementById('kpi-voltaje').innerHTML = '230 <span style="font-size:10px;opacity:.6">kV</span>';
   document.getElementById('kpi-rms').textContent = Math.sqrt(r.generacion_total_mw * 0.8).toFixed(1);
-  document.getElementById('kpi-vib').textContent = (1.5 + r.alertas_activas * 0.3).toFixed(1);
+  document.getElementById('kpi-vib').innerHTML = (1.5 + r.alertas_activas * 0.3).toFixed(1)+' <span style="font-size:10px;opacity:.6">mm/s</span>';
   document.getElementById('kpi-thd').textContent = (3.5 + r.factor_carga_sistema * 0.02).toFixed(1);
-  document.getElementById('kpi-temp').textContent = (480 + r.factor_carga_sistema * 0.8).toFixed(0);
+  document.getElementById('kpi-temp').innerHTML = (480 + r.factor_carga_sistema * 0.8).toFixed(0)+' <span style="font-size:10px;opacity:.6">°C</span>';
   // Plantas + Líneas en KPIs separados
   document.getElementById('kpi-plantas-op').textContent = r.plantas_operando+'/'+r.plantas_total;
   document.getElementById('kpi-plantas-op').style.color = r.plantas_falla>0?'#c15f5f':'#5a9e78';
@@ -893,9 +893,17 @@ function actualizarStats(){
     document.getElementById('vehiculos-container').innerHTML=vhtml;
   }).catch(e=>{document.getElementById('vehiculos-container').textContent='Error cargando vehículos';});
   document.getElementById('stats-content').innerHTML = html;
-  // Dibujar gráficas después de insertar el HTML
+  // Dibujar gráficas después de insertar el HTML (necesita que el DOM exista)
   window._lastResumen = ultimo_estado.resumen || {};
-  setTimeout(dibujarGraficasStats, 50);
+  setTimeout(function(){
+    dibujarGraficasStats();
+    // Re-dibujar cada 2 seg para animación del oscilograma
+    if(window._statsInterval) clearInterval(window._statsInterval);
+    window._statsInterval = setInterval(function(){
+      if(document.getElementById('pane-stats').classList.contains('active')) dibujarGraficasStats();
+      else { clearInterval(window._statsInterval); window._statsInterval=null; }
+    }, 2000);
+  }, 100);
 }
 
 // Tabla de subestaciones (del CSV + OSM, filtrada por zona visible)
