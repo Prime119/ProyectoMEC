@@ -566,7 +566,7 @@ detectarUbicacion();
 function pedirEstado(){
   fetch('/api/estado').then(r=>r.json()).then(data=>{
     fallosSeguidos = 0;
-    actualizarKPIs(data.resumen);
+    actualizarKPIs(data.resumen, data.plantas, data.lineas);
     actualizarMapa(data.plantas);
     actualizarLineas(data.lineas);
     actualizarTabla(data.plantas);
@@ -581,16 +581,11 @@ function pedirEstado(){
         div.className = 'alerta '+cls;
         div.textContent = a.mensaje;
         if(alertasFeed) alertasFeed.prepend(div);
-        // Astra lo dice en voz alta (solo críticas y altas)
+        // Astra lo dice en voz alta INMEDIATAMENTE (usa navegador para alertas — más rápido)
         if((a.severidad==='critica'||a.severidad==='alta') && (ttsActivo||vozActiva)){
-          if(ttsActivo){
-            fetch('/api/tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({texto:a.mensaje.replace(/[🚨⚠️🔥⚡🔧]/g,'')})})
-              .then(r=>r.ok?r.blob():null).then(blob=>{
-                if(blob){var url=URL.createObjectURL(blob);var au=new Audio(url);au.play();au.onended=function(){URL.revokeObjectURL(url);};}
-              }).catch(()=>{});
-          } else if(vozActiva && window.speechSynthesis){
+          if(window.speechSynthesis){
             var u = new SpeechSynthesisUtterance(a.mensaje.replace(/[🚨⚠️🔥⚡🔧]/g,''));
-            u.lang='es-MX'; u.rate=1.1;
+            u.lang='es-MX'; u.rate=1.15; u.pitch=1.0;
             speechSynthesis.speak(u);
           }
         }
@@ -621,31 +616,62 @@ function servidorDetenido(){
   try { window.close(); } catch(e){}  // funciona si la abrió el script
 }
 
-function actualizarKPIs(r){
+function actualizarKPIs(r, plantas, lineas){
   if(!r) return;
-  document.getElementById('kpi-gen').textContent = Math.round(r.generacion_total_mw)+' MW';
-  document.getElementById('kpi-dem').textContent = Math.round(r.demanda_estimada_mw)+' MW';
+  
+  // Filtrar datos según nivel de zoom (como las estadísticas)
+  var z = map.getZoom();
+  var genMW = r.generacion_total_mw;
+  var demMW = r.demanda_estimada_mw;
+  var plantasOp = r.plantas_operando;
+  var plantasTot = r.plantas_total;
+  var plantasFalla = r.plantas_falla || 0;
+  var lineasOp = r.lineas_operando;
+  var lineasTot = r.lineas_total;
+  var lineasFalla = r.lineas_falla || 0;
+  var alertas = r.alertas_activas;
   var fc = r.factor_carga_sistema;
+  
+  // Si estamos acercados (zoom >= 8), filtrar plantas por cercanía
+  if(z >= 8 && plantas && plantas.length > 0){
+    var c = map.getCenter();
+    var radio = z >= 11 ? 0.3 : 1.5; // ciudad vs estado
+    var cercanas = plantas.filter(function(p){
+      return Math.abs(p.lat-c.lat)<radio && Math.abs(p.lon-c.lng)<radio;
+    });
+    if(cercanas.length > 0){
+      genMW = cercanas.reduce(function(s,p){return s+p.gen_mw;},0);
+      demMW = genMW * 0.95; // estimación local
+      plantasTot = cercanas.length;
+      plantasOp = cercanas.filter(function(p){return p.estado==='Operando';}).length;
+      plantasFalla = cercanas.filter(function(p){return p.estado==='Falla';}).length;
+      alertas = cercanas.reduce(function(s,p){return s+p.alertas.length;},0) + plantasFalla;
+      fc = plantasTot > 0 ? (genMW / cercanas.reduce(function(s,p){return s+p.cap_mw;},0) * 100) : 0;
+    }
+  }
+  
+  document.getElementById('kpi-gen').textContent = Math.round(genMW)+' MW';
+  document.getElementById('kpi-dem').textContent = Math.round(demMW)+' MW';
   document.getElementById('kpi-fc').textContent = fc.toFixed(1)+'%';
   document.getElementById('kpi-fc').style.color = fc>85?'#c15f5f':(fc>70?'#c2a24e':'#5a9e78');
   document.getElementById('freq').textContent = r.frecuencia_sistema.toFixed(3)+' Hz';
   document.getElementById('clock').textContent = r.timestamp;
   // Nuevos KPIs técnicos (promedios del sistema)
   document.getElementById('kpi-freq').textContent = r.frecuencia_sistema.toFixed(3);
-  document.getElementById('kpi-corriente').innerHTML = (r.generacion_total_mw / 0.23 / 1.732).toFixed(0)+' <span style="font-size:10px;opacity:.6">A</span>';
+  document.getElementById('kpi-corriente').innerHTML = (genMW / 0.23 / 1.732).toFixed(0)+' <span style="font-size:10px;opacity:.6">A</span>';
   document.getElementById('kpi-voltaje').innerHTML = '230 <span style="font-size:10px;opacity:.6">kV</span>';
-  document.getElementById('kpi-rms').textContent = Math.sqrt(r.generacion_total_mw * 0.8).toFixed(1);
-  document.getElementById('kpi-vib').innerHTML = (1.5 + r.alertas_activas * 0.3).toFixed(1)+' <span style="font-size:10px;opacity:.6">mm/s</span>';
-  document.getElementById('kpi-thd').textContent = (3.5 + r.factor_carga_sistema * 0.02).toFixed(1);
-  document.getElementById('kpi-temp').innerHTML = (480 + r.factor_carga_sistema * 0.8).toFixed(0)+' <span style="font-size:10px;opacity:.6">°C</span>';
+  document.getElementById('kpi-rms').textContent = Math.sqrt(genMW * 0.8).toFixed(1);
+  document.getElementById('kpi-vib').innerHTML = (1.5 + alertas * 0.3).toFixed(1)+' <span style="font-size:10px;opacity:.6">mm/s</span>';
+  document.getElementById('kpi-thd').textContent = (3.5 + fc * 0.02).toFixed(1);
+  document.getElementById('kpi-temp').innerHTML = (480 + fc * 0.8).toFixed(0)+' <span style="font-size:10px;opacity:.6">°C</span>';
   // Plantas + Líneas en KPIs separados
-  document.getElementById('kpi-plantas-op').textContent = r.plantas_operando+'/'+r.plantas_total;
-  document.getElementById('kpi-plantas-op').style.color = r.plantas_falla>0?'#c15f5f':'#5a9e78';
-  document.getElementById('kpi-lineas-op').textContent = r.lineas_operando+'/'+r.lineas_total;
-  document.getElementById('kpi-lineas-op').style.color = r.lineas_falla>0?'#c15f5f':'#5a9e78';
+  document.getElementById('kpi-plantas-op').textContent = plantasOp+'/'+plantasTot;
+  document.getElementById('kpi-plantas-op').style.color = plantasFalla>0?'#c15f5f':'#5a9e78';
+  document.getElementById('kpi-lineas-op').textContent = lineasOp+'/'+lineasTot;
+  document.getElementById('kpi-lineas-op').style.color = lineasFalla>0?'#c15f5f':'#5a9e78';
   // Alertas
-  document.getElementById('kpi-al').textContent = r.alertas_activas;
-  document.getElementById('kpi-al').style.color = r.alertas_activas>0?'#c15f5f':'#5a9e78';
+  document.getElementById('kpi-al').textContent = alertas;
+  document.getElementById('kpi-al').style.color = alertas>0?'#c15f5f':'#5a9e78';
   // Fuente de datos (CENACE real o estimado)
   if(r.fuente_datos) document.getElementById('ubicacion').title = 'Datos: '+r.fuente_datos;
   // Guardar datos para la pestaña STATS
