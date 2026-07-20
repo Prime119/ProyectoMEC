@@ -534,15 +534,16 @@ function detectarUbicacion(){
   var z = map.getZoom();
   var ciudad = '', estado = '';
   
-  // Solo detectar ubicación si estamos lo suficientemente cerca
-  if(z >= 8){
+  // Solo detectar ciudad si estamos muy cerca (zoom >= 10)
+  if(z >= 10){
     var mejorDist = 999;
     ciudadesGeo.forEach(ci=>{
       var d = Math.sqrt(Math.pow(c.lat-ci.lat,2)+Math.pow(c.lng-ci.lon,2));
       if(d < mejorDist && d < 0.5){ mejorDist=d; ciudad=ci.nombre; }
     });
   }
-  if(z >= 6){
+  // Solo detectar estado si estamos acercados (zoom >= 8)
+  if(z >= 8){
     estadosGeo.forEach(es=>{
       var d = Math.sqrt(Math.pow(c.lat-es.lat,2)+Math.pow(c.lng-es.lon,2));
       if(d < es.radio){ estado=es.nombre; }
@@ -552,7 +553,7 @@ function detectarUbicacion(){
   var txt = '';
   if(ciudad) txt = '📍 '+ciudad;
   else if(estado) txt = '📍 '+estado;
-  else txt = '🌐 Global — CFE Noroeste';
+  else txt = '🌐 Global';
   document.getElementById('ubicacion').textContent = txt;
   return {ciudad:ciudad, estado:estado};
 }
@@ -902,17 +903,18 @@ function actualizarStats(){
     document.getElementById('vehiculos-container').innerHTML=vhtml;
   }).catch(e=>{document.getElementById('vehiculos-container').textContent='Error cargando vehículos';});
   document.getElementById('stats-content').innerHTML = html;
-  // Dibujar gráficas después de insertar el HTML (necesita que el DOM exista)
-  window._lastResumen = ultimo_estado.resumen || {};
-  setTimeout(function(){
-    dibujarGraficasStats();
-    // Re-dibujar cada 2 seg para animación del oscilograma
-    if(window._statsInterval) clearInterval(window._statsInterval);
-    window._statsInterval = setInterval(function(){
-      if(document.getElementById('pane-stats').classList.contains('active')) dibujarGraficasStats();
-      else { clearInterval(window._statsInterval); window._statsInterval=null; }
-    }, 2000);
-  }, 100);
+  // Dibujar gráficas — esperar a que el DOM esté completamente renderizado
+  requestAnimationFrame(function(){
+    setTimeout(function(){
+      dibujarGraficasStats();
+      // Re-dibujar cada 2 seg para animación del oscilograma
+      if(window._statsInterval) clearInterval(window._statsInterval);
+      window._statsInterval = setInterval(function(){
+        if(document.getElementById('pane-stats').classList.contains('active')) dibujarGraficasStats();
+        else { clearInterval(window._statsInterval); window._statsInterval=null; }
+      }, 2000);
+    }, 200);
+  });
 }
 
 // Tabla de subestaciones (del CSV + OSM, filtrada por zona visible)
