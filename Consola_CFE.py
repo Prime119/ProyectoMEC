@@ -31,15 +31,15 @@ from sklearn.preprocessing import MinMaxScaler
 import warnings
 warnings.filterwarnings('ignore')
 
-# MEC ASSISTANT: Asistente cognitivo industrial (JARVIS + Optimus + Caine)
+# ASTRA ASSISTANT: IA industrial con 4 personalidades (JARVIS + Optimus + Caine + Cyborg)
 try:
-    from mec_assistant import MECAssistant, VoiceIO, VoiceConfig
+    from astra_assistant import AstraAssistant, VoiceIO, VoiceConfig
     MEC_AVAILABLE = True
 except ImportError:
     MEC_AVAILABLE = False
     VoiceIO = None
     VoiceConfig = None
-    print("⚠️ mec_assistant no disponible. El chat IA estará deshabilitado.")
+    print("⚠️ astra_assistant no disponible. El chat IA estará deshabilitado.")
 
 pg.setConfigOption('background', '#0B0F19')
 pg.setConfigOption('foreground', '#9CA3AF')
@@ -649,31 +649,31 @@ class ConsolaCFE(QMainWindow):
         self.timer = QTimer(); self.timer.timeout.connect(self._loop_fast); self.timer.start(16)
         self.timer_slow = QTimer(); self.timer_slow.timeout.connect(self._loop_slow); self.timer_slow.start(1000)
 
-        # MEC ASSISTANT: Inicializar asistente cognitivo (JARVIS + Optimus + Caine)
+        # ASTRA ASSISTANT: Inicializar IA industrial (4 IAs: JARVIS + Optimus + Caine + Cyborg)
         self.mec_assistant = None
         self.mec_voice = None
         self._mec_listening = False
         if MEC_AVAILABLE:
             try:
-                self.mec_assistant = MECAssistant.boot()
-                print(f"🤖 Asistente MEC iniciado (tier: {self.mec_assistant.config.hardware.tier})")
+                self.mec_assistant = AstraAssistant.boot()
+                print(f"🤖 Astra iniciada (tier: {self.mec_assistant.config.hardware.tier})")
                 # Inicializar voz
                 try:
                     voice_cfg = VoiceConfig()
                     self.mec_voice = VoiceIO(voice_cfg)
                     stt_status = "✅" if self.mec_voice.stt_available else "❌"
                     tts_status = "✅" if self.mec_voice.tts_available else "❌"
-                    print(f"🎙️ Voz MEC: STT={stt_status} TTS={tts_status}")
+                    print(f"🎙️ Voz Astra: STT={stt_status} TTS={tts_status}")
                 except Exception as e:
-                    print(f"⚠️ Voz MEC no disponible: {e}")
+                    print(f"⚠️ Voz Astra no disponible: {e}")
                     self.mec_voice = None
-                self._mec_append_msg("MEC",
-                    "Buenos días, ingeniero. Soy MEC — tu copiloto de monitoreo industrial. "
+                self._mec_append_msg("ASTRA",
+                    "Buenos días, ingeniero. Soy Astra — tu copiloto de monitoreo industrial. "
                     "Conozco cada norma, cada armónico y cada vibración sospechosa de tu motor. "
                     "Pregúntame lo que quieras, o presiona ⚡ para un diagnóstico rápido. "
-                    "Ah, y si algo se pone feo... seré el primero en avisarte.")
+                    "Ah, y si algo se pone feo... seré la primera en avisarte.")
             except Exception as e:
-                print(f"⚠️ Error al iniciar MEC Assistant: {e}")
+                print(f"⚠️ Error al iniciar Astra: {e}")
                 self._mec_append_msg("SISTEMA", f"Error al iniciar asistente: {e}")
 
         self.watcher = QFileSystemWatcher([os.path.abspath(__file__)])
@@ -1046,14 +1046,14 @@ class ConsolaCFE(QMainWindow):
         return w
 
     def _build_mec_chat_panel(self):
-        """Panel de chat con el asistente MEC (JARVIS + Optimus + Caine)."""
+        """Panel de chat con el asistente Astra (4 IAs: JARVIS + Optimus + Caine + Cyborg)."""
         w = QWidget(); w.setStyleSheet(f"background:{C_PANEL}; border:1px solid {C_PURPLE}; border-radius:4px;")
         w.setFixedHeight(240)
         lay = QVBoxLayout(w); lay.setContentsMargins(10,8,10,8); lay.setSpacing(4)
 
         # Header del chat
         header_lay = QHBoxLayout(); header_lay.setSpacing(8)
-        lbl_title = QLabel("MEC — ASISTENTE INDUSTRIAL INTELIGENTE")
+        lbl_title = QLabel("ASTRA — ASISTENTE INDUSTRIAL INTELIGENTE")
         lbl_title.setStyleSheet(f"color:{C_PURPLE}; font-size:11px; font-weight:bold; letter-spacing:0.5px; border:none;")
         self.lbl_mec_status = QLabel("● LISTO")
         self.lbl_mec_status.setStyleSheet(f"color:{C_GOOD}; font-size:9px; font-weight:bold; border:none;")
@@ -1105,7 +1105,7 @@ class ConsolaCFE(QMainWindow):
         self.btn_mec_mic.clicked.connect(self._mec_toggle_listen)
         
         self.input_mec = QLineEdit()
-        self.input_mec.setPlaceholderText("Habla con MEC... (Ej: '¿por qué sube la vibración?', '¿estamos dentro de norma?')")
+        self.input_mec.setPlaceholderText("Habla con Astra... (Ej: '¿por qué sube la vibración?', '¿estamos dentro de norma?')")
         self.input_mec.setStyleSheet(f"""
             QLineEdit {{
                 background:#0d0d1a; border:1px solid {C_PURPLE}; color:{C_WHITE};
@@ -1144,13 +1144,13 @@ class ConsolaCFE(QMainWindow):
         return w
 
     def _mec_append_msg(self, sender: str, text: str):
-        """Agrega un mensaje al chat del asistente MEC."""
+        """Agrega un mensaje al chat del asistente Astra."""
         if not hasattr(self, 'txt_mec_chat'):
             return
         ts = datetime.now().strftime("%H:%M:%S")
-        if sender == "MEC":
+        if sender == "ASTRA":
             color = C_PURPLE
-            prefix = "🤖 MEC"
+            prefix = "🤖 Astra"
         elif sender == "TÚ":
             color = C_MAIN
             prefix = "👤 Tú"
@@ -1192,17 +1192,16 @@ class ConsolaCFE(QMainWindow):
         self.mec_assistant.handle_async(text, on_response)
 
     def _mec_on_response(self, response: str):
-        """Callback cuando el asistente MEC responde (en hilo principal)."""
-        # Detectar si hubo reinicio Caine
+        """Callback cuando Astra responde."""
         if response.startswith("🔄"):
             parts = response.split("\n\n", 1)
             self._mec_append_msg("CAINE", parts[0].replace("🔄 ", ""))
             if len(parts) > 1:
-                self._mec_append_msg("MEC", parts[1])
+                self._mec_append_msg("ASTRA", parts[1])
                 self._mec_speak(parts[1])
             self._update_caine_indicator()
         else:
-            self._mec_append_msg("MEC", response)
+            self._mec_append_msg("ASTRA", response)
             self._mec_speak(response)
 
         self.lbl_mec_status.setText("● LISTO")
@@ -1278,7 +1277,7 @@ class ConsolaCFE(QMainWindow):
         """Limpia el historial del chat."""
         if hasattr(self, 'txt_mec_chat'):
             self.txt_mec_chat.clear()
-            self._mec_append_msg("MEC", "Pizarra limpia. ¿Qué necesitas, ingeniero?")
+            self._mec_append_msg("ASTRA", "Pizarra limpia. ¿Qué necesitas, ingeniero?")
         if self.mec_assistant:
             self.mec_assistant.history.clear()
 

@@ -3,7 +3,7 @@ Servidor web para Palantir CFE — Backend con datos en tiempo real.
 
 - Sirve el frontend (HTML/CSS/JS)
 - WebSocket: envía telemetría cada 2 segundos a todos los clientes
-- REST: endpoints para el chat MEC y datos estáticos
+- REST: endpoints para el chat Astra y datos estáticos
 
 Ejecutar:
     python palantir_web/servidor.py
@@ -34,14 +34,14 @@ from palantir_cfe.datos_geograficos import (
 from palantir_cfe.catalogo_activos import CATALOGO
 from palantir_cfe.simulador_telemetria import SimuladorTelemetria
 
-# MEC Assistant (opcional)
+# Astra Assistant (IA industrial — 4 IAs integradas)
 mec_assistant = None
 try:
-    from mec_assistant import MECAssistant
-    mec_assistant = MECAssistant.boot()
-    print("🤖 MEC Assistant integrado")
+    from astra_assistant import AstraAssistant
+    mec_assistant = AstraAssistant.boot()
+    print("🤖 Astra Assistant integrado (4 IAs)")
 except Exception as e:
-    print(f"⚠️ MEC no disponible: {e}")
+    print(f"⚠️ Astra no disponible: {e}")
 
 # Detector de IA satelital (opcional) — usa el modelo ONNX si PALANTIR_MODELO_ONNX está definido
 motor_ia = None
@@ -344,23 +344,23 @@ async def handle_lineas_coords(request):
 
 
 async def handle_mec_chat(request):
-    """Endpoint para el chat MEC. Usa Ollama si está disponible; si no, modo reglas."""
+    """Endpoint para el chat de Astra. Usa llama.cpp si está disponible; si no, modo reglas."""
     data = await request.json()
     texto = data.get("texto", "")
 
-    # Intentar con el LLM (Ollama) si MEC está disponible
+    # Intentar con el LLM (llama.cpp) si Astra está disponible
     if mec_assistant is not None:
         try:
             loop = asyncio.get_event_loop()
             ctx = json.dumps(ultimo_estado.get("resumen", {}), ensure_ascii=False)
             prompt = f"[INFRAESTRUCTURA CFE]\n{ctx}\n\n[PREGUNTA]\n{texto}"
             respuesta = await loop.run_in_executor(None, mec_assistant.handle, prompt)
-            # Si el cerebro reportó error de Ollama, caer al modo reglas
-            if respuesta and "[MEC]" in respuesta and ("Error" in respuesta or "cerebro local" in respuesta):
+            # Si el cerebro reportó error, caer al modo reglas
+            if respuesta and "[Astra]" in respuesta and ("Error" in respuesta or "cerebro" in respuesta):
                 respuesta = responder_por_reglas(texto)
             return web.json_response({"respuesta": respuesta})
         except Exception as e:
-            print(f"[MEC] Ollama fallo: {e}")
+            print(f"[Astra] LLM fallo: {e}")
 
     # Modo reglas (sin Ollama): responde con los datos del sistema
     return web.json_response({"respuesta": responder_por_reglas(texto)})
