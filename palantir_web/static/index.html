@@ -560,6 +560,8 @@ function detectarUbicacion(){
 }
 map.on('moveend', detectarUbicacion);
 map.on('moveend', function(){ if(document.getElementById('pane-subs').classList.contains('active')) actualizarTablaSubs(); });
+map.on('moveend', function(){ if(document.getElementById('pane-stats').classList.contains('active')) actualizarStats(); });
+map.on('zoomend', function(){ if(document.getElementById('pane-stats').classList.contains('active')) actualizarStats(); });
 detectarUbicacion();
 function pedirEstado(){
   fetch('/api/estado').then(r=>r.json()).then(data=>{

@@ -337,32 +337,23 @@ def main():
         exe = encontrar_llama_server()
 
         if exe is None:
-            print("\n  ⚠️  llama-server.exe no encontrado")
-            print("     (Es el motor de inteligencia artificial de Astra)")
-            print("")
-            if preguntar_si_no("¿Descargar e instalar llama-server?", recomendado_si=True):
-                exe = descargar_llama_server()
-                if exe is None:
-                    print("\n  Continuando sin IA... (Astra responderá con datos básicos)")
-            else:
-                print("\n  OK. Astra funcionará con respuestas básicas (sin IA generativa).")
+            print("\n  ⚠️  llama-server.exe no encontrado — descargando automáticamente...")
+            exe = descargar_llama_server()
+            if exe is None:
+                print("  ❌ No se pudo descargar. Astra usará modo datos.")
         else:
             print(f"\n  ✓ llama-server: {exe}")
 
-        # === Paso 3: Buscar o instalar modelo .gguf ===
+        # === Paso 3: Buscar o descargar modelo .gguf (AUTOMÁTICO) ===
         if exe is not None:
             modelo = encontrar_modelo()
 
             if modelo is None:
-                print("\n  ⚠️  No se encontró ningún modelo de IA (.gguf)")
-                print("     (El modelo es el cerebro de Astra — Qwen2.5 3B recomendado)")
-                print("")
-                if preguntar_si_no("¿Descargar modelo Qwen2.5-3B? (~2 GB)", recomendado_si=True):
-                    modelo = descargar_modelo()
-                    if modelo is None:
-                        print("\n  Continuando sin modelo... (Astra responderá con datos básicos)")
-                else:
-                    print("\n  OK. Astra funcionará con respuestas básicas (sin IA generativa).")
+                print("\n  ⚠️  No hay modelo de IA — descargando Qwen2.5-3B automáticamente...")
+                print("     (Solo la primera vez, ~2 GB)")
+                modelo = descargar_modelo()
+                if modelo is None:
+                    print("  ❌ No se pudo descargar el modelo. Astra usará modo datos.")
             else:
                 print(f"  ✓ Modelo: {modelo.name} ({modelo.stat().st_size / 1e9:.1f} GB)")
 
