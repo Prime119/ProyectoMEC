@@ -268,11 +268,11 @@ body.presentacion #main{height:100vh;}
 var map = L.map('map',{
   center:[28.0,-110],
   zoom:6,
-  minZoom:6,          // no dejar alejar más que la vista regional
+  minZoom:4,          // permite alejarse más para vista global
   maxZoom:21,         // permite acercarse mucho más (para separar puntos pegados)
   zoomControl:false,  // lo agregamos manualmente a la derecha (abajo)
-  maxBounds:[[13.0,-126.0],[38.5,-95.0]],  // permite mover hacia la frontera/EEUU
-  maxBoundsViscosity:0.4,
+  maxBounds:[[10.0,-130.0],[40.0,-90.0]],  // región amplia (México + frontera)
+  maxBoundsViscosity:0.3,
   preferCanvas:true,   // RENDIMIENTO: dibuja marcadores en Canvas, no DOM (10x más rápido)
   renderer: L.canvas({padding:0.5})
 });
@@ -531,19 +531,28 @@ var ciudadesGeo = [
 ];
 function detectarUbicacion(){
   var c = map.getCenter();
+  var z = map.getZoom();
   var ciudad = '', estado = '';
-  var mejorDist = 999;
-  ciudadesGeo.forEach(ci=>{
-    var d = Math.sqrt(Math.pow(c.lat-ci.lat,2)+Math.pow(c.lng-ci.lon,2));
-    if(d < mejorDist && d < 0.5){ mejorDist=d; ciudad=ci.nombre; }
-  });
-  estadosGeo.forEach(es=>{
-    var d = Math.sqrt(Math.pow(c.lat-es.lat,2)+Math.pow(c.lng-es.lon,2));
-    if(d < es.radio){ estado=es.nombre; }
-  });
+  
+  // Solo detectar ubicación si estamos lo suficientemente cerca
+  if(z >= 8){
+    var mejorDist = 999;
+    ciudadesGeo.forEach(ci=>{
+      var d = Math.sqrt(Math.pow(c.lat-ci.lat,2)+Math.pow(c.lng-ci.lon,2));
+      if(d < mejorDist && d < 0.5){ mejorDist=d; ciudad=ci.nombre; }
+    });
+  }
+  if(z >= 6){
+    estadosGeo.forEach(es=>{
+      var d = Math.sqrt(Math.pow(c.lat-es.lat,2)+Math.pow(c.lng-es.lon,2));
+      if(d < es.radio){ estado=es.nombre; }
+    });
+  }
+  
   var txt = '';
   if(ciudad) txt = '📍 '+ciudad;
   else if(estado) txt = '📍 '+estado;
+  else txt = '🌐 Global — CFE Noroeste';
   document.getElementById('ubicacion').textContent = txt;
   return {ciudad:ciudad, estado:estado};
 }
@@ -657,16 +666,16 @@ function kpiNav(dir){
 function dibujarGraficasStats(){
   // Power triangle
   var c1 = document.getElementById('graph-potencia');
-  if(c1){var ctx=c1.getContext('2d');ctx.clearRect(0,0,c1.width,c1.height);ctx.strokeStyle='#4fc3f7';ctx.lineWidth=1.5;ctx.font='9px Consolas';ctx.fillStyle='#68788a';ctx.fillText('TRIÁNGULO DE POTENCIA',4,12);var r=window._lastResumen||{};var pMW=r.generacion_total_mw||5200;var pf=0.88;var sVA=pMW/pf;var qVAr=Math.sqrt(sVA*sVA-pMW*pMW);ctx.beginPath();ctx.moveTo(20,70);ctx.lineTo(180,70);ctx.lineTo(180,20);ctx.closePath();ctx.stroke();ctx.fillStyle='#4fc3f7';ctx.fillText('P='+Math.round(pMW)+' MW',70,68);ctx.fillStyle='#c2a24e';ctx.fillText('S='+Math.round(sVA)+' MVA',130,42);ctx.fillStyle='#bd854f';ctx.fillText('Q='+Math.round(qVAr)+' MVAr',140,18);}
-  // Oscillogram (animated sine waves based on frequency)
+  if(c1){var ctx=c1.getContext('2d');var w=c1.width,h=c1.height;ctx.clearRect(0,0,w,h);ctx.strokeStyle='#4fc3f7';ctx.lineWidth=1.5;ctx.font='10px Consolas';ctx.fillStyle='#93a1b0';ctx.fillText('TRIÁNGULO DE POTENCIA',5,14);var r=window._lastResumen||{};var pMW=r.generacion_total_mw||5200;var pf=0.88;var sVA=pMW/pf;var qVAr=Math.sqrt(sVA*sVA-pMW*pMW);ctx.beginPath();ctx.moveTo(20,h-15);ctx.lineTo(w-40,h-15);ctx.lineTo(w-40,25);ctx.closePath();ctx.stroke();ctx.fillStyle='#4fc3f7';ctx.fillText('P='+Math.round(pMW)+' MW',60,h-20);ctx.fillStyle='#c2a24e';ctx.fillText('S='+Math.round(sVA)+' MVA',w-120,(h/2));ctx.fillStyle='#bd854f';ctx.fillText('Q='+Math.round(qVAr)+' MVAr',w-130,30);}
+  // Oscillogram
   var c2 = document.getElementById('graph-oscilograma');
-  if(c2){var ctx=c2.getContext('2d');ctx.clearRect(0,0,c2.width,c2.height);ctx.font='9px Consolas';ctx.fillStyle='#68788a';ctx.fillText('OSCILOGRAMA',4,12);var t=Date.now()*0.003;ctx.strokeStyle='#5a9e78';ctx.lineWidth=1.2;ctx.beginPath();for(var x=0;x<240;x++){var y=48+Math.sin((x+t)*0.105)*28;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();ctx.strokeStyle='#c2a24e';ctx.lineWidth=1;ctx.beginPath();for(var x=0;x<240;x++){var y=48+Math.sin((x+t)*0.105+1.2)*20;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();ctx.fillStyle='#5a9e78';ctx.fillText('Tensión (V)',150,12);ctx.fillStyle='#c2a24e';ctx.fillText('Corriente (A)',150,22);}
-  // Harmonics spectrum
+  if(c2){var ctx=c2.getContext('2d');var w=c2.width,h=c2.height;ctx.clearRect(0,0,w,h);ctx.font='10px Consolas';ctx.fillStyle='#93a1b0';ctx.fillText('OSCILOGRAMA',5,14);var t=Date.now()*0.003;ctx.strokeStyle='#5a9e78';ctx.lineWidth=1.5;ctx.beginPath();for(var x=0;x<w;x++){var y=h/2+Math.sin((x+t)*0.1)*((h/2)-15);if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();ctx.strokeStyle='#c2a24e';ctx.lineWidth=1;ctx.beginPath();for(var x=0;x<w;x++){var y=h/2+Math.sin((x+t)*0.1+1.2)*((h/2)-25);if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();ctx.fillStyle='#5a9e78';ctx.fillText('V',w-30,14);ctx.fillStyle='#c2a24e';ctx.fillText('I',w-15,14);}
+  // Harmonics
   var c3 = document.getElementById('graph-armonicos');
-  if(c3){var ctx=c3.getContext('2d');ctx.clearRect(0,0,c3.width,c3.height);ctx.font='9px Consolas';ctx.fillStyle='#68788a';ctx.fillText('ESPECTRO ARMÓNICO (THD)',4,12);var r=window._lastResumen||{};var thd=r.factor_carga_sistema?3.5+r.factor_carga_sistema*0.02:4.5;var bars=[100,thd*5,thd*3,thd*1.5,thd*0.8,thd*0.4,thd*0.2];bars.forEach(function(h,i){var bh=h*0.6;ctx.fillStyle=i===0?'#4fc3f7':(bh>15?'#c2a24e':'#5a9e78');ctx.fillRect(15+i*32,80-bh,24,bh);ctx.fillStyle='#68788a';ctx.fillText(i===0?'F':(i*2+1)+'°',20+i*32,92);});}
-  // Trends (historical data from last 60 ticks)
+  if(c3){var ctx=c3.getContext('2d');var w=c3.width,h=c3.height;ctx.clearRect(0,0,w,h);ctx.font='10px Consolas';ctx.fillStyle='#93a1b0';ctx.fillText('ESPECTRO ARMÓNICO',5,14);var r=window._lastResumen||{};var thd=r.factor_carga_sistema?3.5+r.factor_carga_sistema*0.02:4.5;var bars=[100,thd*5,thd*3,thd*1.5,thd*0.8,thd*0.4,thd*0.2];var bw=Math.floor((w-20)/bars.length)-4;bars.forEach(function(val,i){var bh=val*(h-25)/100;ctx.fillStyle=i===0?'#4fc3f7':(val>15?'#c2a24e':'#5a9e78');ctx.fillRect(10+i*(bw+4),h-5-bh,bw,bh);ctx.fillStyle='#68788a';ctx.font='8px Consolas';ctx.fillText(i===0?'F':(i*2+1)+'°',12+i*(bw+4),h-0);});}
+  // Trends
   var c4 = document.getElementById('graph-tendencias');
-  if(c4){var ctx=c4.getContext('2d');ctx.clearRect(0,0,c4.width,c4.height);ctx.font='9px Consolas';ctx.fillStyle='#68788a';ctx.fillText('TENDENCIAS HISTÓRICAS',4,12);if(!window._trendData)window._trendData={v:[],i:[],vib:[]};var r=window._lastResumen||{};window._trendData.v.push(230+Math.random()*2);window._trendData.i.push((r.generacion_total_mw||5200)/0.23/1.732);window._trendData.vib.push(1.5+(r.alertas_activas||0)*0.3+Math.random()*0.2);if(window._trendData.v.length>60){window._trendData.v.shift();window._trendData.i.shift();window._trendData.vib.shift();}var drawLine=function(data,color,minV,maxV){ctx.strokeStyle=color;ctx.lineWidth=1;ctx.beginPath();for(var x=0;x<data.length;x++){var y=85-(data[x]-minV)/(maxV-minV)*65;if(x===0)ctx.moveTo(x*4,y);else ctx.lineTo(x*4,y);}ctx.stroke();};drawLine(window._trendData.v,'#897eab',225,240);drawLine(window._trendData.vib,'#bd854f',0,5);ctx.fillStyle='#897eab';ctx.fillText('V',150,22);ctx.fillStyle='#bd854f';ctx.fillText('Vib',170,22);}
+  if(c4){var ctx=c4.getContext('2d');var w=c4.width,h=c4.height;ctx.clearRect(0,0,w,h);ctx.font='10px Consolas';ctx.fillStyle='#93a1b0';ctx.fillText('TENDENCIAS',5,14);if(!window._trendData)window._trendData={v:[],i:[],vib:[]};var r=window._lastResumen||{};window._trendData.v.push(230+Math.random()*2);window._trendData.i.push((r.generacion_total_mw||5200)/0.23/1.732/1000);window._trendData.vib.push(1.5+(r.alertas_activas||0)*0.3+Math.random()*0.2);if(window._trendData.v.length>60){window._trendData.v.shift();window._trendData.i.shift();window._trendData.vib.shift();}var drawL=function(data,color,minV,maxV){ctx.strokeStyle=color;ctx.lineWidth=1.2;ctx.beginPath();for(var x=0;x<data.length;x++){var px=x*(w/60);var y=h-10-(data[x]-minV)/(maxV-minV)*(h-30);if(x===0)ctx.moveTo(px,y);else ctx.lineTo(px,y);}ctx.stroke();};drawL(window._trendData.v,'#897eab',225,235);drawL(window._trendData.vib,'#bd854f',0,5);ctx.fillStyle='#897eab';ctx.fillText('V',w-30,14);ctx.fillStyle='#bd854f';ctx.fillText('Vib',w-15,14);}
 }
 
 function actualizarMapa(plantas){
@@ -789,13 +798,13 @@ function actualizarStats(){
   var radio = 3.0 / Math.max(map.getZoom(),6);
   var subsZona = todasLasSubs.filter(s=>Math.abs(s.lat-c.lat)<radio&&Math.abs(s.lon-c.lng)<radio).length;
 
-  var html = '<h3 style="color:var(--text-h);margin:0 0 12px 0;">📊 Estadísticas — '+(ub.ciudad||ub.estado||'Región')+'</h3>';
+  var html = '<h3 style="color:var(--text-h);margin:0 0 12px 0;">📊 Estadísticas — '+(ub.ciudad||ub.estado||'Global')+'</h3>';
   // === GRÁFICAS FUNCIONALES (estilo Consola MEC) ===
   html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:14px;">';
-  html += '<canvas id="graph-potencia" width="240" height="100" style="background:var(--panel);border-radius:6px;border:1px solid var(--border);width:100%;"></canvas>';
-  html += '<canvas id="graph-oscilograma" width="240" height="100" style="background:var(--panel);border-radius:6px;border:1px solid var(--border);width:100%;"></canvas>';
-  html += '<canvas id="graph-armonicos" width="240" height="100" style="background:var(--panel);border-radius:6px;border:1px solid var(--border);width:100%;"></canvas>';
-  html += '<canvas id="graph-tendencias" width="240" height="100" style="background:var(--panel);border-radius:6px;border:1px solid var(--border);width:100%;"></canvas>';
+  html += '<canvas id="graph-potencia" width="250" height="100" style="background:var(--panel);border-radius:6px;border:1px solid var(--border);"></canvas>';
+  html += '<canvas id="graph-oscilograma" width="250" height="100" style="background:var(--panel);border-radius:6px;border:1px solid var(--border);"></canvas>';
+  html += '<canvas id="graph-armonicos" width="250" height="100" style="background:var(--panel);border-radius:6px;border:1px solid var(--border);"></canvas>';
+  html += '<canvas id="graph-tendencias" width="250" height="100" style="background:var(--panel);border-radius:6px;border:1px solid var(--border);"></canvas>';
   html += '</div>';
   html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
   html += '<div style="background:var(--panel);padding:10px;border-radius:6px;border:1px solid var(--border);">Subestaciones zona<br><b style="font-size:18px;color:var(--text-h);">'+subsZona+'</b></div>';
@@ -910,11 +919,20 @@ function actualizarStats(){
 var todasLasSubs = [];  // se llena al cargar CSV y OSM
 function actualizarTablaSubs(){
   var c = map.getCenter();
-  var radio = 3.0 / Math.max(map.getZoom(), 6);
-  var cercanas = todasLasSubs.filter(s=>
-    Math.abs(s.lat-c.lat)<radio && Math.abs(s.lon-c.lng)<radio
-  );
-  if(cercanas.length===0) cercanas = todasLasSubs.slice(0,50);
+  var z = map.getZoom();
+  var cercanas;
+  
+  // Si estamos muy alejados (zoom < 8), mostrar TODAS las subestaciones
+  if(z < 8){
+    cercanas = todasLasSubs.slice(0, 100);
+  } else {
+    var radio = 3.0 / Math.max(z, 6);
+    cercanas = todasLasSubs.filter(s=>
+      Math.abs(s.lat-c.lat)<radio && Math.abs(s.lon-c.lng)<radio
+    );
+    if(cercanas.length===0) cercanas = todasLasSubs.slice(0,50);
+  }
+  
   var html='';
   cercanas.forEach(s=>{
     html+=`<tr onclick="irA(${s.lat},${s.lon})"><td>${(s.nombre||'Subestación').substring(0,30)}</td><td>${s.tipo||'subestacion'}</td><td>${s.ciudad||''}</td></tr>`;
